@@ -58,6 +58,34 @@ async function waitForDates(timeout = PANO_TIMEOUT) {
 	);
 }
 
+// The pano picker is a native <select> styled with appearance: base-select, so its
+// <option>s are in the DOM whether or not the picker is open — no trigger click, and
+// nothing to escape out of afterwards.
+const PANO_OPTION = ".location-preview__date .pano-option";
+
+/** Set the pano picker to `value` and fire the change React listens for. */
+async function selectPanoValue(value: string) {
+	await browser.execute((v: string) => {
+		const sel = document.querySelector<HTMLSelectElement>(".location-preview__date .nselect");
+		if (!sel) throw new Error("pano date select not found");
+		sel.value = v;
+		sel.dispatchEvent(new Event("change", { bubbles: true }));
+	}, value);
+}
+
+/** Select the nth option (0 = first specific panorama; "Default" sorts last). */
+async function selectPanoOption(index: number) {
+	await waitForOptions(PANO_OPTION, index + 1);
+	const value = await browser.execute((i: number) => {
+		const opts = document.querySelectorAll<HTMLOptionElement>(
+			".location-preview__date .pano-option",
+		);
+		return opts[i]?.value ?? null;
+	}, index);
+	if (!value) throw new Error(`pano option ${index} not found`);
+	await selectPanoValue(value);
+}
+
 /** Wait for .location-preview to appear. */
 async function waitForPreview() {
 	const el = await browser.$(".location-preview");
@@ -199,36 +227,26 @@ describe("LocationPreview — official pano", () => {
 	it("dropdown contains multiple historical dates", async () => {
 		await openLocation(offDefaultId);
 		await waitForDates();
-		const trigger = await browser.$(".location-preview__date .select__input");
-		await trigger.click();
-		await waitForOptions(".select__content .pano-option", 2);
-		const count = await (await browser.$$(".select__content .pano-option")).length;
+		await waitForOptions(PANO_OPTION, 2);
+		const count = (await browser.$$(PANO_OPTION)).length;
 		expect(count).toBeGreaterThan(1);
-		await browser.keys("Escape");
 	});
 
 	it("dropdown has a Default/auto-updating option", async () => {
 		await openLocation(offDefaultId);
 		await waitForDates();
-		const trigger = await browser.$(".location-preview__date .select__input");
-		await trigger.click();
-		await waitForOptions(".select__option.pano-option", 1);
+		await waitForOptions(PANO_OPTION, 1);
 		const def = await browser.execute(() => {
-			const items = document.querySelectorAll(".select__option.pano-option");
+			const items = document.querySelectorAll(".location-preview__date .pano-option");
 			return [...items].some((el) => el.textContent?.includes("Default"));
 		});
 		expect(def).toBe(true);
-		await browser.keys("Escape");
 	});
 
 	it("selecting a date sets LoadAsPanoId flag", async () => {
 		await openLocation(offDefaultId);
 		await waitForDates();
-		const trigger = await browser.$(".location-preview__date .select__input");
-		await trigger.click();
-		await waitForOptions(".select__content .pano-option", 1);
-		const opts = await browser.$$(".select__content .pano-option");
-		await opts[0].click();
+		await selectPanoOption(0);
 		await waitForFlag(offDefaultId, LoadAsPanoId);
 		const l = await readLocation(offDefaultId);
 		const flags = l?.flags ?? -1;
@@ -239,20 +257,10 @@ describe("LocationPreview — official pano", () => {
 		await openLocation(offDefaultId);
 		await waitForDates();
 		// first select a specific date
-		const trigger = await browser.$(".location-preview__date .select__input");
-		await trigger.click();
-		await waitForOptions(".select__content .pano-option", 1);
-		const opts = await browser.$$(".select__content .pano-option");
-		await opts[0].click();
+		await selectPanoOption(0);
 		await waitForFlag(offDefaultId, LoadAsPanoId);
 		// now select Default
-		await trigger.click();
-		await waitForOptions(".select__option.pano-option", 1);
-		await browser.execute(() => {
-			const items = document.querySelectorAll(".select__option.pano-option");
-			const def = [...items].find((el) => el.textContent?.includes("Default"));
-			if (def) (def as HTMLElement).click();
-		});
+		await selectPanoValue("default");
 		await waitForFlag(offDefaultId, LoadAsPanoId, false);
 		const l = await readLocation(offDefaultId);
 		const flags = l?.flags ?? -1;
@@ -890,11 +898,7 @@ describe("LocationPreview — return to spawn", () => {
 		await waitForDates();
 
 		// Select a specific date first
-		const trigger = await browser.$(".location-preview__date .select__input");
-		await trigger.click();
-		await waitForOptions(".select__content .pano-option", 1);
-		const opts = await browser.$$(".select__content .pano-option");
-		await opts[0].click();
+		await selectPanoOption(0);
 		await waitForFlag(spawn1Id, LoadAsPanoId);
 
 		// Press 'r' to return to spawn
