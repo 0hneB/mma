@@ -4,8 +4,6 @@
 /**
  * Unified MMA API — the single public surface for plugins, tests, and app code.
  * Exposed as `window.MMA` (and the global `MMA`).
- *
- * Store functions are spread directly — new store exports appear on MMA automatically.
  */
 
 import * as store from "@/store/useMapStore";

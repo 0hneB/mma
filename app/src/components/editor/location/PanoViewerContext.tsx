@@ -1,5 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+	createContext,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ReactNode,
+} from "react";
 import {
 	useActiveLocation,
 	useCurrentMap,
@@ -8,6 +16,7 @@ import {
 	updateLocations,
 } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
+import { singletonPano } from "@/lib/sv/panoSingleton";
 import { createSyncStore } from "@/lib/util/syncStore";
 import { hasLoadAsPanoId } from "@/types";
 import { isFieldEnabled } from "@/lib/data/fieldDefs";
@@ -15,6 +24,7 @@ import { useTimezone } from "@/lib/util/timezone";
 import type { PanoReference } from "@/lib/sv/lookup";
 import { useExactDate } from "./useExactDate";
 import { derivePanoDateState, type PanoDateState } from "./panoDate";
+import { onFullscreenMapChanged, onLocationCleared } from "./fullscreenModeState";
 
 // Altitude lives outside React: its only reader is the imperative coordinate
 // readout, so routing it through context would re-render every consumer.
@@ -35,8 +45,6 @@ interface PanoViewerContextValue {
 	setCurrentPano: React.Dispatch<React.SetStateAction<PanoViewerContextValue["currentPano"]>>;
 	panoDates: PanoReference[];
 	setPanoDates: React.Dispatch<React.SetStateAction<PanoReference[]>>;
-	isFullscreen: boolean;
-	setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>;
 	panoReady: boolean;
 	setPanoReady: React.Dispatch<React.SetStateAction<boolean>>;
 	selectedPanoId: string | null;
@@ -57,7 +65,6 @@ export function PanoViewerProvider({ children }: { children: ReactNode }) {
 	const currentMap = useCurrentMap();
 	const [currentPano, setCurrentPano] = useState<PanoViewerContextValue["currentPano"]>(null);
 	const [panoDates, setPanoDates] = useState<PanoReference[]>([]);
-	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [panoReady, setPanoReady] = useState(false);
 
 	const selectedPanoId =
@@ -99,14 +106,29 @@ export function PanoViewerProvider({ children }: { children: ReactNode }) {
 		);
 	}, [exactDate.ts, resolvedTz]);
 
+	const fullscreenMap = useSetting("fullscreenMap");
+	const prevFullscreenMap = useRef(fullscreenMap);
+	useEffect(() => {
+		if (prevFullscreenMap.current === fullscreenMap) return;
+		prevFullscreenMap.current = fullscreenMap;
+		onFullscreenMapChanged(fullscreenMap);
+	}, [fullscreenMap]);
+
+	// Location cleared (save/delete/close): reset fullscreen modes and pano state.
+	useEffect(() => {
+		if (location) return;
+		onLocationCleared();
+		setCurrentPano(null);
+		setPanoReady(false);
+		if (singletonPano) singletonPano.setVisible(false);
+	}, [location]);
+
 	const value = useMemo(
 		() => ({
 			currentPano,
 			setCurrentPano,
 			panoDates,
 			setPanoDates,
-			isFullscreen,
-			setIsFullscreen,
 			panoReady,
 			setPanoReady,
 			selectedPanoId,
@@ -116,18 +138,7 @@ export function PanoViewerProvider({ children }: { children: ReactNode }) {
 			exactDate,
 			resolvedTz,
 		}),
-		[
-			currentPano,
-			panoDates,
-			isFullscreen,
-			panoReady,
-			selectedPanoId,
-			lat,
-			lng,
-			dateState,
-			exactDate,
-			resolvedTz,
-		],
+		[currentPano, panoDates, panoReady, selectedPanoId, lat, lng, dateState, exactDate, resolvedTz],
 	);
 
 	return <PanoViewerContext.Provider value={value}>{children}</PanoViewerContext.Provider>;

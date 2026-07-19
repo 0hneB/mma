@@ -51,6 +51,8 @@ import { loadOpenSV, google } from "@/lib/sv/opensv";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 
 import { useSettings, useSetting, getSettings, GEOCODE_PROVIDER_LABELS } from "@/store/settings";
+import { useHotkey } from "@/lib/hooks/useHotkey";
+import { useBinding } from "@/lib/util/hotkeys";
 import { PluginLocationPanels } from "@/plugins/PluginPanels";
 import { relativeTime } from "@/lib/util/format";
 import { textColorFor } from "@/lib/util/color";
@@ -62,7 +64,14 @@ import { FullscreenTagBar } from "@/components/editor/location/FullscreenTagBar"
 import { PanoControls, CrosshairOverlay, sendHideCar } from "./PanoControls";
 import { seenPanoChanged, seenFlush, seenSetCanvas, seenUpdateGeo } from "@/lib/seen/seen";
 import { useReverseGeocode, type GeoDisplay } from "@/components/editor/location/useReverseGeocode";
-import { PanoViewerProvider, usePanoViewer, setPanoAltitude } from "./PanoViewerContext";
+import { usePanoViewer, setPanoAltitude } from "./PanoViewerContext";
+import {
+	usePanoFullscreen,
+	togglePanoFullscreen,
+	exitPanoFullscreen,
+	exitFullscreenMap,
+} from "./fullscreenModeState";
+import { FullscreenMiniLocationPreview } from "./FullscreenMiniLocationPreview";
 import {
 	applyViewportLock,
 	getViewportLockInfo,
@@ -209,14 +218,6 @@ const TagEditor = memo(function TagEditor({
 });
 
 export function LocationPreview() {
-	return (
-		<PanoViewerProvider>
-			<LocationPreviewInner />
-		</PanoViewerProvider>
-	);
-}
-
-function LocationPreviewInner() {
 	const location = useActiveLocation();
 	const map = useCurrentMap();
 	const reviewSession = useReviewSession();
@@ -228,12 +229,11 @@ function LocationPreviewInner() {
 		setCurrentPano,
 		panoDates,
 		setPanoDates,
-		isFullscreen,
-		setIsFullscreen,
 		panoReady,
 		setPanoReady,
 		selectedPanoId,
 	} = usePanoViewer();
+	const isFullscreen = usePanoFullscreen();
 	const [pendingTags, setPendingTags] = useState<string[]>(() => idsToNames(location?.tags ?? []));
 	const visibleTags = useVisibleTags();
 	const [panoGeo, setPanoGeo] = useState<GeoDisplay | null>(null);
@@ -251,6 +251,8 @@ function LocationPreviewInner() {
 		if (geoResult) seenUpdateGeo(geoResult);
 	}, [geoResult]);
 	const appSettings = useSettings();
+
+	const chipMode = appSettings.fullscreenMap && appSettings.showFullscreenMiniLocationPreview;
 	const bottomTrayRef = useRef<HTMLDivElement>(null);
 	const [bottomTrayHeight, setBottomTrayHeight] = useState(0);
 	useLayoutEffect(() => {
@@ -300,19 +302,19 @@ function LocationPreviewInner() {
 	}, [appSettings.showCrosshair]);
 
 	// Mount/unmount: move the persistent div in/out of the container.
-	// useLayoutEffect so setVisible(false) + appendChild run before paint.
+	// useLayoutEffect so appendChild runs before paint.
 	useLayoutEffect(() => {
 		const container = panoContainerRef.current;
 		if (!container) return;
-		if (singletonPano) singletonPano.setVisible(false);
 		container.appendChild(singletonDiv);
+		if (singletonPano && google?.maps) google.maps.event.trigger(singletonPano, "resize");
 		return () => {
 			if (container.contains(singletonDiv)) container.removeChild(singletonDiv);
 		};
-	}, []);
+	}, [chipMode]);
 
 	useEffect(() => {
-		if (!location || !panoContainerRef.current) return;
+		if (!location) return;
 		let cancelled = false;
 		let statusListener: google.maps.MapsEventListener | null = null;
 		let lockListener: google.maps.MapsEventListener | null = null;
@@ -535,16 +537,14 @@ function LocationPreviewInner() {
 	}, [location, selectedPanoId, isReviewMode, reviewSession, pendingTags]);
 
 	const handleClose = useCallback(() => {
-		if (isFullscreen) {
-			setIsFullscreen(false);
-			return;
-		}
+		if (exitPanoFullscreen()) return;
+		if (exitFullscreenMap()) return;
 		if (isReviewMode) {
 			reviewNext();
 		} else {
 			setActiveLocation(null);
 		}
-	}, [isReviewMode, isFullscreen]);
+	}, [isReviewMode]);
 
 	const handleDelete = useCallback(() => {
 		if (!location) return;
@@ -568,8 +568,21 @@ function LocationPreviewInner() {
 	}, []);
 
 	const handleFullscreen = useCallback(() => {
-		setIsFullscreen((v) => !v);
-	}, []);
+		if (location) togglePanoFullscreen();
+	}, [location]);
+
+	useHotkey(useBinding("toggleFullscreen"), handleFullscreen);
+
+	useEffect(() => {
+		if (!chipMode) return;
+		const el = panoContainerRef.current;
+		if (!el) return;
+		const obs = new ResizeObserver(() => {
+			if (singletonPano && google?.maps) google.maps.event.trigger(singletonPano, "resize");
+		});
+		obs.observe(el);
+		return () => obs.disconnect();
+	}, [chipMode]);
 
 	useEffect(() => {
 		if (singletonPano && google?.maps) google.maps.event.trigger(singletonPano, "resize");
@@ -608,13 +621,23 @@ function LocationPreviewInner() {
 		handleClose,
 		handleDelete,
 		handleReturnToSpawn,
-		handleFullscreen,
 		handleDateChange,
 	});
 
 	usePanoNavigation(appSettings);
 
 	if (!location || !map) return null;
+
+	if (chipMode) {
+		return (
+			<>
+				<ReviewBar />
+				<FullscreenMiniLocationPreview>
+					<div ref={panoContainerRef} className="fullscreen-mini-location__pano" />
+				</FullscreenMiniLocationPreview>
+			</>
+		);
+	}
 
 	return (
 		<>
