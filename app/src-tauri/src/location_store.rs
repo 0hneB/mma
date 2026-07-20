@@ -3733,16 +3733,6 @@ pub async fn store_bounds(
     })
 }
 
-/// Return the number of alive locations (batch + adds - dead).
-#[tauri::command]
-#[specta::specta]
-pub fn store_location_count(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-) -> AppResult<u32> {
-    with_store!(webview, state, |store| { Ok(store.alive_count as u32) })
-}
-
 /// Collect all distinct values for an `extra` field across all alive locations. O(N).
 /// Used by the filter UI to populate dropdown options.
 #[tauri::command]

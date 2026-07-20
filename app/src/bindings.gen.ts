@@ -151,8 +151,6 @@ export const commands = {
 	 *  `level` selects border precision, falling back to "light" if unavailable.
 	 */
 	storeCountryDistribution: (level: string) => __TAURI_INVOKE<([string, number])[]>("store_country_distribution", { level }),
-	/**  Return the number of alive locations (batch + adds - dead). */
-	storeLocationCount: () => __TAURI_INVOKE<number>("store_location_count"),
 	/**
 	 *  Compute the bounding box [west, south, east, north]. O(N).
 	 *  When `selected_only` is true, restricts to the current selection.

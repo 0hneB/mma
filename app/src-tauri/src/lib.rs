@@ -630,7 +630,6 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             location_store::store_get_locations_by_ids,
             location_store::store_get_all_locations,
             location_store::store_country_distribution,
-            location_store::store_location_count,
             location_store::store_bounds,
             location_store::store_find_nearby,
             location_store::store_near_any,
