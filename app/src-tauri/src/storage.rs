@@ -9,6 +9,33 @@ use crate::types::{AppError, AppResult};
 use rusqlite::Connection;
 use tauri::Manager;
 
+/// Deserialize a JSON text column from a SQLite row, falling back to `T::default()`
+/// on parse failure (forward-compatible with schema evolution).
+pub(crate) fn json_col<T: Default + serde::de::DeserializeOwned>(
+    row: &rusqlite::Row,
+    col: &str,
+) -> rusqlite::Result<T> {
+    let s: String = row.get(col)?;
+    Ok(serde_json::from_str(&s).unwrap_or_default())
+}
+
+/// Push a plain field onto a dynamic SQL UPDATE builder.
+/// Skips `None` fields; clones `Some` values into the boxed param list.
+macro_rules! push_field {
+    ($sets:expr, $vals:expr, $patch:expr, $col:literal, $field:ident) => {
+        if let Some(ref v) = $patch.$field {
+            $sets.push(concat!($col, " = ?"));
+            $vals.push(Box::new(v.clone()));
+        }
+    };
+    (json $sets:expr, $vals:expr, $patch:expr, $col:literal, $field:ident) => {
+        if let Some(ref v) = $patch.$field {
+            $sets.push(concat!($col, " = ?"));
+            $vals.push(Box::new(serde_json::to_string(v).unwrap_or_default()));
+        }
+    };
+}
+
 /// True when running under e2e tests or with `MMA_TEST_DB` set.
 /// Controls which database file and Arrow directory are used, keeping
 /// test data isolated from production.

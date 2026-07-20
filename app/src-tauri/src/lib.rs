@@ -32,6 +32,7 @@ mod arrow_bridge;
 mod arrow_migrate;
 mod selections;
 mod spatial;
+#[macro_use]
 mod storage;
 mod types;
 mod util;
