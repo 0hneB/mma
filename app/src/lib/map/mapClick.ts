@@ -3,7 +3,8 @@ import type { CellManager } from "@/lib/render/CellManager";
 import type { MapHost } from "@/lib/map/host";
 import { LOCATION_LAYER_ID } from "@/lib/render/buildSceneLayers";
 import { cmd } from "@/lib/commands";
-import { lookupStreetView, showToast } from "@/lib/sv/lookup";
+import { lookupStreetView } from "@/lib/sv/lookup";
+import { toast } from "@/lib/util/toast";
 import { tryInterceptClick, fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import type { ParsedLocation } from "@/lib/data/importExport";
@@ -108,7 +109,7 @@ export async function createLocationAtLatLng(
 		minRadius: ms?.searchRadius ?? undefined,
 	});
 	if (!loc) {
-		if (opts?.container) showToast(opts.container, "No coverage found at this location.");
+		if (opts?.container) toast("No coverage found at this location.", 1500, opts.container);
 		return null;
 	}
 	t.step("lookup");
@@ -196,7 +197,7 @@ export async function handleMapClick(
 	if (info.coordinate) {
 		const container = ctx.host?.container ?? null;
 		if (ctx.selectOnly) {
-			if (container) showToast(container, "Select-only mode is on.");
+			if (container) toast("Select-only mode is on.", 1500, container);
 			return;
 		}
 		await createLocationAtLatLng(info.coordinate[1], info.coordinate[0], ctx.host?.getZoom() ?? 2, {

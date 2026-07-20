@@ -20,12 +20,8 @@ import { useBinding } from "@/lib/util/hotkeys";
 import { getSettings, setSetting } from "@/store/settings";
 import { PANO_ZOOM } from "@/lib/sv/constants";
 import { tweenPov } from "@/lib/sv/tweenPov";
-import {
-	type PanoReference,
-	nearestLinkHeading,
-	followLinkedPanos,
-	showToast,
-} from "@/lib/sv/lookup";
+import { type PanoReference, nearestLinkHeading, followLinkedPanos } from "@/lib/sv/lookup";
+import { toast } from "@/lib/util/toast";
 import { downloadPano } from "@/lib/sv/panoDownload";
 import { isVirtualLocation } from "@/types";
 import { reviewNext, reviewPrev } from "@/lib/review/review";
@@ -191,14 +187,14 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 		const heading = singletonPano.getPov().heading;
 		if (!panoId) return;
 		const container = fullscreenContainerRef.current ?? panoContainerRef.current?.parentElement;
-		if (container) showToast(container, "Following road...");
+		if (container) toast("Following road...", 1500, container);
 		followLinkedPanos(panoId, heading)
 			.then((locs) => {
 				if (locs.length > 0) addLocations(locs);
-				if (container) showToast(container, `Added ${locs.length} locations`);
+				if (container) toast(`Added ${locs.length} locations`, 1500, container);
 			})
 			.catch(() => {
-				if (container) showToast(container, "Follow road failed");
+				if (container) toast("Follow road failed", 1500, container);
 			});
 	});
 
@@ -256,14 +252,15 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 				.then((res) => {
 					log.debug(`[copyToMap] ipc=${Math.round(performance.now() - t0)}ms`);
 					if (!container) return;
-					showToast(
-						container,
+					toast(
 						res.copied > 0 ? `Copied to "${res.targetName}"` : `Already in "${res.targetName}"`,
+						1500,
+						container,
 					);
 				})
 				.catch((e) => {
 					log.error("[copyToMap] failed:", e);
-					if (container) showToast(container, "Copy failed");
+					if (container) toast("Copy failed", 1500, container);
 				});
 		});
 		return () => {

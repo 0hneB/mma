@@ -56,8 +56,9 @@ import { useBinding } from "@/lib/util/hotkeys";
 import { PluginLocationPanels } from "@/plugins/PluginPanels";
 import { relativeTime } from "@/lib/util/format";
 import { textColorFor } from "@/lib/util/color";
-import { type PanoReference, resolvePano, fetchPanoData, showToast } from "@/lib/sv/lookup";
+import { type PanoReference, resolvePano, fetchPanoData } from "@/lib/sv/lookup";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
+import { toast } from "@/lib/util/toast";
 import { isOfficialPano } from "@/lib/sv/panoId";
 import { enrich } from "@/lib/sv/enrich";
 import { FullscreenMiniMap } from "@/components/editor/location/FullscreenMiniMap";
@@ -376,7 +377,7 @@ export function LocationPreview() {
 					| HTMLElement
 					| undefined;
 				if (root)
-					showToast(root, "Configured pano ID could not be found. Falling back to lat/lng.", 3000);
+					toast("Configured pano ID could not be found. Falling back to lat/lng.", 3000, root);
 			}
 			// Populate currentPano from the resolve result immediately.
 			// Covers the case where setPano() with the same ID doesn't trigger status_changed.
