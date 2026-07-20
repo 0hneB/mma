@@ -11,6 +11,7 @@ import { getCurrentMap, getActiveLocation, useActiveLocation } from "@/store/use
 import { getPanoAltitude, subscribePanoAltitude } from "./PanoViewerContext";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useHotkeyRef } from "@/lib/hooks/useHotkey";
+import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { open } from "@tauri-apps/plugin-shell";
 import { tweenPov } from "@/lib/sv/tweenPov";
 import { Tooltip } from "@/components/primitives/Tooltip";
@@ -34,16 +35,9 @@ import {
 
 function Compass({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const ref = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		const update = () => {
-			ref.current?.style.setProperty("--heading", `${(-panorama.getPov().heading).toFixed(2)}deg`);
-		};
-		const listener = panorama.addListener("pov_changed", update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(listener);
-		};
-	}, [panorama]);
+	usePanoEvent(panorama, "pov_changed", () => {
+		ref.current?.style.setProperty("--heading", `${(-panorama.getPov().heading).toFixed(2)}deg`);
+	});
 	return (
 		<div ref={ref} className="compass">
 			<svg className="compass__arrow" viewBox="0 0 40 100">
@@ -71,17 +65,10 @@ const TAPE_WIDTH_PX = TAPE_DEG_WIDTH * TAPE_PX_PER_DEG;
 
 function CompassTape({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const innerRef = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		const update = () => {
-			if (innerRef.current)
-				innerRef.current.style.transform = `translateX(${(-panorama.getPov().heading * TAPE_PX_PER_DEG).toFixed(1)}px)`;
-		};
-		const listener = panorama.addListener("pov_changed", update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(listener);
-		};
-	}, [panorama]);
+	usePanoEvent(panorama, "pov_changed", () => {
+		if (innerRef.current)
+			innerRef.current.style.transform = `translateX(${(-panorama.getPov().heading * TAPE_PX_PER_DEG).toFixed(1)}px)`;
+	});
 
 	const ticks: { deg: number; label?: string }[] = [];
 	for (let d = 0; d < 360; d += 5) {
@@ -234,31 +221,21 @@ function CompassControl({ panorama }: { panorama: google.maps.StreetViewPanorama
 		[panorama],
 	);
 
-	useEffect(() => {
-		const linksListener = panorama.addListener("links_changed", () => {
-			setLinks(
-				(panorama.getLinks() ?? []).filter((l): l is google.maps.StreetViewLink => l != null),
-			);
-		});
+	usePanoEvent(panorama, "links_changed", () => {
 		setLinks((panorama.getLinks() ?? []).filter((l): l is google.maps.StreetViewLink => l != null));
-		return () => {
-			google?.maps?.event?.removeListener(linksListener);
-		};
-	}, [panorama]);
+	});
 
-	useEffect(() => {
-		const update = () => {
+	usePanoEvent(
+		panorama,
+		"pov_changed",
+		() => {
 			const h = panorama.getPov().heading;
 			controlRef.current?.querySelectorAll<HTMLElement>(".compass-control__link").forEach((btn) => {
 				btn.classList.toggle("is-active", Math.abs(h - Number(btn.dataset.heading ?? 0)) < 1);
 			});
-		};
-		const povListener = panorama.addListener("pov_changed", update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(povListener);
-		};
-	}, [panorama, links]);
+		},
+		[links],
+	);
 
 	const pointNorth = useCallback(
 		(e?: React.MouseEvent) => {
@@ -332,18 +309,11 @@ function CompassControl({ panorama }: { panorama: google.maps.StreetViewPanorama
 function ZoomControl({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const [atMin, setAtMin] = useState(() => (panorama.getZoom() ?? 0) <= PANO_ZOOM.min);
 	const [atZero, setAtZero] = useState(() => (panorama.getZoom() ?? 0) <= 0);
-	useEffect(() => {
-		const update = () => {
-			const z = panorama.getZoom() ?? 0;
-			setAtMin(z <= PANO_ZOOM.min);
-			setAtZero(z <= 0);
-		};
-		const listener = panorama.addListener("zoom_changed", update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(listener);
-		};
-	}, [panorama]);
+	usePanoEvent(panorama, "zoom_changed", () => {
+		const z = panorama.getZoom() ?? 0;
+		setAtMin(z <= PANO_ZOOM.min);
+		setAtZero(z <= 0);
+	});
 
 	const zoomIn = useCallback(() => {
 		panorama.setZoom(Math.min(PANO_ZOOM.max, Math.max(0, panorama.getZoom()) + 1));
@@ -393,24 +363,17 @@ function ReturnToSpawnControl({
 }) {
 	const location = useActiveLocation();
 	const [hasChanged, setHasChanged] = useState(false);
-	useEffect(() => {
+	const checkChanged = () => {
 		if (!location) return;
-		const update = () => {
-			const pov = panorama.getPov();
-			setHasChanged(
-				pov.heading !== location.heading ||
-					pov.pitch !== location.pitch ||
-					panorama.getZoom() !== location.zoom,
-			);
-		};
-		const povListener = panorama.addListener("pov_changed", update);
-		const zoomListener = panorama.addListener("zoom_changed", update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(povListener);
-			google?.maps?.event?.removeListener(zoomListener);
-		};
-	}, [panorama, location]);
+		const pov = panorama.getPov();
+		setHasChanged(
+			pov.heading !== location.heading ||
+				pov.pitch !== location.pitch ||
+				panorama.getZoom() !== location.zoom,
+		);
+	};
+	usePanoEvent(panorama, "pov_changed", checkChanged, [location]);
+	usePanoEvent(panorama, "zoom_changed", checkChanged, [location]);
 
 	return (
 		<div
@@ -431,22 +394,15 @@ function ReturnToSpawnControl({
 
 function CoordinateControl({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const textRef = useRef<HTMLSpanElement>(null);
-	useEffect(() => {
-		const update = () => {
-			const zoom = (panorama.getZoom() ?? 0).toFixed(2);
-			const altitude = getPanoAltitude();
-			if (textRef.current)
-				textRef.current.textContent =
-					altitude === 0 ? ` zoom ${zoom}` : ` ${altitude.toFixed(2)}m · zoom ${zoom}`;
-		};
-		const listener = panorama.addListener("zoom_changed", update);
-		const unsubAltitude = subscribePanoAltitude(update);
-		update();
-		return () => {
-			google?.maps?.event?.removeListener(listener);
-			unsubAltitude();
-		};
+	const updateDisplay = useCallback(() => {
+		const zoom = (panorama.getZoom() ?? 0).toFixed(2);
+		const altitude = getPanoAltitude();
+		if (textRef.current)
+			textRef.current.textContent =
+				altitude === 0 ? ` zoom ${zoom}` : ` ${altitude.toFixed(2)}m · zoom ${zoom}`;
 	}, [panorama]);
+	usePanoEvent(panorama, "zoom_changed", updateDisplay);
+	useEffect(() => subscribePanoAltitude(updateDisplay), [updateDisplay]);
 
 	return (
 		<div

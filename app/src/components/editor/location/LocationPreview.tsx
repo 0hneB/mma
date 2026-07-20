@@ -57,6 +57,7 @@ import { PluginLocationPanels } from "@/plugins/PluginPanels";
 import { relativeTime } from "@/lib/util/format";
 import { textColorFor } from "@/lib/util/color";
 import { type PanoReference, resolvePano, fetchPanoData, showToast } from "@/lib/sv/lookup";
+import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { isOfficialPano } from "@/lib/sv/panoId";
 import { enrich } from "@/lib/sv/enrich";
 import { FullscreenMiniMap } from "@/components/editor/location/FullscreenMiniMap";
@@ -284,16 +285,9 @@ export function LocationPreview() {
 		appSettings.defaultMovementMode,
 	]);
 
-	useEffect(() => {
-		if (!singletonPano) return;
-		sendHideCar(!appSettings.showCar);
-		const listener = singletonPano.addListener("status_changed", () => {
-			if (singletonPano!.getStatus() === "OK") sendHideCar(!appSettings.showCar);
-		});
-		return () => {
-			listener.remove();
-		};
-	}, [appSettings.showCar]);
+	usePanoEvent(singletonPano, "status_changed", () => sendHideCar(!appSettings.showCar), [
+		appSettings.showCar,
+	]);
 
 	useEffect(() => {
 		if (!singletonPano || !appSettings.showCrosshair) return;
