@@ -445,6 +445,15 @@ impl BoundsAcc {
     }
 }
 
+macro_rules! apply_patch {
+    ($target:expr, $patch:expr; $($field:ident),+ $(,)?) => {
+        $(if let Some(v) = $patch.$field { $target.$field = v; })+
+    };
+    (clone $target:expr, $patch:expr; $($field:ident),+ $(,)?) => {
+        $(if let Some(ref v) = $patch.$field { $target.$field = v.clone(); })+
+    };
+}
+
 impl Store {
     pub fn new() -> Self {
         Self {
@@ -508,6 +517,17 @@ impl Store {
             can_redo: !self.edits.redo.is_empty(),
             tag_counts: Some(self.tags.all.iter().map(|(&id, t)| (id, t.count)).collect()),
             known_field_keys: self.known_field_keys.iter().cloned().collect(),
+        }
+    }
+
+    /// MutationResult for metadata-only changes (tags, reorder) that don't touch locations.
+    fn metadata_result(&self) -> MutationResult {
+        MutationResult {
+            status: self.store_status(),
+            delta: RenderDelta::default(),
+            selection_sync: None,
+            new_field_defs: None,
+            tags: Some(self.tags.all.clone()),
         }
     }
 
@@ -1503,33 +1523,13 @@ impl Store {
             None => return,
         };
         let old_coords = (loc.lat, loc.lng);
-        if let Some(v) = patch.lat {
-            loc.lat = v;
-        }
-        if let Some(v) = patch.lng {
-            loc.lng = v;
-        }
-        if let Some(v) = patch.heading {
-            loc.heading = v;
-        }
-        if let Some(v) = patch.pitch {
-            loc.pitch = v;
-        }
-        if let Some(v) = patch.zoom {
-            loc.zoom = v;
-        }
-        if let Some(ref v) = patch.pano_id {
-            loc.pano_id = v.clone();
-        }
+        apply_patch!(loc, patch; lat, lng, heading, pitch, zoom, created_at, modified_at);
+        apply_patch!(clone loc, patch; pano_id, tags);
         if let Some(v) = patch.flags {
             loc.flags = LocationFlags::from_bits_retain(v);
         }
-        if let Some(ref v) = patch.tags {
-            loc.tags = v.clone();
-        }
         if let Some(ref v) = patch.extra {
-            // JSON Merge Patch (RFC 7386): keys shallow-merge into the current extra,
-            // a null value deletes its key, and a null patch clears extra entirely.
+            // JSON Merge Patch (RFC 7386)
             loc.extra = match v {
                 None => None,
                 Some(p) => {
@@ -1544,12 +1544,6 @@ impl Store {
                     crate::types::RawExtra::from_map(&m)
                 }
             };
-        }
-        if let Some(v) = patch.created_at {
-            loc.created_at = v;
-        }
-        if let Some(v) = patch.modified_at {
-            loc.modified_at = v;
         }
         self.overlay_write(id, loc, old_coords);
     }
@@ -2338,12 +2332,7 @@ pub(crate) fn apply_tag_patch(t: &mut Tag, patch: &TagPatch) {
             t.name = trimmed.to_string();
         }
     }
-    if let Some(c) = &patch.color {
-        t.color = c.clone();
-    }
-    if let Some(d) = &patch.doclinks {
-        t.doclinks = d.clone();
-    }
+    apply_patch!(clone t, patch; color, doclinks);
 }
 
 /// Rename and/or recolor tags in one batch. Renaming onto an existing name (case-insensitive)
@@ -3229,78 +3218,52 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         angles: Vec::new(),
     };
 
-    // Single linear pass over batch rows (cache-friendly)
-    for i in 0..batch_n {
-        let id = ids_col.value(i);
-        if has_dead && store.overlay.dead.contains(&id) {
-            continue;
-        }
-        let (lat, lng, heading) = if has_patches {
-            if let Some(p) = store.overlay.patches.get(&id) {
-                (p.lat, p.lng, p.heading)
+    {
+        let mut emit = |id: u32, lat: f64, lng: f64, heading: f64| {
+            let ci = render_cell_idx(lat, lng) as usize;
+            let out = cells[ci].get_or_insert_with(|| CellOut {
+                ids: Vec::new(),
+                positions: Vec::new(),
+                colors: Vec::new(),
+                angles: Vec::new(),
+            });
+            out.positions.push(lng as f32);
+            out.positions.push(lat as f32);
+            let angle = if arrow_style { -(heading as f32) } else { 0.0 };
+            if selected_set.contains(id) || active_id == Some(id) {
+                out.colors.extend_from_slice(&[0, 0, 0, 0]);
+            } else {
+                out.colors.extend_from_slice(&base_color);
+            }
+            out.angles.push(angle);
+            out.ids.push(id);
+            if let Some(&[r, g, b]) = color_map.get(&id) {
+                sel_ov.positions.push(lng as f32);
+                sel_ov.positions.push(lat as f32);
+                sel_ov.colors.extend_from_slice(&[r, g, b, 255]);
+                sel_ov.angles.push(angle);
+                sel_ov.ids.push(id);
+            }
+        };
+
+        for i in 0..batch_n {
+            let id = ids_col.value(i);
+            if has_dead && store.overlay.dead.contains(&id) {
+                continue;
+            }
+            let (lat, lng, heading) = if has_patches {
+                if let Some(p) = store.overlay.patches.get(&id) {
+                    (p.lat, p.lng, p.heading)
+                } else {
+                    (lats.value(i), lngs.value(i), headings.value(i))
+                }
             } else {
                 (lats.value(i), lngs.value(i), headings.value(i))
-            }
-        } else {
-            (lats.value(i), lngs.value(i), headings.value(i))
-        };
-        let ci = render_cell_idx(lat, lng) as usize;
-        let out = cells[ci].get_or_insert_with(|| CellOut {
-            ids: Vec::new(),
-            positions: Vec::new(),
-            colors: Vec::new(),
-            angles: Vec::new(),
-        });
-        out.positions.push(lng as f32);
-        out.positions.push(lat as f32);
-        let angle = if arrow_style { -(heading as f32) } else { 0.0 };
-        let is_hidden = selected_set.contains(id) || active_id == Some(id);
-        if is_hidden {
-            out.colors.extend_from_slice(&[0, 0, 0, 0]);
-        } else {
-            out.colors.extend_from_slice(&base_color);
+            };
+            emit(id, lat, lng, heading);
         }
-        out.angles.push(angle);
-        out.ids.push(id);
-        if let Some(&[r, g, b]) = color_map.get(&id) {
-            sel_ov.positions.push(lng as f32);
-            sel_ov.positions.push(lat as f32);
-            sel_ov.colors.extend_from_slice(&[r, g, b, 255]);
-            sel_ov.angles.push(angle);
-            sel_ov.ids.push(id);
-        }
-    }
-    // Overlay adds
-    for loc in &store.overlay.adds {
-        let ci = render_cell_idx(loc.lat, loc.lng) as usize;
-        let out = cells[ci].get_or_insert_with(|| CellOut {
-            ids: Vec::new(),
-            positions: Vec::new(),
-            colors: Vec::new(),
-            angles: Vec::new(),
-        });
-        let id = loc.id;
-        let is_hidden = selected_set.contains(id) || active_id == Some(id);
-        out.positions.push(loc.lng as f32);
-        out.positions.push(loc.lat as f32);
-        let angle = if arrow_style {
-            -(loc.heading as f32)
-        } else {
-            0.0
-        };
-        if is_hidden {
-            out.colors.extend_from_slice(&[0, 0, 0, 0]);
-        } else {
-            out.colors.extend_from_slice(&base_color);
-        }
-        out.angles.push(angle);
-        out.ids.push(id);
-        if let Some(&[r, g, b]) = color_map.get(&id) {
-            sel_ov.positions.push(loc.lng as f32);
-            sel_ov.positions.push(loc.lat as f32);
-            sel_ov.colors.extend_from_slice(&[r, g, b, 255]);
-            sel_ov.angles.push(angle);
-            sel_ov.ids.push(id);
+        for loc in &store.overlay.adds {
+            emit(loc.id, loc.lat, loc.lng, loc.heading);
         }
     }
 
@@ -3620,6 +3583,24 @@ fn apply_edit_reverse(store: &mut Store, entry: &EditEntry) -> ChangeSet {
     apply_edit(store, &entry.created, &entry.removed)
 }
 
+/// Apply an edit, record undo, clear redo, finish mutation. No-op when both sides empty.
+fn apply_undoable(
+    store: &mut Store,
+    remove: Vec<Location>,
+    create: Vec<Location>,
+) -> MutationResult {
+    if remove.is_empty() && create.is_empty() {
+        return store.finish_mutation(ChangeSet::default());
+    }
+    let changes = apply_edit(store, &remove, &create);
+    store.push_undo(EditEntry {
+        created: create,
+        removed: remove,
+    });
+    store.edits.redo.clear();
+    store.finish_mutation(changes)
+}
+
 // ---------------------------------------------------------------------------
 // Query commands
 // ---------------------------------------------------------------------------
@@ -3708,13 +3689,7 @@ pub fn store_create_tags(
             store.tags.dirty = true;
         }
 
-        Ok(MutationResult {
-            status: store.store_status(),
-            delta: RenderDelta::default(),
-            selection_sync: None,
-            new_field_defs: None,
-            tags: Some(store.tags.all.clone()),
-        })
+        Ok(store.metadata_result())
     })
 }
 
@@ -3734,13 +3709,7 @@ pub fn store_reorder_tags(
             }
         }
         store.tags.dirty = true;
-        Ok(MutationResult {
-            status: store.store_status(),
-            delta: RenderDelta::default(),
-            selection_sync: None,
-            new_field_defs: None,
-            tags: Some(store.tags.all.clone()),
-        })
+        Ok(store.metadata_result())
     })
 }
 
@@ -4054,26 +4023,13 @@ pub async fn store_merge_duplicates(
             }
         }
 
-        let result = if create.is_empty() {
-            store.finish_mutation(ChangeSet::default())
-        } else {
-            let group_count = create.len();
-            let merged_away = remove.len() - create.len();
-            let changes = apply_edit(store, &remove, &create);
-            store.push_undo(EditEntry {
-                created: create,
-                removed: remove,
-            });
-            store.edits.redo.clear();
-            log::debug!(
-                "[cmd] store_merge_duplicates groups={} merged_away={} total={}ms",
-                group_count,
-                merged_away,
-                _t.elapsed().as_millis()
-            );
-            store.finish_mutation(changes)
-        };
-        Ok(result)
+        log::debug!(
+            "[cmd] store_merge_duplicates groups={} merged_away={} total={}ms",
+            create.len(),
+            remove.len().saturating_sub(create.len()),
+            _t.elapsed().as_millis()
+        );
+        Ok(apply_undoable(store, remove, create))
     })
 }
 
@@ -4105,24 +4061,13 @@ pub async fn store_prune_duplicates(
             .filter(|l| prune_ids.contains(&l.id))
             .collect();
 
-        let result = if remove.is_empty() {
-            store.finish_mutation(ChangeSet::default())
-        } else {
-            let changes = apply_edit(store, &remove, &[]);
-            store.push_undo(EditEntry {
-                created: Vec::new(),
-                removed: remove,
-            });
-            store.edits.redo.clear();
-            log::debug!(
-                "[cmd] store_prune_duplicates pruned={} of {} total={}ms",
-                prune_ids.len(),
-                ids.len(),
-                _t.elapsed().as_millis()
-            );
-            store.finish_mutation(changes)
-        };
-        Ok(result)
+        log::debug!(
+            "[cmd] store_prune_duplicates pruned={} of {} total={}ms",
+            remove.len(),
+            ids.len(),
+            _t.elapsed().as_millis()
+        );
+        Ok(apply_undoable(store, remove, Vec::new()))
     })
 }
 
