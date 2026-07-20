@@ -167,11 +167,6 @@ export const commands = {
 	 */
 	storeNearAny: (lats: number[], lngs: number[], radiusM: number) => __TAURI_INVOKE<boolean[]>("store_near_any", { lats: lats.map(i=>i), lngs: lngs.map(i=>i), radiusM }),
 	/**
-	 *  Hit-test markers at a point, returning covering markers topmost-first.
-	 *  `zoom` is Google-scale; `marker_style`/`size_scale` must match the rendering surface.
-	 */
-	storePick: (lat: number, lng: number, zoom: number, markerStyle: string, sizeScale: number) => __TAURI_INVOKE<PickHit[]>("store_pick", { lat, lng, zoom, markerStyle, sizeScale }),
-	/**
 	 *  Collect all distinct values for an `extra` field across all alive locations. O(N).
 	 *  Used by the filter UI to populate dropdown options.
 	 */
@@ -811,15 +806,6 @@ export type PartitionBucket = {
 	key: string,
 	ids: number[],
 	bin: [number, number] | null,
-};
-
-/**
- *  One marker under the cursor. `selected` = drawn in the selection overlay
- *  (or as the active marker), i.e. above every base cell marker.
- */
-export type PickHit = {
-	id: number,
-	selected: boolean,
 };
 
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
