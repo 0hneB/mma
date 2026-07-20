@@ -118,6 +118,7 @@ export function getMarkerDefaultColor(): [number, number, number, number] {
 }
 
 let sceneSettled: Promise<void> = Promise.resolve();
+let loadRequested = 0;
 
 /** Resolves when the most recently started full scene load has finished (or immediately if none is in flight). */
 export function whenSceneSettled(): Promise<void> {
@@ -126,7 +127,13 @@ export function whenSceneSettled(): Promise<void> {
 
 /** Full (re)load from Rust for the whole world. Editor-driven on open / marker-style change. */
 export function loadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
-	return (sceneSettled = doLoadScene(markerStyle, mc));
+	const seq = ++loadRequested;
+	return (sceneSettled = sceneSettled
+		.catch(() => {})
+		.then(() => {
+			if (seq !== loadRequested) return;
+			return doLoadScene(markerStyle, mc);
+		}));
 }
 
 async function doLoadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
