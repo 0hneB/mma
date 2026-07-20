@@ -219,11 +219,6 @@ declare const commands: {
      */
     storeNearAny: (lats: number[], lngs: number[], radiusM: number) => Promise<boolean[]>;
     /**
-     *  Hit-test markers at a point, returning covering markers topmost-first.
-     *  `zoom` is Google-scale; `marker_style`/`size_scale` must match the rendering surface.
-     */
-    storePick: (lat: number, lng: number, zoom: number, markerStyle: string, sizeScale: number) => Promise<PickHit[]>;
-    /**
      *  Collect all distinct values for an `extra` field across all alive locations. O(N).
      *  Used by the filter UI to populate dropdown options.
      */
@@ -872,14 +867,6 @@ type PartitionBucket = {
     key: string;
     ids: number[];
     bin: [number, number] | null;
-};
-/**
- *  One marker under the cursor. `selected` = drawn in the selection overlay
- *  (or as the active marker), i.e. above every base cell marker.
- */
-type PickHit = {
-    id: number;
-    selected: boolean;
 };
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
@@ -2816,7 +2803,6 @@ export interface MapHostEvents {
     mouseout: void;
     zoom: void;
     camera: void;
-    idle: void;
     tilesloaded: void;
 }
 export interface BasemapOpts {
@@ -2863,6 +2849,18 @@ declare function getMapHost(): MapHost | null;
  * Wait for the main editor map to be ready.
  */
 declare function waitForMapHost(): Promise<MapHost>;
+
+declare function getGoogleMap(): google.maps.Map | null;
+declare function waitForGoogleMap(): Promise<google.maps.Map | null>;
+
+declare const legacy_getGoogleMap: typeof getGoogleMap;
+declare const legacy_waitForGoogleMap: typeof waitForGoogleMap;
+declare namespace legacy {
+  export {
+    legacy_getGoogleMap as getGoogleMap,
+    legacy_waitForGoogleMap as waitForGoogleMap,
+  };
+}
 
 export interface LocationStore {
     locations: Map<number, Location>;
@@ -3018,7 +3016,8 @@ declare const surface: {
 export type StoreApi = typeof store;
 export type ReviewApi = typeof review;
 export type SurfaceApi = typeof surface;
-export interface MMA extends StoreApi, ReviewApi, SurfaceApi {
+export type LegacyApi = typeof legacy;
+export interface MMA extends StoreApi, ReviewApi, SurfaceApi, LegacyApi {
 }
 declare global {
     interface Window {
@@ -3028,4 +3027,4 @@ declare global {
 }
 
 export { MMA as MMAApi, PanoType, commands };
-export type { CellRemoval, ColorPatchEntry, CommitDelta, CommitDiff, CommitInfo, ComparisonType, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExtraFieldDef, ExtraFieldType, FieldCount, FilterOp, GeoResult, ImportPreviewEntry, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MutationResult, NumericBinning, PartitionBucket, PickHit, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, Selection, SelectionInput, SelectionProps, SelectionSync, SpacedPickResult, StoreStatus, SummaryResult, Tag, TagPatch, Update, ValiLocation, ValiLocation_Deserialize, VirtualTag };
+export type { CellRemoval, ColorPatchEntry, CommitDelta, CommitDiff, CommitInfo, ComparisonType, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExtraFieldDef, ExtraFieldType, FieldCount, FilterOp, GeoResult, ImportPreviewEntry, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MutationResult, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, Selection, SelectionInput, SelectionProps, SelectionSync, SpacedPickResult, StoreStatus, SummaryResult, Tag, TagPatch, Update, ValiLocation, ValiLocation_Deserialize, VirtualTag };

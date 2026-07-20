@@ -41,6 +41,7 @@ import { validateLocations } from "@/lib/sv/validate";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { mmaBufUrl } from "@/lib/util/util";
 import { getMapHost, waitForMapHost } from "@/lib/map/mapState";
+import * as legacy from "@/legacy";
 
 export interface LocationStore {
 	locations: Map<number, Location>;
@@ -265,13 +266,15 @@ const surface = {
 type StoreApi = typeof store;
 type ReviewApi = typeof review;
 type SurfaceApi = typeof surface;
+type LegacyApi = typeof legacy;
 
-export interface MMA extends StoreApi, ReviewApi, SurfaceApi {}
+export interface MMA extends StoreApi, ReviewApi, SurfaceApi, LegacyApi {}
 
 const mma: MMA = {
 	...store,
 	...review,
 	...surface,
+	...legacy,
 };
 
 declare global {
