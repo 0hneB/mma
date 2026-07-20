@@ -1,43 +1,26 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
-import type { WorkArea, LatLng, MaybeLocation } from "@/types";
+import { useEffect, useSyncExternalStore } from "react";
+import type { WorkArea, MaybeLocation } from "@/types";
 import {
 	isVirtualLocation,
 	isImportPreview,
 	LocationFlag,
 	locId,
-	bboxTupleToBounds,
 	applyLocationPatch,
 } from "@/types";
-import type {
-	Location,
-	MapData,
-	MapMeta,
-	Tag,
-	ExtraFieldDef,
-	KeySpec,
-	Scope,
-	CommitDiff,
-	PartitionBucket,
-	EditorImportPreview,
-} from "@/bindings.gen";
-import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
-import { emit as tauriEmit, listen } from "@tauri-apps/api/event";
+import type { Location, MapData, MapMeta, Tag, ExtraFieldDef, CommitDiff } from "@/bindings.gen";
+import { listen } from "@tauri-apps/api/event";
 import { cmd } from "@/lib/commands";
 import type {
 	MutationResult,
 	MapMetaPatch_Deserialize as MapMetaPatch,
 	SelectionSync,
-	CommitInfo,
 } from "@/bindings.gen";
 import { emit as emitEvent } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
 import { nowUnix } from "@/lib/util/format";
-import { mmaBufUrl, compareNatural } from "@/lib/util/util";
-import { compareMonthOrder } from "@/lib/util/date";
-import { fitMapToBounds } from "@/lib/map/mapState";
-import { getSettings } from "@/store/settings";
+import { mmaBufUrl } from "@/lib/util/util";
 import {
 	setUserFieldDefs,
 	mergeUserFieldDefs,
@@ -50,7 +33,6 @@ import {
 	type MergeWinner,
 } from "@/lib/data/fieldOps";
 import type { LocationPatch_Deserialize as LocationPatch, Update, TagPatch } from "@/bindings.gen";
-import { resolveSavedSelectionIds } from "./savedSelections";
 import type { RenderDelta } from "@/bindings.gen";
 import {
 	SelectedIds,
@@ -58,7 +40,9 @@ import {
 	type ReadonlyIdSet,
 	type SelCellEntry,
 } from "@/lib/render/CellManager";
-import { whenSceneSettled } from "@/lib/render/sceneStore";
+import { resetImportState, bumpImportMarkerVersion } from "./importStaging";
+import { resetCommitDiffState } from "./commitDiff";
+import { setCachedMapList, invalidateMapList, reloadMapList } from "./mapList";
 
 /** Minimal pub/sub bus. `.on()` returns an unsubscribe function. */
 function createBus<T extends (...args: never[]) => void>() {
@@ -115,6 +99,8 @@ const notify = storeBus.emit;
 
 /** Subscribe to any store mutation (map open/close, rename, edits, ...). */
 export const subscribeStore = subscribe;
+/** Fire the store bus directly (for sibling store modules). */
+export const notifyStore = notify;
 
 /** Build a reactive store hook: subscribe to the bus, return the latest value.
  *  The value itself is the useSyncExternalStore snapshot, so consumers re-render
@@ -145,24 +131,6 @@ function memoOnRefs<const I extends readonly unknown[], O>(
 	};
 }
 
-// --- Map list state ---
-let cachedMapList: MapMeta[] = [];
-/** Reactive list of all maps (metadata only). */
-export const useMapList = makeStoreHook(() => cachedMapList);
-/** The list of all maps (metadata only). */
-export const getMapList = () => cachedMapList;
-
-async function reloadMapList() {
-	cachedMapList = await cmd.storeListMaps();
-	notify();
-}
-
-/** Re-fetch the map list from the database. */
-export async function invalidateMapList() {
-	await reloadMapList();
-	tauriEmit("map-list-changed");
-}
-
 // --- Current map state ---
 let currentMapId: string | null = null;
 let currentMap: MapData | null = null;
@@ -191,29 +159,6 @@ let undoRedoState = { canUndo: false, canRedo: false };
  *  the Set's reference identity (`useMemo(..., [keys])`). */
 let knownFieldKeys = new Set<string>();
 
-/** Parsed-but-not-committed import shown while `workArea === "import"`. */
-export interface ImportStaging {
-	preview: EditorImportPreview;
-	source: "file" | "paste";
-}
-let importStaging: ImportStaging | null = null;
-/** Interleaved `[lng, lat]` f32 preview-marker positions; `importMarkerVersion` bumps to rebuild the layer. */
-let importPreviewPositions = new Float32Array(0);
-let importMarkerVersion = 0;
-
-/** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
- *  interleaved `[lng, lat]` f32; `diffMarkerVersion` bumps to rebuild the layers. */
-export interface CommitDiffPreview {
-	commitId: string;
-	hash: string;
-	counts: CommitDiff;
-	added: Float32Array;
-	removed: Float32Array;
-	modified: Float32Array;
-}
-let commitDiffPreview: CommitDiffPreview | null = null;
-let diffMarkerVersion = 0;
-
 /** Reactive per-tag location counts for the open map, keyed by tag id. */
 export const useTagCounts = makeStoreHook(() => tagCounts);
 
@@ -236,6 +181,8 @@ function bump() {
 	mapVersion++;
 	notify();
 }
+/** Alias of bump() for sibling store modules. */
+export const bumpStore = bump;
 
 /** Reactive open map (metadata + settings), or null when no map is open. */
 export const useCurrentMap = makeStoreHook(() => currentMap);
@@ -268,19 +215,6 @@ export const useDuplicateLocations = makeStoreHook(() => duplicateLocations);
 
 /** Reactive editor pane: "overview" | "location" | "duplicates" | "import" | "plugin". */
 export const useWorkArea = makeStoreHook(() => workArea);
-export const useImportStaging = makeStoreHook(() => importStaging);
-export const useImportMarkerVersion = makeStoreHook(() => importMarkerVersion);
-
-export function getImportPreviewPositions() {
-	return importPreviewPositions;
-}
-
-export const useCommitDiffPreview = makeStoreHook(() => commitDiffPreview);
-export const useDiffMarkerVersion = makeStoreHook(() => diffMarkerVersion);
-
-export function getCommitDiffPreview() {
-	return commitDiffPreview;
-}
 
 let cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
 
@@ -327,11 +261,30 @@ export function scheduleSave() {
 	}, AUTOSAVE_DELAY_MS);
 }
 
-function cancelAutosave() {
+export function cancelAutosave() {
 	if (autosaveTimer) {
 		clearTimeout(autosaveTimer);
 		autosaveTimer = null;
 	}
+}
+
+export function waitForInflightPersist() {
+	return inflightPersist;
+}
+
+/** Background auto-commit after an import with autoCommit set. */
+export function scheduleAutoCommit(mapId: string, importedCount: number) {
+	inflightPersist = cmd
+		.storeCommit(mapId, `Import ${importedCount} locations`)
+		.then(() => {
+			undoRedoState = { canUndo: false, canRedo: false };
+			cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
+		})
+		.catch((e: unknown) => log.error("[import] background commit failed:", e))
+		.finally(() => {
+			inflightPersist = null;
+			bump();
+		});
 }
 
 async function doSave(): Promise<void> {
@@ -364,7 +317,7 @@ export async function flushSave(): Promise<void> {
 // --- Init (called once at startup) ---
 /** One-time store startup. The app calls this; plugins never need to. */
 export async function initStore() {
-	cachedMapList = await cmd.storeListMaps();
+	setCachedMapList(await cmd.storeListMaps());
 	notify();
 	listen("map-list-changed", () => reloadMapList());
 }
@@ -391,9 +344,8 @@ function clearEditState() {
 	activeLocationId = null;
 	cachedActiveLocation = null;
 	workArea = "overview";
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
-	commitDiffPreview = null;
+	resetImportState();
+	resetCommitDiffState();
 }
 
 // --- Actions ---
@@ -536,160 +488,6 @@ export async function syncSelections(): Promise<{ ids: number[] }> {
 	await cmd.storeSyncSelections(sels);
 	const ids = await cmd.storeGetSelectedIdsList();
 	return { ids };
-}
-
-/** The user-facing "which locations" concept: Rust's mechanical Scope widened with
- *  saved selections, which resolve to ids in JS (Rust never sees saved definitions). */
-export type SourceScope = Scope | { kind: "saved"; id: string };
-
-export interface ScopeController<S extends SourceScope = Scope> {
-	scope: S;
-	// Method syntax on purpose: bivariance lets a plain ScopeController flow into
-	// ScopeSelector's wider ScopeController<SourceScope> prop.
-	setScope(s: S): void;
-	allCount: number;
-	selectionCount: number;
-	/** Opt-in: ScopeSelector offers saved selections. Only for consumers that
-	 *  narrow via resolveScopeIds rather than passing the scope to Rust. */
-	saved?: boolean;
-}
-
-/** Narrow a materialized pool of id-bearing records to the scope's subset (JS-side). */
-export function applyScope<T extends { id: number }>(scope: Scope, pool: T[]): T[] {
-	if (scope.kind === "all") return pool;
-	const ids = getSelectedLocationIds();
-	return pool.filter((item) => ids.has(item.id));
-}
-
-/** The id-set a scope narrows to, or null for "all". Saved scopes resolve in Rust. */
-export async function resolveScopeIds(
-	scope: SourceScope,
-): Promise<{ has(id: number): boolean; size: number } | null> {
-	switch (scope.kind) {
-		case "all":
-			return null;
-		case "selected":
-			return getSelectedLocationIds();
-		case "saved":
-			return resolveSavedSelectionIds(scope.id);
-	}
-}
-
-/** Group the scoped location set by a derived key — entirely in Rust, no locations fetched.
- *  Numeric bins arrive in bound order; projection keys are sorted naturally for display. */
-export async function partition(
-	field: string,
-	key: KeySpec,
-	scope: Scope,
-): Promise<PartitionBucket[]> {
-	const groups = await cmd.storePartition(field, key, scope);
-	if (key.kind !== "numericBin") {
-		const cmp =
-			key.kind === "datePart" && key.part === "monthOfYear" ? compareMonthOrder : compareNatural;
-		groups.sort((a, b) => cmp(a.key, b.key));
-	}
-	return groups;
-}
-
-function defaultScope(): Scope {
-	return getSelectedLocationIds().size > 0 ? { kind: "selected" } : { kind: "all" };
-}
-
-/** Reactive scope state + live counts, owned by the calling React component. Defaults to
- *  the current selection when one exists at mount, else all locations. Use this for plugins
- *  whose scope lives entirely in a React sidebar; reach for `createScope` when an imperative
- *  renderer (e.g. a deck.gl overlay) outside React also needs to read the scope. */
-export function useScope(initial?: Scope): ScopeController {
-	const selectedIds = useSelectedLocationIds();
-	const map = useCurrentMap();
-	const [scope, setScope] = useState<Scope>(() => initial ?? defaultScope());
-	return {
-		scope,
-		setScope,
-		allCount: map?.meta.locationCount ?? 0,
-		selectionCount: selectedIds.size,
-	};
-}
-
-/** A per-consumer scope store that lives outside React, so an imperative renderer can read it
- *  synchronously and subscribe to changes while a React sidebar drives it via `use()`. Mirrors
- *  the module-store + hook idiom (cf. settings). Isolated per call — one consumer's choice never
- *  leaks into another's. */
-export interface ScopeHandle {
-	get(): Scope;
-	set(scope: Scope): void;
-	subscribe(listener: () => void): () => void;
-	/** React view of this handle: re-renders on change, with live counts. */
-	use(): ScopeController;
-}
-
-/** A standalone "all locations vs current selection" switch, for features that operate on a subset. */
-export function createScope(initial?: Scope): ScopeHandle {
-	let scope: Scope = initial ?? defaultScope();
-	const listeners = new Set<() => void>();
-	const get = () => scope;
-	const set = (next: Scope) => {
-		if (next.kind === scope.kind) return;
-		scope = next;
-		for (const l of listeners) l();
-	};
-	const subscribe = (listener: () => void) => {
-		listeners.add(listener);
-		return () => listeners.delete(listener);
-	};
-	return {
-		get,
-		set,
-		subscribe,
-		use(): ScopeController {
-			useSyncExternalStore(subscribe, get);
-			const selectedIds = useSelectedLocationIds();
-			const map = useCurrentMap();
-			return {
-				scope,
-				setScope: set,
-				allCount: map?.meta.locationCount ?? 0,
-				selectionCount: selectedIds.size,
-			};
-		},
-	};
-}
-
-/** Create a new empty map and return its metadata. */
-export async function createMap(name: string, folder: string | null = null) {
-	const { meta } = await cmd.storeCreateMap(name, folder);
-	await invalidateMapList();
-	return meta;
-}
-
-/** Permanently delete a map and all its data. Not undoable. */
-export async function deleteMap(id: string) {
-	await cmd.storeDeleteMap(id);
-	await invalidateMapList();
-	// Tell every window (including this one) showing this map to close it.
-	tauriEmit("map-deleted", id);
-}
-
-export async function renameFolder(from: string, to: string) {
-	cachedMapList = cachedMapList.map((m) => (m.folder === from ? { ...m, folder: to } : m));
-	notify();
-	await cmd.storeRenameFolder(from, to);
-	await invalidateMapList();
-}
-
-export async function moveMapToFolder(mapId: string, folder: string | null) {
-	const idx = cachedMapList.findIndex((m) => m.id === mapId);
-	if (idx !== -1) {
-		cachedMapList = cachedMapList.map((m) => (m.id === mapId ? { ...m, folder } : m));
-		notify();
-	}
-	await cmd.storeUpdateMapMeta(mapId, { folder: folder ?? null });
-	tauriEmit("map-list-changed");
-}
-
-export async function deleteFolder(name: string) {
-	await cmd.storeDeleteFolder(name);
-	await invalidateMapList();
 }
 
 /** Optimistically patch map meta, persist, and refresh the map list. */
@@ -1224,7 +1022,7 @@ export async function openStagedLocation(index: number) {
 		flags: loc.flags | LocationFlag.ImportPreview,
 	};
 	workArea = "location";
-	importMarkerVersion++;
+	bumpImportMarkerVersion();
 	bump();
 	emitEvent("active:change", null);
 }
@@ -1255,7 +1053,7 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 	const t = trace("setActive");
 	const id = target == null ? null : locId(target);
 	if (cachedActiveLocation && isVirtualLocation(cachedActiveLocation)) {
-		importMarkerVersion++;
+		bumpImportMarkerVersion();
 		const wasStaged = isImportPreview(cachedActiveLocation);
 		if (id == null) {
 			cachedActiveLocation = null;
@@ -1440,98 +1238,6 @@ export async function removeTagFromAllLocations(tagId: number) {
 	if (allWithTag.length > 0) await removeTagFromLocations(tagId, allWithTag);
 }
 
-// --- Import ---
-
-async function setImportStaging(preview: EditorImportPreview, source: "file" | "paste") {
-	let positions = new Float32Array(0);
-	try {
-		const resp = await fetch(mmaBufUrl(preview.previewPositionsPath));
-		if (!resp.ok) throw new Error(`preview fetch ${resp.status}: ${await resp.text()}`);
-		positions = new Float32Array(await resp.arrayBuffer());
-	} catch (e) {
-		log.error("[import] preview positions fetch failed:", e);
-	}
-	importStaging = { preview, source };
-	importPreviewPositions = positions;
-	importMarkerVersion++;
-	workArea = "import";
-	bump();
-	if (getSettings().panToImported)
-		fitMapToBounds(bboxTupleToBounds(preview.bounds), 100, getSettings().pastePadding);
-}
-
-/** Import from a known file path. Used by file picker and drag-and-drop. */
-export async function beginImportFromPath(path: string) {
-	await setImportStaging(await cmd.storeImportPreview(path), "file");
-}
-
-/** Stage pasted text for preview. Throws if no locations are found. */
-export async function beginImportPaste(text: string) {
-	await setImportStaging(await cmd.storeImportPastePreview(text), "paste");
-}
-
-/** Pick a file, stage it for preview. No-op if the picker is cancelled. */
-export async function beginImportFile() {
-	const path = await openFileDialog({
-		multiple: false,
-		filters: [{ name: "Map data", extensions: ["json", "csv"] }],
-	});
-	if (!path || typeof path !== "string") return;
-	await beginImportFromPath(path);
-}
-
-/** Commit the staged import, optionally dropping fields and applying a bulk tag. */
-export async function confirmImport(droppedFields: string[], tagName?: string) {
-	if (!importStaging) return null;
-	await inflightPersist; // don't overlap a prior import's backgrounded commit
-
-	const r = await cmd.storeImportFile(droppedFields, tagName?.trim() || null);
-	cancelImport();
-	await mutate(() => Promise.resolve(r));
-
-	// Overlay any settings the import carried (extra.settings) onto the open map's
-	// settings. Generic: imported keys win, untouched keys are preserved.
-	if (currentMap && r.settings && Object.keys(r.settings).length) {
-		await updateMapMeta({ settings: { ...currentMap.meta.settings, ...r.settings } });
-	}
-
-	if (r.autoCommit && currentMapId) {
-		const mapId = currentMapId;
-		// Let the full render finish (markers on screen) before kicking off the commit --
-		// otherwise the commit's ~1s of Arrow writes stall the render-buffer fetch and the
-		// map stays blank for seconds after the import "returns".
-		await whenSceneSettled();
-		cancelAutosave();
-		await inflightPersist;
-
-		inflightPersist = cmd
-			.storeCommit(mapId, `Import ${r.importedCount} locations`)
-			.then(() => {
-				undoRedoState = { canUndo: false, canRedo: false };
-				cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
-			})
-			.catch((e) => log.error("[import] background commit failed:", e))
-			.finally(() => {
-				inflightPersist = null;
-				bump();
-			});
-	}
-	return r;
-}
-
-/** Discard the staged import without committing. */
-export function cancelImport() {
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
-	importMarkerVersion++;
-	if (cachedActiveLocation && isVirtualLocation(cachedActiveLocation)) {
-		cachedActiveLocation = null;
-		workArea = "overview";
-	}
-	if (workArea === "import") workArea = "overview";
-	bump();
-}
-
 // --- Undo/redo ---
 
 /** Shared undo/redo handler: call the IPC, clear active if removed. */
@@ -1589,72 +1295,6 @@ export async function commitMap(message?: string): Promise<string> {
 	return id;
 }
 
-/** Interleave `[lng, lat]` pairs into an f32 buffer for deck.gl. */
-export function diffPositions(locs: LatLng[]): Float32Array {
-	const a = new Float32Array(locs.length * 2);
-	for (let i = 0; i < locs.length; i++) {
-		a[i * 2] = locs[i].lng;
-		a[i * 2 + 1] = locs[i].lat;
-	}
-	return a;
-}
-
-/** Split a commit delta into added / removed / modified. An updated location appears in
- *  both `created` (new) and `removed` (old), keyed by id. */
-export function categorizeCommitDelta<T extends { id: number }>(delta: {
-	created: T[];
-	removed: T[];
-}): { added: T[]; removed: T[]; modified: T[] } {
-	const removedIds = new Set(delta.removed.map((l) => l.id));
-	const createdIds = new Set(delta.created.map((l) => l.id));
-	return {
-		added: delta.created.filter((l) => !removedIds.has(l.id)),
-		removed: delta.removed.filter((l) => !createdIds.has(l.id)),
-		modified: delta.created.filter((l) => removedIds.has(l.id)),
-	};
-}
-
-/** Fetch a commit's delta and overlay its added/removed/modified locations on the map,
- *  temporarily replacing the regular markers. */
-export async function beginCommitDiffPreview(commit: CommitInfo) {
-	if (!currentMap) return;
-	const delta = await cmd.storeGetCommitDelta(commit.mapId, commit.id);
-	const { added, removed, modified } = categorizeCommitDelta(delta);
-	commitDiffPreview = {
-		commitId: commit.id,
-		hash: commit.id.slice(0, 7),
-		counts: { added: added.length, removed: removed.length, modified: modified.length },
-		added: diffPositions(added),
-		removed: diffPositions(removed),
-		modified: diffPositions(modified),
-	};
-	diffMarkerVersion++;
-	workArea = "diff";
-	bump();
-	const all = [...added, ...removed, ...modified];
-	if (all.length > 0) {
-		let west = Infinity,
-			south = Infinity,
-			east = -Infinity,
-			north = -Infinity;
-		for (const l of all) {
-			if (l.lng < west) west = l.lng;
-			if (l.lng > east) east = l.lng;
-			if (l.lat < south) south = l.lat;
-			if (l.lat > north) north = l.lat;
-		}
-		fitMapToBounds({ west, south, east, north }, 100);
-	}
-}
-
-/** Leave commit-diff preview and restore the regular markers. */
-export function endCommitDiffPreview() {
-	commitDiffPreview = null;
-	diffMarkerVersion++;
-	if (workArea === "diff") setWorkArea("overview");
-	else bump();
-}
-
 /** Restore the map to a previous commit's state and reopen it. Clears undo/redo. */
 export async function checkoutCommit(commitId: string) {
 	if (!currentMapId) return;
@@ -1680,3 +1320,49 @@ export async function checkoutCommit(commitId: string) {
 	bump();
 	await invalidateMapList();
 }
+
+// --- Re-exports from extracted modules (keeps all existing imports working) ---
+
+export {
+	type ImportStaging,
+	useImportStaging,
+	useImportMarkerVersion,
+	getImportPreviewPositions,
+	beginImportFromPath,
+	beginImportPaste,
+	confirmImport,
+	cancelImport,
+} from "./importStaging";
+
+export {
+	type CommitDiffPreview,
+	useCommitDiffPreview,
+	useDiffMarkerVersion,
+	getCommitDiffPreview,
+	beginCommitDiffPreview,
+	endCommitDiffPreview,
+	diffPositions,
+	categorizeCommitDelta,
+} from "./commitDiff";
+
+export {
+	type SourceScope,
+	type ScopeController,
+	type ScopeHandle,
+	useScope,
+	createScope,
+	applyScope,
+	resolveScopeIds,
+	partition,
+} from "./scope";
+
+export {
+	useMapList,
+	getMapList,
+	invalidateMapList,
+	createMap,
+	deleteMap,
+	renameFolder,
+	moveMapToFolder,
+	deleteFolder,
+} from "./mapList";

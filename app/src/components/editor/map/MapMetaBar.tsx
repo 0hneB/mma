@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useDomEvent } from "@/lib/hooks/useDomEvent";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import {
@@ -9,8 +9,9 @@ import {
 	undo,
 	redo,
 	commitMap,
-	beginImportFile,
+	beginImportFromPath,
 } from "@/store/useMapStore";
+import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { ExportDialog } from "@/components/dialogs/ExportDialog";
 import { VersionHistory } from "@/components/dialogs/VersionHistory";
 import { SeenDialog } from "@/components/dialogs/SeenDialog";
@@ -34,7 +35,15 @@ export function MapMetaBar() {
 	const [showQuickCopy, setShowQuickCopy] = useState(false);
 
 	useDomEvent("open-export", () => setShowExport(true));
-	useDomEvent("open-import", beginImportFile);
+	const importFile = useCallback(async () => {
+		const path = await openFileDialog({
+			multiple: false,
+			filters: [{ name: "Map data", extensions: ["json", "csv"] }],
+		});
+		if (!path || typeof path !== "string") return;
+		await beginImportFromPath(path);
+	}, []);
+	useDomEvent("open-import", importFile);
 	useDomEvent("open-history", () => setShowHistory(true));
 	useDomEvent("open-seen", () => setShowSeen(true));
 	useDomEvent("open-copy-to-map", () => setShowCopyToMap(true));
@@ -87,7 +96,7 @@ export function MapMetaBar() {
 			<div className="map-meta__import">
 				<Button onClick={() => setShowSeen(true)}>Seen</Button>
 				<Button onClick={() => setShowHistory(true)}>History</Button>
-				<Button onClick={() => beginImportFile()}>Import file</Button>
+				<Button onClick={importFile}>Import file</Button>
 				<Button onClick={() => setShowExport(true)}>Export</Button>
 			</div>
 			{showExport && <ExportDialog onClose={() => setShowExport(false)} />}
