@@ -67,16 +67,8 @@ export function MapEmbed({
 		<K extends keyof MapEmbedPrefs>(k: K) =>
 		(v: MapEmbedPrefs[K]) =>
 			setPrefs((p) => ({ ...p, [k]: v }));
-	const {
-		svOpacity,
-		mapType,
-		markerStyle,
-		markerOpacity,
-		showPerfectScoreCircle,
-		showSearchRadiusCursor,
-		showPreviews,
-		selectOnly,
-	} = prefs;
+	const { svOpacity, mapType, markerStyle, markerOpacity, showSearchRadiusCursor, showPreviews } =
+		prefs;
 	const coordDisplayRef = useRef<HTMLSpanElement>(null);
 	// Boolean, not the raw zoom: re-renders only when crossing the blobby threshold.
 	// The live zoom readout subscribes itself (ZoomReadout).
@@ -399,22 +391,7 @@ export function MapEmbed({
 						alignItems: "flex-start",
 					}}
 				>
-					<MapSettingsDropdown
-						settings={{
-							markerStyle,
-							setMarkerStyle: pref("markerStyle"),
-							markerSize: prefs.markerSize,
-							setMarkerSize: pref("markerSize"),
-							showPerfectScoreCircle,
-							setShowPerfectScoreCircle: pref("showPerfectScoreCircle"),
-							showSearchRadiusCursor,
-							setShowSearchRadiusCursor: pref("showSearchRadiusCursor"),
-							showPreviews,
-							setShowPreviews: pref("showPreviews"),
-							selectOnly,
-							setSelectOnly: pref("selectOnly"),
-						}}
-					/>
+					<MapSettingsDropdown prefs={prefs} setPref={pref} />
 					<div className="map-control sv-opacity-control">
 						<Tooltip
 							content={
