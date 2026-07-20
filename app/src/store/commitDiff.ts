@@ -1,6 +1,6 @@
 ﻿import { useSyncExternalStore } from "react";
 import type { LatLng } from "@/types";
-import type { CommitDiff, CommitInfo } from "@/bindings.gen";
+import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
 import { subscribeStore, bumpStore, getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
@@ -48,10 +48,11 @@ export function diffPositions(locs: LatLng[]): Float32Array {
 
 /** Split a commit delta into added / removed / modified. An updated location appears in
  *  both `created` (new) and `removed` (old), keyed by id. */
-export function categorizeCommitDelta<T extends { id: number }>(delta: {
-	created: T[];
-	removed: T[];
-}): { added: T[]; removed: T[]; modified: T[] } {
+export function categorizeCommitDelta(delta: CommitDelta): {
+	added: Location[];
+	removed: Location[];
+	modified: Location[];
+} {
 	const removedIds = new Set(delta.removed.map((l) => l.id));
 	const createdIds = new Set(delta.created.map((l) => l.id));
 	return {
@@ -65,8 +66,9 @@ export function categorizeCommitDelta<T extends { id: number }>(delta: {
  *  temporarily replacing the regular markers. */
 export async function beginCommitDiffPreview(commit: CommitInfo) {
 	if (!getCurrentMap()) return;
-	const delta = await cmd.storeGetCommitDelta(commit.mapId, commit.id);
-	const { added, removed, modified } = categorizeCommitDelta(delta);
+	const { added, removed, modified } = categorizeCommitDelta(
+		await cmd.storeGetCommitDelta(commit.mapId, commit.id),
+	);
 	commitDiffPreview = {
 		commitId: commit.id,
 		hash: commit.id.slice(0, 7),

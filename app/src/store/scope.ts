@@ -1,5 +1,5 @@
 ﻿import { useState, useSyncExternalStore } from "react";
-import type { Scope, PartitionBucket, KeySpec } from "@/bindings.gen";
+import type { Scope, PartitionBucket, KeySpec, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { compareNatural } from "@/lib/util/util";
 import { compareMonthOrder } from "@/lib/util/date";
@@ -24,7 +24,7 @@ export interface ScopeController<S extends SourceScope = Scope> {
 }
 
 /** Narrow a materialized pool of id-bearing records to the scope's subset (JS-side). */
-export function applyScope<T extends { id: number }>(scope: Scope, pool: T[]): T[] {
+export function applyScope(scope: Scope, pool: Location[]): Location[] {
 	if (scope.kind === "all") return pool;
 	const ids = getSelectedLocationIds();
 	return pool.filter((item) => ids.has(item.id));
