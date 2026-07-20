@@ -5,7 +5,7 @@ import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import type { PanoData } from "@/lib/sv/svRunner";
 import { runConcurrent } from "@/lib/util/concurrent";
 import { toast } from "@/lib/util/toast";
-import { mmaBufUrl } from "@/lib/util/util";
+import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
 
 export type PanoRenderMode = "equirectangular" | "perspective" | "thumbnail" | "tile";
 
@@ -112,11 +112,7 @@ export async function downloadPano(panoId: string, zoom = 5): Promise<void> {
 		const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.95));
 		if (!blob) throw new Error("encode failed");
 
-		const a = document.createElement("a");
-		a.href = URL.createObjectURL(blob);
-		a.download = `${panoId}.jpg`;
-		a.click();
-		URL.revokeObjectURL(a.href);
+		downloadBlob(blob, `${panoId}.jpg`);
 		toast("Panorama downloaded");
 	} catch {
 		toast("Panorama download failed");

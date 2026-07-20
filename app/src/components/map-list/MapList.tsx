@@ -16,7 +16,7 @@ import { openMapWindow } from "@/lib/window";
 import { log, fireAndForget } from "@/lib/util/log";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { cmd } from "@/lib/commands";
-import { mmaBufUrl } from "@/lib/util/util";
+import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
 import { listen } from "@tauri-apps/api/event";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Dialog, DialogContent, useCloseDialog } from "@/components/primitives/Dialog";
@@ -815,13 +815,7 @@ export function BulkActions() {
 		try {
 			const path = await cmd.storeExportBulkZip();
 			const res = await fetch(mmaBufUrl(path));
-			const blob = await res.blob();
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `mma-backup-${new Date().toISOString().slice(0, 10)}.zip`;
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(await res.blob(), `mma-backup-${new Date().toISOString().slice(0, 10)}.zip`);
 			progress.finish("Export saved");
 		} catch {
 			progress.finish();

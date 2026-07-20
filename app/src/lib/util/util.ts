@@ -47,13 +47,18 @@ async function downloadInBrowser(srcPath: string, fileName: string): Promise<boo
 		await res.body.pipeTo((await handle.createWritable()) as unknown as WritableStream<Uint8Array>);
 		return true;
 	}
-	const objUrl = URL.createObjectURL(await (await fetch(url)).blob());
+	downloadBlob(await (await fetch(url)).blob(), fileName);
+	return true;
+}
+
+/** Trigger a browser download from an in-memory Blob. */
+export function downloadBlob(blob: Blob, fileName: string) {
+	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
-	a.href = objUrl;
+	a.href = url;
 	a.download = fileName;
 	a.click();
-	URL.revokeObjectURL(objUrl);
-	return true;
+	URL.revokeObjectURL(url);
 }
 
 /** Prompt for a destination and move a temp export file there (native dialog in

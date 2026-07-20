@@ -20,6 +20,7 @@ import {
 	getVisibleTags,
 } from "@/store/useMapStore";
 import { toast } from "@/lib/util/toast";
+import { downloadBlob } from "@/lib/util/util";
 import { stepFilterWindow } from "@/lib/data/fieldOps";
 import { cmd } from "@/lib/commands";
 import { RgbColorPicker } from "react-colorful";
@@ -205,13 +206,10 @@ export function SelectionRow({
 			properties: poly.properties ?? {},
 			geometry: { type: "Polygon", coordinates: poly.coordinates },
 		};
-		const blob = new Blob([JSON.stringify(fc)], { type: "application/geo+json" });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `${name}.geojson`;
-		a.click();
-		URL.revokeObjectURL(url);
+		downloadBlob(
+			new Blob([JSON.stringify(fc)], { type: "application/geo+json" }),
+			`${name}.geojson`,
+		);
 	};
 
 	const handleMouseDown = (e: React.MouseEvent) => {
