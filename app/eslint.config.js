@@ -6,6 +6,8 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 import noDuplicateCommandIcons from "./eslint-rules/no-duplicate-command-icons.js";
 import noIpcInLoop from "./eslint-rules/no-ipc-in-loop.js";
+import noRedundantMutateGuard from "./eslint-rules/no-redundant-mutate-guard.js";
+import noSelectionAlias from "./eslint-rules/no-selection-alias.js";
 
 export default defineConfig([
 	globalIgnores(["dist", "src/bindings.gen.ts", "src/components/manual/manual-img-dims.gen.ts"]),
@@ -22,6 +24,8 @@ export default defineConfig([
 				rules: {
 					"no-ipc-in-loop": noIpcInLoop,
 					"no-duplicate-command-icons": noDuplicateCommandIcons,
+					"no-redundant-mutate-guard": noRedundantMutateGuard,
+					"no-selection-alias": noSelectionAlias,
 				},
 			},
 		},
@@ -35,6 +39,8 @@ export default defineConfig([
 			"react-hooks/preserve-manual-memoization": "off",
 			"no-console": "error",
 			"local/no-ipc-in-loop": "warn",
+			"local/no-redundant-mutate-guard": "warn",
+			"local/no-selection-alias": "warn",
 			"no-restricted-imports": [
 				"error",
 				{
@@ -84,6 +90,28 @@ export default defineConfig([
 					varsIgnorePattern: "^_",
 					destructuredArrayIgnorePattern: "^_",
 					caughtErrorsIgnorePattern: "^_",
+				},
+			],
+		},
+	},
+	{
+		files: ["src/store/**/*.ts"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					paths: [
+						{
+							name: "@tauri-apps/api/core",
+							importNames: ["invoke"],
+							message: "Use the typed cmd proxy (lib/commands.ts) instead of raw invoke().",
+						},
+						{
+							name: "@tauri-apps/plugin-dialog",
+							message:
+								"File dialogs belong in components, not the store. Call the dialog in the component, pass the result to a store function.",
+						},
+					],
 				},
 			],
 		},
