@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { CellManager } from "@/lib/render/CellManager";
 import { cmd } from "@/lib/commands";
+import { createSyncStore } from "@/lib/util/syncStore";
 import { mmaBufUrl } from "@/lib/util/util";
 import type { RGB } from "@/lib/util/color";
 import { log } from "@/lib/util/log";
@@ -25,35 +26,21 @@ const ACTIVE_HIDDEN: [number, number, number, number] = [0, 0, 0, 0];
 let markerDefault: [number, number, number, number] = [42, 42, 42, 255];
 
 const scene = new CellManager();
-let version = 0;
+const sceneSync = createSyncStore();
+const bumpScene = sceneSync.notify;
 let prevActiveId: number | null = null;
 let lastMarkerStyle: MarkerStyle = "pin";
 let loadToken = 0;
-let listeners: Array<() => void> = [];
-
-function bumpScene() {
-	version++;
-	for (const l of listeners) l();
-}
 
 export function getScene(): CellManager {
 	return scene;
 }
 
-function getSceneVersion() {
-	return version;
-}
-
-export function subscribeScene(fn: () => void): () => void {
-	listeners.push(fn);
-	return () => {
-		listeners = listeners.filter((l) => l !== fn);
-	};
-}
+export const subscribeScene = sceneSync.subscribe;
 
 /** Reactive scene version. Bumps on load, delta, selection, and active-location change. */
 export function useScene(): number {
-	return useSyncExternalStore(subscribeScene, getSceneVersion);
+	return useSyncExternalStore(sceneSync.subscribe, sceneSync.getSnapshot);
 }
 
 function patchMarker(id: number, rgba: [number, number, number, number]) {

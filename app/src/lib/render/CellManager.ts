@@ -5,6 +5,18 @@ import type {
 	ColorPatchEntry,
 } from "@/bindings.gen";
 
+function bitHas(bits: Uint8Array, id: number): boolean {
+	return (bits[id >>> 3] & (1 << (id & 7))) !== 0;
+}
+
+function bitSet(bits: Uint8Array, id: number): boolean {
+	const w = id >>> 3,
+		m = 1 << (id & 7);
+	const was = (bits[w] & m) !== 0;
+	bits[w] |= m;
+	return !was;
+}
+
 /** Per-cell, per-selection membership: a dense bitmask or a sparse selected-index list. */
 export type SelEntry = { kind: "mask"; mask: Uint8Array } | { kind: "idx"; indices: Uint32Array };
 export interface SelCellEntry {
@@ -365,6 +377,30 @@ export class CellManager {
 	selOverlayCount = 0;
 	selOverlayVersion = 0;
 
+	private writeOverlayEntries(
+		startIndex: number,
+		colorPatches: ColorPatchEntry[],
+		pos: Float32Array,
+		col: Uint8Array,
+		ang: Float32Array,
+		ids: Uint32Array,
+	) {
+		for (let i = 0; i < colorPatches.length; i++) {
+			const cp = colorPatches[i];
+			const cb = this.cells.get(cp.cell);
+			if (!cb || cp.cellIndex >= cb.count) continue;
+			const oi = startIndex + i;
+			pos[oi * 2] = cb.positions[cp.cellIndex * 2];
+			pos[oi * 2 + 1] = cb.positions[cp.cellIndex * 2 + 1];
+			col[oi * 4] = cp.r;
+			col[oi * 4 + 1] = cp.g;
+			col[oi * 4 + 2] = cp.b;
+			col[oi * 4 + 3] = cp.a;
+			ang[oi] = cb.angles[cp.cellIndex];
+			ids[oi] = cb.ids[cp.cellIndex];
+		}
+	}
+
 	/** Build a selection overlay from explicit color patches (used by non-bitmask code paths). */
 	buildSelectionOverlay(colorPatches: ColorPatchEntry[], _angles?: boolean) {
 		this.selOverlayCount = colorPatches.length;
@@ -378,19 +414,14 @@ export class CellManager {
 		this.selOverlayColors = new Uint8Array(n * 4);
 		this.selOverlayAngles = new Float32Array(n);
 		this.selOverlayIds = new Uint32Array(n);
-		for (let i = 0; i < n; i++) {
-			const cp = colorPatches[i];
-			const cb = this.cells.get(cp.cell);
-			if (!cb || cp.cellIndex >= cb.count) continue;
-			this.selOverlayPositions[i * 2] = cb.positions[cp.cellIndex * 2];
-			this.selOverlayPositions[i * 2 + 1] = cb.positions[cp.cellIndex * 2 + 1];
-			this.selOverlayColors[i * 4] = cp.r;
-			this.selOverlayColors[i * 4 + 1] = cp.g;
-			this.selOverlayColors[i * 4 + 2] = cp.b;
-			this.selOverlayColors[i * 4 + 3] = cp.a;
-			this.selOverlayAngles[i] = cb.angles[cp.cellIndex];
-			this.selOverlayIds[i] = cb.ids[cp.cellIndex];
-		}
+		this.writeOverlayEntries(
+			0,
+			colorPatches,
+			this.selOverlayPositions,
+			this.selOverlayColors,
+			this.selOverlayAngles,
+			this.selOverlayIds,
+		);
 		this.selOverlayVersion++;
 	}
 
@@ -407,21 +438,7 @@ export class CellManager {
 		col.set(this.selOverlayColors.subarray(0, oldCount * 4));
 		ang.set(this.selOverlayAngles.subarray(0, oldCount));
 		ids.set(this.selOverlayIds.subarray(0, oldCount));
-
-		for (let i = 0; i < colorPatches.length; i++) {
-			const cp = colorPatches[i];
-			const cb = this.cells.get(cp.cell);
-			if (!cb || cp.cellIndex >= cb.count) continue;
-			const oi = oldCount + i;
-			pos[oi * 2] = cb.positions[cp.cellIndex * 2];
-			pos[oi * 2 + 1] = cb.positions[cp.cellIndex * 2 + 1];
-			col[oi * 4] = cp.r;
-			col[oi * 4 + 1] = cp.g;
-			col[oi * 4 + 2] = cp.b;
-			col[oi * 4 + 3] = cp.a;
-			ang[oi] = cb.angles[cp.cellIndex];
-			ids[oi] = cb.ids[cp.cellIndex];
-		}
+		this.writeOverlayEntries(oldCount, colorPatches, pos, col, ang, ids);
 		this.selOverlayPositions = pos;
 		this.selOverlayColors = col;
 		this.selOverlayAngles = ang;
@@ -438,13 +455,7 @@ export class CellManager {
 		const bits = new Uint8Array((this.maxId >>> 3) + 1);
 		let size = 0;
 		for (let i = 0; i < n; i++) {
-			const id = ids[i];
-			const w = id >>> 3;
-			const m = 1 << (id & 7);
-			if ((bits[w] & m) === 0) {
-				bits[w] |= m;
-				size++;
-			}
+			if (bitSet(bits, ids[i])) size++;
 		}
 		return new SelectedIds(bits, size);
 	}
@@ -493,14 +504,12 @@ export class CellManager {
 				if (!cb) continue;
 				const ids = cb.ids;
 				for (let i = 0; i < cb.count; i++) {
-					const id = ids[i];
-					incomingBits[id >>> 3] |= 1 << (id & 7);
+					bitSet(incomingBits, ids[i]);
 				}
 			}
 			const rem = this._removedIds;
 			for (let i = 0; i < prevCount; i++) {
-				const id = prevIds[i];
-				if ((incomingBits[id >>> 3] & (1 << (id & 7))) !== 0 || rem.has(id)) continue;
+				if (bitHas(incomingBits, prevIds[i]) || rem.has(prevIds[i])) continue;
 				keptCount++;
 			}
 		}
@@ -519,7 +528,7 @@ export class CellManager {
 					for (let k = 0; k < idx.length; k++) if (idx[k] < n) newEntries++;
 				} else {
 					const m = sel.mask;
-					for (let li = 0; li < n; li++) if (m[li >> 3] & (1 << (li & 7))) newEntries++;
+					for (let li = 0; li < n; li++) if (bitHas(m, li)) newEntries++;
 				}
 			}
 		}
@@ -542,7 +551,7 @@ export class CellManager {
 			const inc = incomingBits!;
 			for (let i = 0; i < prevCount; i++) {
 				const id = prevIds[i];
-				if ((inc[id >>> 3] & (1 << (id & 7))) !== 0 || rem.has(id)) continue;
+				if (bitHas(inc, id) || rem.has(id)) continue;
 				sp[oi * 2] = prevPos[i * 2];
 				sp[oi * 2 + 1] = prevPos[i * 2 + 1];
 				const o4 = oi * 4,
@@ -553,10 +562,7 @@ export class CellManager {
 				sc[o4 + 3] = prevCol[p4 + 3];
 				sa[oi] = prevAng[i];
 				sid[oi] = id;
-				const w = id >>> 3,
-					m = 1 << (id & 7);
-				if ((bits[w] & m) === 0) selCount++;
-				bits[w] |= m;
+				if (bitSet(bits, id)) selCount++;
 				oi++;
 			}
 		}
@@ -608,10 +614,7 @@ export class CellManager {
 				// and appends an overlay entry, advancing `oi`.
 				const write = (li: number) => {
 					const locId = cids[li];
-					const bw = locId >>> 3,
-						bm = 1 << (locId & 7);
-					if ((bits[bw] & bm) === 0) selCount++;
-					bits[bw] |= bm;
+					if (bitSet(bits, locId)) selCount++;
 					const c4 = li * 4;
 					cc[c4] = 0;
 					cc[c4 + 1] = 0;
@@ -636,7 +639,7 @@ export class CellManager {
 				} else {
 					const m = sel.mask;
 					for (let li = 0; li < n; li++) {
-						if (m[li >> 3] & (1 << (li & 7))) write(li);
+						if (bitHas(m, li)) write(li);
 					}
 				}
 			}
