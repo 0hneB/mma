@@ -51,7 +51,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { mdiBackburger, mdiPencil, mdiFileDocumentOutline } from "@mdi/js";
 import { DoclinkPanel } from "@/components/editor/doclink/DoclinkPanel";
 import { DoclinkAssignDialog } from "@/components/editor/doclink/DoclinkAssignDialog";
-import { useDomEvent } from "@/lib/hooks/useDomEvent";
+import { useDialog } from "@/store/dialogBus";
 import { doclinkedTags, prefetchDoclinks } from "@/lib/doclink";
 import { PluginSidebarHost } from "@/components/editor/PluginSidebarHost";
 import SameLocation from "@/components/editor/SameLocation";
@@ -222,7 +222,7 @@ export function MapEditor() {
 	const [docPanelOpen, setDocPanelOpen] = useLocalStorage("doclinkPanelOpen", false);
 	const [docPanelWidth, setDocPanelWidth] = useLocalStorage("doclinkPanelWidth", 420);
 	const [docAssignOpen, setDocAssignOpen] = useState(false);
-	useDomEvent("open-doclink-assign", () => setDocAssignOpen(true));
+	useDialog("doclink-assign", () => setDocAssignOpen(true));
 
 	useEffect(() => {
 		let cancelled = false;

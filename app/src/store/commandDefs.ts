@@ -72,14 +72,13 @@ import { loadGeoJSON } from "@/lib/util/loadGeoJSON";
 import { downloadBlob } from "@/lib/util/util";
 import { toggleSeenOverlay } from "@/lib/seen/seenOverlay";
 import { selectReviewedHistory } from "@/lib/review/review";
+import { openDialog } from "./dialogBus";
 
 const requiresMap = () => getCurrentMap() !== null;
 const hasSelection = () => getSelectedLocationIds().size > 0;
 const hasAnySelections = () => getAllSelections().length > 0;
-const openBulkOp = (op: string) => () =>
-	document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: op }));
-const openInlinePanel = (id: string) => () =>
-	document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: id }));
+const openBulkOp = (op: string) => () => openDialog("bulk-op", op);
+const openInlinePanel = (id: string) => () => openDialog("inline-panel", id);
 
 /** Every editor command (palette entries; all are hotkey-bindable in Settings). */
 const COMMANDS = {
@@ -96,21 +95,21 @@ const COMMANDS = {
 		label: "Import file",
 		icon: mdiFileImportOutline,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-import")),
+		execute: () => openDialog("import"),
 		enabled: requiresMap,
 	},
 	copyToMap: {
 		label: "Copy location to map via hotkeys...",
 		icon: mdiMapPlus,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-copy-to-map")),
+		execute: () => openDialog("copy-to-map"),
 		enabled: requiresMap,
 	},
 	quickCopyToMap: {
 		label: "Copy location to map...",
 		icon: mdiMapMarkerPlus,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-quick-copy-to-map")),
+		execute: () => openDialog("quick-copy-to-map"),
 		enabled: requiresMap,
 	},
 	undo: {
@@ -133,21 +132,21 @@ const COMMANDS = {
 		label: "Export",
 		icon: mdiFileExportOutline,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-export")),
+		execute: () => openDialog("export"),
 		enabled: requiresMap,
 	},
 	"open-history": {
 		label: "Open version history",
 		icon: mdiHistory,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-history")),
+		execute: () => openDialog("history"),
 		enabled: requiresMap,
 	},
 	"open-seen": {
 		label: "Open seen locations",
 		icon: mdiEye,
 		group: "Map",
-		execute: () => document.dispatchEvent(new CustomEvent("open-seen")),
+		execute: () => openDialog("seen"),
 		enabled: requiresMap,
 	},
 	"toggle-seen-overlay": {
@@ -268,7 +267,7 @@ const COMMANDS = {
 		icon: mdiCallMerge,
 		group: "Selections",
 		aliases: ["dedupe", "combine duplicates"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-merge-duplicates")),
+		execute: () => openDialog("merge-duplicates"),
 	},
 	"filter-by-metadata": {
 		label: "Filter by metadata...",
@@ -288,13 +287,13 @@ const COMMANDS = {
 		icon: mdiPlayOutline,
 		group: "Selections",
 		enabled: hasSelection,
-		execute: () => document.dispatchEvent(new CustomEvent("open-review-selected")),
+		execute: () => openDialog("review-selected"),
 	},
 	"review-sessions": {
 		label: "Review sessions",
 		icon: mdiBookOpenOutline,
 		group: "Selections",
-		execute: () => document.dispatchEvent(new CustomEvent("open-review-sessions")),
+		execute: () => openDialog("review-sessions"),
 	},
 	"select-random": {
 		label: "Pick random locations from selection",
@@ -324,14 +323,14 @@ const COMMANDS = {
 		label: "Save current selections...",
 		icon: mdiBookmarkOutline,
 		group: "Selections",
-		execute: () => document.dispatchEvent(new CustomEvent("open-save-selections")),
+		execute: () => openDialog("save-selections"),
 		enabled: hasAnySelections,
 	},
 	"apply-saved-selection": {
 		label: "Apply saved selection...",
 		icon: mdiBookmarkCheckOutline,
 		group: "Selections",
-		execute: () => document.dispatchEvent(new CustomEvent("open-apply-saved-selection")),
+		execute: () => openDialog("apply-saved-selection"),
 	},
 	"selection-delete-locations": {
 		label: "Delete selected locations",
@@ -426,7 +425,7 @@ const COMMANDS = {
 		icon: mdiFindReplace,
 		group: "Tags",
 		aliases: ["rename tags", "bulk rename"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-tag-find-replace")),
+		execute: () => openDialog("tag-find-replace"),
 		enabled: requiresMap,
 	},
 	"apply-field-as-tags": {
@@ -434,7 +433,7 @@ const COMMANDS = {
 		icon: mdiTagMultipleOutline,
 		group: "Tags",
 		aliases: ["group by field", "metadata to tags"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-apply-field-as-tags")),
+		execute: () => openDialog("apply-field-as-tags"),
 		enabled: requiresMap,
 	},
 	"assign-doclinks": {
@@ -442,7 +441,7 @@ const COMMANDS = {
 		icon: mdiFileDocumentOutline,
 		group: "Tags",
 		aliases: ["doclinks", "link document"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-doclink-assign")),
+		execute: () => openDialog("doclink-assign"),
 		enabled: requiresMap,
 	},
 } satisfies Record<string, CommandDef>;

@@ -31,7 +31,7 @@ import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { PluginToolbar } from "@/plugins/PluginPanels";
 import { fmt } from "@/lib/util/format";
-import { useDomEvent } from "@/lib/hooks/useDomEvent";
+import { useDialog, openDialog } from "@/store/dialogBus";
 import { SelectionRow } from "./SelectionRow";
 import { PinnedToolbar } from "./PinnedToolbar";
 import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectionDialogs";
@@ -186,14 +186,14 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 	const [showApplySaved, setShowApplySaved] = useState(false);
 	const [saveSelName, setSaveSelName] = useState("");
 
-	useDomEvent("open-tag-find-replace", () => setShowTagFindReplace(true));
-	useDomEvent("open-apply-field-as-tags", () => setShowApplyFieldAsTags(true));
-	useDomEvent("open-merge-duplicates", () => setShowMergeDuplicates(true));
-	useDomEvent("open-save-selections", () => setShowSaveSelections(true));
-	useDomEvent("open-apply-saved-selection", () => setShowApplySaved(true));
-	useDomEvent("open-review-sessions", () => setShowReviews(true));
+	useDialog("tag-find-replace", () => setShowTagFindReplace(true));
+	useDialog("apply-field-as-tags", () => setShowApplyFieldAsTags(true));
+	useDialog("merge-duplicates", () => setShowMergeDuplicates(true));
+	useDialog("save-selections", () => setShowSaveSelections(true));
+	useDialog("apply-saved-selection", () => setShowApplySaved(true));
+	useDialog("review-sessions", () => setShowReviews(true));
 
-	useDomEvent("open-review-selected", () => {
+	useDialog("review-selected", () => {
 		if (selected.size === 0) return;
 		const source = selections.length === 1 ? selections[0] : undefined;
 		beginReview(Array.from(selected), source);
@@ -246,9 +246,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 						</span>
 						<span className="selection-manager__space" />
 						<PluginToolbar />
-						<Button onClick={() => document.dispatchEvent(new CustomEvent("open-command-palette"))}>
-							Commands...
-						</Button>
+						<Button onClick={() => openDialog("command-palette")}>Commands...</Button>
 					</>
 				}
 			>

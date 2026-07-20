@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useDomEvent } from "@/lib/hooks/useDomEvent";
+import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import {
 	useCurrentMap,
@@ -34,7 +34,7 @@ export function MapMetaBar() {
 	const [showCopyToMap, setShowCopyToMap] = useState(false);
 	const [showQuickCopy, setShowQuickCopy] = useState(false);
 
-	useDomEvent("open-export", () => setShowExport(true));
+	useDialog("export", () => setShowExport(true));
 	const importFile = useCallback(async () => {
 		const path = await openFileDialog({
 			multiple: false,
@@ -43,11 +43,11 @@ export function MapMetaBar() {
 		if (!path || typeof path !== "string") return;
 		await beginImportFromPath(path);
 	}, []);
-	useDomEvent("open-import", importFile);
-	useDomEvent("open-history", () => setShowHistory(true));
-	useDomEvent("open-seen", () => setShowSeen(true));
-	useDomEvent("open-copy-to-map", () => setShowCopyToMap(true));
-	useDomEvent("open-quick-copy-to-map", () => setShowQuickCopy(true));
+	useDialog("import", importFile);
+	useDialog("history", () => setShowHistory(true));
+	useDialog("seen", () => setShowSeen(true));
+	useDialog("copy-to-map", () => setShowCopyToMap(true));
+	useDialog("quick-copy-to-map", () => setShowQuickCopy(true));
 
 	if (!map) return null;
 

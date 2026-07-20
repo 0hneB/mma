@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import clsx from "clsx";
 import { useMapVersion } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
@@ -11,7 +11,7 @@ import {
 } from "@/store/commands";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
-import { useDomEvent } from "@/lib/hooks/useDomEvent";
+import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 
@@ -32,20 +32,15 @@ export function PinnedToolbar({
 	const [dropIdx, setDropIdx] = useState<number | null>(null);
 	useMapVersion();
 
-	const handleInlinePanel = useCallback(
-		(e: Event) => {
-			const id = (e as CustomEvent).detail as string;
-			if (panels[id])
-				setOpenPanels((prev) => {
-					const next = new Set(prev);
-					if (next.has(id)) next.delete(id);
-					else next.add(id);
-					return next;
-				});
-		},
-		[panels],
-	);
-	useDomEvent("open-inline-panel", handleInlinePanel);
+	useDialog("inline-panel", (id) => {
+		if (panels[id])
+			setOpenPanels((prev) => {
+				const next = new Set(prev);
+				if (next.has(id)) next.delete(id);
+				else next.add(id);
+				return next;
+			});
+	});
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- enabled() reads arbitrary external state; no dep list covers it
 	useEffect(() => {
