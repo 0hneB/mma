@@ -7,11 +7,9 @@ import {
 	removeSelections,
 	addTagToLocations,
 	createTags,
-	selectDuplicates,
+	addSelections,
 	useVisibleTags,
 	useTagCounts,
-	selectFilter,
-	selectTopK,
 	selectRandomFromSelection,
 	selectSpacedFromSelection,
 } from "@/store/useMapStore";
@@ -136,7 +134,7 @@ function TopKPanel({
 			onSubmit={(e) => {
 				e.preventDefault();
 				if (!field || count < 1) return;
-				selectTopK(field, count, ascending);
+				addSelections([{ type: "TopK", field, k: count, ascending }]);
 			}}
 		>
 			<NSelect value={field} onChange={(e) => setField(e.target.value)}>
@@ -303,7 +301,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 									className="selection-manager__inline-form"
 									onSubmit={(e) => {
 										e.preventDefault();
-										selectDuplicates(dupDistance);
+										addSelections([{ type: "Duplicates", distance: dupDistance }]);
 									}}
 								>
 									<label>
@@ -327,7 +325,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 									persistKey={map.meta.id}
 									submitLabel="Add filter"
 									onSubmit={(field, op, value, value2, tzLocal) => {
-										selectFilter(field, op, value, value2, tzLocal);
+										addSelections([{ type: "Filter", field, op, value, value2, tzLocal }]);
 									}}
 								/>
 							),

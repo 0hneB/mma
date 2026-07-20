@@ -51,12 +51,7 @@ import { registerCommand, type CommandDef } from "./commands";
 import {
 	undo,
 	redo,
-	selectEverything,
-	selectUntagged,
-	selectUnpanned,
-	selectPanoIds,
-	selectNotPanoIds,
-	selectUncommitted,
+	addSelections,
 	selectInverse,
 	selectIntersection,
 	selectUnion,
@@ -74,8 +69,17 @@ import {
 	toggleGhostAllSelections,
 } from "./useMapStore";
 import { loadGeoJSON } from "@/lib/util/loadGeoJSON";
+import { downloadBlob } from "@/lib/util/util";
 import { toggleSeenOverlay } from "@/lib/seen/seenOverlay";
 import { selectReviewedHistory } from "@/lib/review/review";
+
+const requiresMap = () => getCurrentMap() !== null;
+const hasSelection = () => getSelectedLocationIds().size > 0;
+const hasAnySelections = () => getAllSelections().length > 0;
+const openBulkOp = (op: string) => () =>
+	document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: op }));
+const openInlinePanel = (id: string) => () =>
+	document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: id }));
 
 /** Every editor command (palette entries; all are hotkey-bindable in Settings). */
 const COMMANDS = {
@@ -86,28 +90,28 @@ const COMMANDS = {
 		defaultBinding: "Mod+s",
 		aliases: ["save", "snapshot"],
 		execute: () => commitMap(),
-		enabled: () => getCurrentMap() !== null && hasCommitDiff(),
+		enabled: () => requiresMap() && hasCommitDiff(),
 	},
 	import: {
 		label: "Import file",
 		icon: mdiFileImportOutline,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-import")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	copyToMap: {
 		label: "Copy location to map via hotkeys...",
 		icon: mdiMapPlus,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-copy-to-map")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	quickCopyToMap: {
 		label: "Copy location to map...",
 		icon: mdiMapMarkerPlus,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-quick-copy-to-map")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	undo: {
 		label: "Undo",
@@ -130,73 +134,73 @@ const COMMANDS = {
 		icon: mdiFileExportOutline,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-export")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"open-history": {
 		label: "Open version history",
 		icon: mdiHistory,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-history")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"open-seen": {
 		label: "Open seen locations",
 		icon: mdiEye,
 		group: "Map",
 		execute: () => document.dispatchEvent(new CustomEvent("open-seen")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"toggle-seen-overlay": {
 		label: "Toggle seen locations overlay",
 		icon: mdiEyeOutline,
 		group: "Map",
 		execute: () => toggleSeenOverlay(),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	selectAll: {
 		label: "Select everything",
 		icon: mdiSelectAll,
 		group: "Selections",
 		defaultBinding: "Mod+a",
-		execute: selectEverything,
+		execute: () => addSelections([{ type: "Everything" }]),
 	},
 	"select-untagged": {
 		label: "Select untagged locations",
 		icon: mdiTagOffOutline,
 		group: "Selections",
 		aliases: ["find untagged", "missing tags"],
-		execute: selectUntagged,
+		execute: () => addSelections([{ type: "Untagged" }]),
 	},
 	"select-unpanned": {
 		label: "Select unpanned locations",
 		icon: mdiCompassOffOutline,
 		group: "Selections",
-		execute: selectUnpanned,
+		execute: () => addSelections([{ type: "Unpanned" }]),
 	},
 	"select-panoid": {
 		label: "Select Pano ID locations",
 		icon: mdiImageOutline,
 		group: "Selections",
-		execute: selectPanoIds,
+		execute: () => addSelections([{ type: "PanoIds" }]),
 	},
 	"select-no-panoid": {
 		label: "Select non-Pano ID locations",
 		icon: mdiImageOffOutline,
 		group: "Selections",
-		execute: selectNotPanoIds,
+		execute: () => addSelections([{ type: "NotPanoIds" }]),
 	},
 	"select-uncommitted": {
 		label: "Select uncommitted locations",
 		icon: mdiContentSaveAlertOutline,
 		group: "Selections",
-		execute: selectUncommitted,
+		execute: () => addSelections([{ type: "Uncommitted" }]),
 	},
 	"select-reviewed": {
 		label: "Select reviewed locations",
 		icon: mdiEyeCheckOutline,
 		group: "Selections",
 		execute: () => selectReviewedHistory(),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"invert-selection": {
 		label: "Invert selection",
@@ -241,12 +245,7 @@ const COMMANDS = {
 			const blob = new Blob([JSON.stringify({ type: "FeatureCollection", features })], {
 				type: "application/geo+json",
 			});
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = "selections.geojson";
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(blob, "selections.geojson");
 		},
 	},
 	deselectAll: {
@@ -255,15 +254,14 @@ const COMMANDS = {
 		group: "Selections",
 		defaultBinding: "Mod+d",
 		execute: resetSelections,
-		enabled: () => getAllSelections().length > 0,
+		enabled: hasAnySelections,
 	},
 	"find-duplicates": {
 		label: "Find duplicates...",
 		icon: mdiMapSearchOutline,
 		group: "Selections",
 		aliases: ["dedupe", "duplicate check"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: "find-duplicates" })),
+		execute: openInlinePanel("find-duplicates"),
 	},
 	"merge-duplicates": {
 		label: "Merge duplicates...",
@@ -277,23 +275,19 @@ const COMMANDS = {
 		icon: mdiFilterOutline,
 		group: "Selections",
 		aliases: ["search by field", "field filter"],
-		execute: () =>
-			document.dispatchEvent(
-				new CustomEvent("open-inline-panel", { detail: "filter-by-metadata" }),
-			),
+		execute: openInlinePanel("filter-by-metadata"),
 	},
 	"top-k": {
 		label: "Select top/bottom K...",
 		icon: mdiPodium,
 		group: "Selections",
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: "top-k" })),
+		execute: openInlinePanel("top-k"),
 	},
 	"review-selected": {
 		label: "Review selected locations",
 		icon: mdiPlayOutline,
 		group: "Selections",
-		enabled: () => getSelectedLocationIds().size > 0,
+		enabled: hasSelection,
 		execute: () => document.dispatchEvent(new CustomEvent("open-review-selected")),
 	},
 	"review-sessions": {
@@ -307,18 +301,16 @@ const COMMANDS = {
 		icon: mdiDiceMultiple,
 		group: "Selections",
 		aliases: ["sample", "random sample"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: "select-random" })),
-		enabled: () => getSelectedLocationIds().size > 0,
+		execute: openInlinePanel("select-random"),
+		enabled: hasSelection,
 	},
 	"select-spaced": {
 		label: "Pick evenly spaced locations from selection",
 		icon: mdiDotsGrid,
 		group: "Selections",
 		aliases: ["spaced", "thin", "reduce density", "distribute"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-inline-panel", { detail: "select-spaced" })),
-		enabled: () => getSelectedLocationIds().size > 0,
+		execute: openInlinePanel("select-spaced"),
+		enabled: hasSelection,
 	},
 	"ghost-selections": {
 		label: "Ghost selections",
@@ -326,14 +318,14 @@ const COMMANDS = {
 		group: "Selections",
 		aliases: ["hide selections", "dim selections"],
 		execute: () => toggleGhostAllSelections(),
-		enabled: () => getAllSelections().length > 0,
+		enabled: hasAnySelections,
 	},
 	"save-selections": {
 		label: "Save current selections...",
 		icon: mdiBookmarkOutline,
 		group: "Selections",
 		execute: () => document.dispatchEvent(new CustomEvent("open-save-selections")),
-		enabled: () => getAllSelections().length > 0,
+		enabled: hasAnySelections,
 	},
 	"apply-saved-selection": {
 		label: "Apply saved selection...",
@@ -345,7 +337,7 @@ const COMMANDS = {
 		label: "Delete selected locations",
 		icon: mdiTrashCanOutline,
 		group: "Selections",
-		enabled: () => getSelectedLocationIds().size > 0,
+		enabled: hasSelection,
 		execute: () => {
 			const ids = getSelectedLocationIds();
 			if (ids.size > 0) removeLocations(ids);
@@ -356,52 +348,49 @@ const COMMANDS = {
 		icon: mdiCheckDecagram,
 		group: "Bulk Operations",
 		aliases: ["check locations", "verify"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "validate" })),
+		execute: openBulkOp("validate"),
 	},
 	"bulk-enrich": {
 		label: "Enrich metadata fields",
 		icon: mdiDatabaseArrowUp,
 		group: "Bulk Operations",
 		aliases: ["autotag", "fetch metadata", "auto-enrich"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "enrich" })),
+		execute: openBulkOp("enrich"),
 	},
 	"bulk-set-field": {
 		label: "Set metadata field value",
 		icon: mdiDatabaseEditOutline,
 		group: "Bulk Operations",
 		aliases: ["edit field", "assign field"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "setField" })),
+		execute: openBulkOp("setField"),
 	},
 	"bulk-clear-fields": {
 		label: "Clear metadata fields",
 		icon: mdiDatabaseRemoveOutline,
 		group: "Bulk Operations",
 		aliases: ["remove fields", "strip metadata"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "clearFields" })),
+		execute: openBulkOp("clearFields"),
 	},
 	"bulk-pin-pano": {
 		label: "Pin locations to pano ID",
 		icon: mdiMapMarkerCheck,
 		group: "Bulk Operations",
 		aliases: ["snap to pano", "lock pano"],
-		execute: () => document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "pinPano" })),
+		execute: openBulkOp("pinPano"),
 	},
 	"bulk-heading-road": {
 		label: "Pan headings along road",
 		icon: mdiCompassOutline,
 		group: "Bulk Operations",
 		aliases: ["align headings", "road direction"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "headingRoad" })),
+		execute: openBulkOp("headingRoad"),
 	},
 	"bulk-download-panoramas": {
 		label: "Download panoramas",
 		icon: mdiDownloadBoxOutline,
 		group: "Bulk Operations",
 		aliases: ["bulk download", "export panoramas", "download street view"],
-		execute: () =>
-			document.dispatchEvent(new CustomEvent("open-bulk-op", { detail: "downloadPanoramas" })),
+		execute: openBulkOp("downloadPanoramas"),
 	},
 	"delete-selected-tags": {
 		label: "Delete selected tags",
@@ -429,13 +418,7 @@ const COMMANDS = {
 				.sort((a, b) => b.count - a.count);
 			const csv =
 				"name,count\n" + rows.map((r) => `"${r.name.replace(/"/g, '""')}",${r.count}`).join("\n");
-			const blob = new Blob([csv], { type: "text/csv" });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `${map.meta.name} tags.csv`;
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(new Blob([csv], { type: "text/csv" }), `${map.meta.name} tags.csv`);
 		},
 	},
 	"tag-find-replace": {
@@ -444,7 +427,7 @@ const COMMANDS = {
 		group: "Tags",
 		aliases: ["rename tags", "bulk rename"],
 		execute: () => document.dispatchEvent(new CustomEvent("open-tag-find-replace")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"apply-field-as-tags": {
 		label: "Apply metadata as tags",
@@ -452,7 +435,7 @@ const COMMANDS = {
 		group: "Tags",
 		aliases: ["group by field", "metadata to tags"],
 		execute: () => document.dispatchEvent(new CustomEvent("open-apply-field-as-tags")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 	"assign-doclinks": {
 		label: "Assign document links...",
@@ -460,7 +443,7 @@ const COMMANDS = {
 		group: "Tags",
 		aliases: ["doclinks", "link document"],
 		execute: () => document.dispatchEvent(new CustomEvent("open-doclink-assign")),
-		enabled: () => getCurrentMap() !== null,
+		enabled: requiresMap,
 	},
 } satisfies Record<string, CommandDef>;
 

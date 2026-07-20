@@ -14,7 +14,6 @@ import type {
 	MapMeta,
 	Tag,
 	ExtraFieldDef,
-	FilterOp,
 	KeySpec,
 	Scope,
 	CommitDiff,
@@ -88,7 +87,7 @@ type SelectionBitmaskHandler = (
 /** Fires when selection bitmasks are resolved. Subscribers apply per-cell masks to the render overlay. */
 export const selBitmaskBus = createBus<SelectionBitmaskHandler>();
 
-import type { Selection, SelectionProps, PolygonGeometry } from "@/bindings.gen";
+import type { Selection, SelectionProps } from "@/bindings.gen";
 import {
 	type GroupType,
 	addSelection as addSel,
@@ -238,17 +237,6 @@ function bump() {
 	notify();
 }
 
-/** Re-render everything derived from map content. Called automatically by `mutate`. */
-export function refreshAfterMutation() {
-	if (!currentMap) {
-		selections = [];
-		selectedLocationIds = SelectedIds.EMPTY;
-		bump();
-		return;
-	}
-	bump();
-}
-
 /** Reactive open map (metadata + settings), or null when no map is open. */
 export const useCurrentMap = makeStoreHook(() => currentMap);
 
@@ -396,6 +384,18 @@ export const mapOpen = {
 	},
 };
 
+/** Reset all per-map editing state to its initial values. */
+function clearEditState() {
+	selections = [];
+	selectedLocationIds = SelectedIds.EMPTY;
+	activeLocationId = null;
+	cachedActiveLocation = null;
+	workArea = "overview";
+	importStaging = null;
+	importPreviewPositions = new Float32Array(0);
+	commitDiffPreview = null;
+}
+
 // --- Actions ---
 /** Open a map in this window, closing any currently open map first. */
 export async function openMap(id: string) {
@@ -431,14 +431,7 @@ export async function openMap(id: string) {
 		cmd.storeTouchMapOpened(id);
 	}
 
-	selections = [];
-	selectedLocationIds = SelectedIds.EMPTY;
-	activeLocationId = null;
-	workArea = "overview";
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
-	commitDiffPreview = null;
-
+	clearEditState();
 	bump();
 	t.end();
 	if (currentMap) emitEvent("map:open", currentMap);
@@ -450,12 +443,7 @@ function resetMapState() {
 	currentMapId = null;
 	currentMap = null;
 
-	selections = [];
-	selectedLocationIds = SelectedIds.EMPTY;
-	activeLocationId = null;
-	workArea = "overview";
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
+	clearEditState();
 	knownFieldKeys = new Set();
 	resetForMapChange();
 
@@ -704,36 +692,35 @@ export async function deleteFolder(name: string) {
 	await invalidateMapList();
 }
 
-export async function renameMap(id: string, name: string) {
-	await cmd.storeUpdateMapMeta(id, { name });
-	if (currentMap && currentMapId === id)
-		currentMap = { ...currentMap, meta: { ...currentMap.meta, name } };
-	refreshAfterMutation();
-	await invalidateMapList();
-}
-
-export async function updateMapLabels(id: string, labels: string[]) {
-	await cmd.storeUpdateMapMeta(id, { labels });
+/** Optimistically patch map meta, persist, and refresh the map list. */
+async function patchMapMeta(id: string, patch: MapMetaPatch) {
 	if (currentMap && currentMapId === id) {
-		currentMap = { ...currentMap, meta: { ...currentMap.meta, labels } };
-		notify();
+		const meta = { ...currentMap.meta };
+		if (patch.name != null) meta.name = patch.name;
+		if (patch.description != null) meta.description = patch.description;
+		if (patch.folder !== undefined) meta.folder = patch.folder;
+		if (patch.settings != null) meta.settings = patch.settings;
+		if (patch.scoreBounds != null) meta.scoreBounds = patch.scoreBounds;
+		if (patch.extra != null) meta.extra = patch.extra;
+		if (patch.labels != null) meta.labels = patch.labels;
+		currentMap = { ...currentMap, meta };
 	}
+	bump();
+	await cmd.storeUpdateMapMeta(id, patch);
 	await invalidateMapList();
 }
 
-export async function updateMapMeta(patch: MapMetaPatch) {
-	if (!currentMapId || !currentMap) return;
-	const meta = { ...currentMap.meta };
-	if (patch.name != null) meta.name = patch.name;
-	if (patch.description != null) meta.description = patch.description;
-	if (patch.folder !== undefined) meta.folder = patch.folder;
-	if (patch.settings != null) meta.settings = patch.settings;
-	if (patch.scoreBounds != null) meta.scoreBounds = patch.scoreBounds;
-	if (patch.extra != null) meta.extra = patch.extra;
-	currentMap = { ...currentMap, meta };
-	refreshAfterMutation();
-	await cmd.storeUpdateMapMeta(currentMapId, patch);
-	await invalidateMapList();
+export function renameMap(id: string, name: string) {
+	return patchMapMeta(id, { name });
+}
+
+export function updateMapLabels(id: string, labels: string[]) {
+	return patchMapMeta(id, { labels });
+}
+
+export function updateMapMeta(patch: MapMetaPatch) {
+	if (!currentMapId) return;
+	return patchMapMeta(currentMapId, patch);
 }
 
 /** Replace the map's extra-field definitions (types/labels for `Location.extra` keys). */
@@ -751,13 +738,6 @@ export async function setMapExtraFields(fields: Record<string, ExtraFieldDef>) {
 function syncMutationResult(r: MutationResult) {
 	if (!currentMap) return;
 	const hasNewDefs = r.newFieldDefs != null && Object.keys(r.newFieldDefs).length > 0;
-	const needsNotify =
-		currentMap.meta.locationCount !== r.locationCount ||
-		undoRedoState.canUndo !== r.canUndo ||
-		undoRedoState.canRedo !== r.canRedo ||
-		hasNewDefs ||
-		r.tags != null ||
-		r.tagCounts != null;
 	if (hasNewDefs) {
 		knownFieldKeys = new Set(knownFieldKeys);
 		for (const key of Object.keys(r.newFieldDefs!)) knownFieldKeys.add(key);
@@ -778,9 +758,6 @@ function syncMutationResult(r: MutationResult) {
 		undoRedoState = { canUndo: r.canUndo, canRedo: r.canRedo };
 	}
 	if (r.tagCounts) tagCounts = r.tagCounts;
-	if (needsNotify) {
-		bump();
-	}
 	if (r.tags) {
 		const oldTags = currentMap.meta.tags;
 		currentMap = { ...currentMap, meta: { ...currentMap.meta, tags: r.tags } };
@@ -795,9 +772,7 @@ function syncMutationResult(r: MutationResult) {
 		}
 		removeSelections(removedKeys);
 	}
-	if (r.selectionSync) {
-		applySelectionSync(r.selectionSync);
-	}
+	if (r.selectionSync) applySelectionSync(r.selectionSync);
 }
 
 /** Decode the inline bitmask bytes from Rust and emit to selBitmaskBus. */
@@ -808,21 +783,32 @@ export function emitBitmask(bytes: number[]) {
 	});
 }
 
-/** Apply a resolved selection payload (counts + overlay bitmask) to JS state and re-render.
- *  Shared by both triggers: location mutations (membership changed) and selection edits. */
 function applySelectionSync(sync: SelectionSync) {
 	selectionCounts = sync.counts;
 	if (sync.bitmask) emitBitmask(sync.bitmask);
-	bump();
 }
 
-/** Await a mutation IPC, emit its render delta, sync JS state, and schedule a save. */
-export async function mutate(p: Promise<MutationResult>): Promise<MutationResult> {
-	const r = await p;
+const EMPTY_MUTATION: MutationResult = {
+	delta: { added: [], updated: [], removed: [], colorPatches: [], fullReset: false },
+	selectionSync: null,
+	newFieldDefs: null,
+	tags: null,
+	version: 0,
+	locationCount: 0,
+	canUndo: false,
+	canRedo: false,
+	tagCounts: null,
+	knownFieldKeys: [],
+};
+
+/** Run a mutation IPC, emit its render delta, sync JS state, and schedule a save. */
+export async function mutate(fn: () => Promise<MutationResult>): Promise<MutationResult> {
+	if (!currentMap) return EMPTY_MUTATION;
+	const r = await fn();
 	await inflightPersist;
 	renderDeltaBus.emit(r.delta);
 	syncMutationResult(r);
-	refreshAfterMutation();
+	bump();
 	scheduleSave();
 	return r;
 }
@@ -830,9 +816,9 @@ export async function mutate(p: Promise<MutationResult>): Promise<MutationResult
 /** Add locations to the map. Rust assigns real ids and they are written back into
  *  the passed objects -- build with `createLocation` (id 0) and read `loc.id` after. Undoable. */
 export async function addLocations(locs: Location[], opts?: { hideInDelta?: boolean }) {
-	if (!currentMap || locs.length === 0) return;
+	if (locs.length === 0) return;
 	const t = trace("add");
-	const r = await mutate(cmd.storeAddLocations(locs));
+	const r = await mutate(() => cmd.storeAddLocations(locs));
 	t.end({ delta: `+${r.delta.added.length} -${r.delta.removed.length}` });
 	for (let i = 0; i < r.delta.added.length && i < locs.length; i++) {
 		locs[i].id = r.delta.added[i].id;
@@ -856,7 +842,7 @@ export async function duplicateLocation(id: number): Promise<number | null> {
 
 /** Remove locations by id. Undoable. */
 export async function removeLocations(ids: ReadonlyIdSet) {
-	if (!currentMap || ids.size === 0) return;
+	if (ids.size === 0) return;
 	if ([...ids].some((id) => isVirtualLocation({ id }))) {
 		await setActiveLocation(null);
 		return;
@@ -867,10 +853,10 @@ export async function removeLocations(ids: ReadonlyIdSet) {
 		workArea = "overview";
 	}
 	bump();
-	emitEvent("location:remove", [...ids]);
-	await mutate(cmd.storeRemoveLocations([...ids])).catch((e) =>
+	await mutate(() => cmd.storeRemoveLocations([...ids])).catch((e) =>
 		log.error("[delete] store_remove_locations failed:", e),
 	);
+	emitEvent("location:remove", [...ids]);
 }
 
 /** Patch locations by id. Only include the fields you're changing; `extra` merges
@@ -879,10 +865,10 @@ export async function updateLocations(
 	updates: Update<LocationPatch>[],
 	opts?: { undoable?: boolean },
 ) {
-	if (!currentMap || updates.length === 0) return;
+	if (updates.length === 0) return;
 	if (updates.some((u) => isVirtualLocation(u))) return;
+	await mutate(() => cmd.storeUpdateLocations(updates, opts?.undoable ?? true));
 	emitEvent("location:update", updates);
-	await mutate(cmd.storeUpdateLocations(updates, opts?.undoable ?? true));
 	if (cachedActiveLocation && updates.some((u) => u.id === activeLocationId)) {
 		const activePatch = updates.find((u) => u.id === activeLocationId)?.patch;
 		if (activePatch) cachedActiveLocation = applyLocationPatch(cachedActiveLocation, activePatch);
@@ -980,6 +966,7 @@ async function applySelectionUpdate(updater: (sels: Selection[]) => Selection[])
 	const result = await cmd.storeSyncSelections(sels);
 	t.step("ipc");
 	applySelectionSync(result);
+	bump();
 	t.step("apply");
 	t.end({ selected: result.selectedCount });
 	emitEvent("selection:change", selections);
@@ -1096,41 +1083,6 @@ export async function selectSpacedFromSelection(opts: {
 	return { picked: result.ids.length, distanceM: result.distanceM };
 }
 
-/** Select every location in the map. */
-export function selectEverything() {
-	return addSelections([{ type: "Everything" }]);
-}
-
-/** Select locations that have no tags. */
-export function selectUntagged() {
-	return addSelections([{ type: "Untagged" }]);
-}
-
-/** Select locations with no heading set (heading 0). */
-export function selectUnpanned() {
-	return addSelections([{ type: "Unpanned" }]);
-}
-
-/** Select locations pinned to a specific panorama (panoId set). */
-export function selectPanoIds() {
-	return addSelections([{ type: "PanoIds" }]);
-}
-
-/** Select locations NOT pinned to a specific panorama (no panoId). */
-export function selectNotPanoIds() {
-	return addSelections([{ type: "NotPanoIds" }]);
-}
-
-/** Select locations added or modified since the last commit. */
-export function selectUncommitted() {
-	return addSelections([{ type: "Uncommitted" }]);
-}
-
-/** Select locations that have another location within `distance` metres. */
-export function selectDuplicates(distance: number) {
-	return addSelections([{ type: "Duplicates", distance }]);
-}
-
 /** Read-only preview of transitive duplicate groups (size >= 2) within `distance` metres. */
 export function previewDuplicateGroups(distance: number): Promise<number[][]> {
 	return cmd.storeDuplicateGroups(distance);
@@ -1138,8 +1090,7 @@ export function previewDuplicateGroups(distance: number): Promise<number[][]> {
 
 /** Merge each transitive duplicate group into one survivor (tags unioned). One undoable edit. */
 export async function mergeDuplicates(distance: number) {
-	if (!currentMap) return;
-	await mutate(cmd.storeMergeDuplicates(distance));
+	await mutate(() => cmd.storeMergeDuplicates(distance));
 }
 
 /**
@@ -1154,34 +1105,8 @@ export async function pruneDuplicates(props: SelectionProps, distance: number): 
 	const keepTagIds = getVisibleTags()
 		.filter((t) => t.name === "keep pano")
 		.map((t) => t.id);
-	const r = await mutate(cmd.storePruneDuplicates(ids, distance, keepTagIds));
+	const r = await mutate(() => cmd.storePruneDuplicates(ids, distance, keepTagIds));
 	return r.delta.removed.length;
-}
-
-/** Select all locations carrying a tag. */
-export function selectTag(tagId: number) {
-	return addSelections([{ type: "Tag", tagId }]);
-}
-
-/** Select locations inside a polygon. */
-export function selectPolygon(polygon: PolygonGeometry, includeInformational = false) {
-	return addSelections([{ type: "Polygon", polygon, includeInformational }]);
-}
-
-/** Select locations matching a field filter (e.g. `country == "FR"`, `altitude > 100`). */
-export function selectFilter(
-	field: string,
-	op: FilterOp,
-	value: unknown,
-	value2?: unknown,
-	tzLocal = false,
-) {
-	return addSelections([{ type: "Filter", field, op, value, value2, tzLocal }]);
-}
-
-/** Select the `k` locations with the highest (or lowest) value of a numeric field. */
-export function selectTopK(field: string, k: number, ascending: boolean) {
-	return addSelections([{ type: "TopK", field, k, ascending }]);
 }
 
 /** Edit an existing filter (or any selection) in place by key, preserving its
@@ -1393,16 +1318,17 @@ export function removeDuplicate(id: number) {
 /** Close the duplicate-resolution panel and return to the overview. */
 export function closeDuplicates() {
 	duplicateLocations = [];
-	activeLocationId = null;
-	cachedActiveLocation = null;
-	workArea = "overview";
-	bump();
+	setWorkArea("overview");
 }
 
-/** Switch the editor pane (overview, location, duplicates, import, plugin). */
+/** Transition the editor pane, enforcing state invariants:
+ *  leaving "location" clears the active location, leaving "plugin" clears the plugin id. */
 export function setWorkArea(area: WorkArea) {
 	workArea = area;
-	if (area !== "location") activeLocationId = null;
+	if (area !== "location") {
+		activeLocationId = null;
+		cachedActiveLocation = null;
+	}
 	if (area !== "plugin") activePluginId = null;
 	bump();
 }
@@ -1419,17 +1345,13 @@ export function getWorkArea() {
 
 /** Open a plugin's sidebar (switches the editor pane to "plugin"). */
 export function setPluginMode(pluginId: string) {
-	workArea = "plugin";
 	activePluginId = pluginId;
-	activeLocationId = null;
-	bump();
+	setWorkArea("plugin");
 }
 
 /** Close the plugin sidebar and return to the overview. */
 export function exitPluginMode() {
-	workArea = "overview";
-	activePluginId = null;
-	bump();
+	setWorkArea("overview");
 }
 
 // --- Tag CRUD ---
@@ -1439,7 +1361,7 @@ export function exitPluginMode() {
  *  as-is, new names get auto-generated colors. */
 export async function createTags(names: string[]): Promise<Tag[]> {
 	if (names.length === 0) return [];
-	await mutate(cmd.storeCreateTags(names));
+	await mutate(() => cmd.storeCreateTags(names));
 	const lower = new Set(names.map((n) => n.toLowerCase()));
 	const created = Object.values(currentMap!.meta.tags).filter((t) =>
 		lower.has(t.name.toLowerCase()),
@@ -1452,8 +1374,8 @@ export async function createTags(names: string[]): Promise<Tag[]> {
  *  (case-insensitive), the two tags are merged — all locations are remapped
  *  to the survivor. */
 export async function updateTags(updates: Update<TagPatch>[]) {
-	if (!currentMapId || !currentMap || updates.length === 0) return;
-	await mutate(cmd.storeUpdateTags(updates));
+	if (updates.length === 0) return;
+	await mutate(() => cmd.storeUpdateTags(updates));
 	emitEvent("tag:update", updates);
 	// ONLY resync on color change, everything else is resolved by Rust
 	if (
@@ -1469,37 +1391,46 @@ export async function updateTags(updates: Update<TagPatch>[]) {
 /** Delete tags and strip them from all locations. Undoable (the location
  *  changes are in the undo stack; visibility auto-restores on undo). */
 export async function deleteTags(tagIds: number[]) {
-	if (!currentMapId || !currentMap || tagIds.length === 0) return;
-	await mutate(cmd.storeDeleteTags(tagIds));
+	if (tagIds.length === 0) return;
+	await mutate(() => cmd.storeDeleteTags(tagIds));
 	emitEvent("tag:remove", tagIds);
 }
 
 /** Persist a new tag display order. */
 export async function reorderTags(orderedIds: number[]) {
-	if (!currentMapId || !currentMap) return;
-	await mutate(cmd.storeReorderTags(orderedIds));
+	await mutate(() => cmd.storeReorderTags(orderedIds));
+}
+
+/** Fetch locations, apply a tag transform, and mutate those that changed.
+ *  `transform` returns null to skip a location (no change needed). */
+async function modifyTagOnLocations(
+	tagId: number,
+	locationIds: number[],
+	transform: (tags: number[], tagId: number) => number[] | null,
+) {
+	if (locationIds.length === 0) return;
+	const locs = await cmd.storeGetLocationsByIds(locationIds);
+	const updates: Update<LocationPatch>[] = [];
+	for (const l of locs) {
+		const next = transform(l.tags, tagId);
+		if (next) updates.push({ id: l.id, patch: { tags: next } });
+	}
+	if (updates.length === 0) return;
+	await mutate(() => cmd.storeUpdateLocations(updates, true));
 }
 
 /** Add a tag to locations (skips ones that already have it). Undoable. */
-export async function addTagToLocations(tagId: number, locationIds: number[]) {
-	if (!currentMap || locationIds.length === 0) return;
-	const locs = await cmd.storeGetLocationsByIds(locationIds);
-	const updates: Update<LocationPatch>[] = locs
-		.filter((l) => !l.tags.includes(tagId))
-		.map((l) => ({ id: l.id, patch: { tags: [...l.tags, tagId] } }));
-	if (updates.length === 0) return;
-	await mutate(cmd.storeUpdateLocations(updates, true));
+export function addTagToLocations(tagId: number, locationIds: number[]) {
+	return modifyTagOnLocations(tagId, locationIds, (tags, id) =>
+		tags.includes(id) ? null : [...tags, id],
+	);
 }
 
 /** Remove a tag from the given locations. Undoable. */
-export async function removeTagFromLocations(tagId: number, locationIds: number[]) {
-	if (!currentMap || locationIds.length === 0) return;
-	const locs = await cmd.storeGetLocationsByIds(locationIds);
-	const updates: Update<LocationPatch>[] = locs
-		.filter((l) => l.tags.includes(tagId))
-		.map((l) => ({ id: l.id, patch: { tags: l.tags.filter((t: number) => t !== tagId) } }));
-	if (updates.length === 0) return;
-	await mutate(cmd.storeUpdateLocations(updates, true));
+export function removeTagFromLocations(tagId: number, locationIds: number[]) {
+	return modifyTagOnLocations(tagId, locationIds, (tags, id) =>
+		tags.includes(id) ? tags.filter((t) => t !== id) : null,
+	);
 }
 
 /** Remove a tag from every location that has it. Undoable. */
@@ -1556,7 +1487,7 @@ export async function confirmImport(droppedFields: string[], tagName?: string) {
 
 	const r = await cmd.storeImportFile(droppedFields, tagName?.trim() || null);
 	cancelImport();
-	await mutate(Promise.resolve(r));
+	await mutate(() => Promise.resolve(r));
 
 	// Overlay any settings the import carried (extra.settings) onto the open map's
 	// settings. Generic: imported keys win, untouched keys are preserved.
@@ -1605,9 +1536,8 @@ export function cancelImport() {
 
 /** Shared undo/redo handler: call the IPC, clear active if removed. */
 async function undoRedo(which: () => Promise<MutationResult>) {
-	if (!currentMap) return;
 	try {
-		const r = await mutate(which());
+		const r = await mutate(which);
 		if (activeLocationId && r.delta.removed.some((e) => e.id === activeLocationId)) {
 			activeLocationId = null;
 			cachedActiveLocation = null;
@@ -1721,8 +1651,8 @@ export async function beginCommitDiffPreview(commit: CommitInfo) {
 export function endCommitDiffPreview() {
 	commitDiffPreview = null;
 	diffMarkerVersion++;
-	if (workArea === "diff") workArea = "overview";
-	bump();
+	if (workArea === "diff") setWorkArea("overview");
+	else bump();
 }
 
 /** Restore the map to a previous commit's state and reopen it. Clears undo/redo. */
@@ -1747,6 +1677,6 @@ export async function checkoutCommit(commitId: string) {
 	undoRedoState = { canUndo: false, canRedo: false };
 
 	renderDeltaBus.emit({ added: [], updated: [], removed: [], colorPatches: [], fullReset: true });
-	refreshAfterMutation();
+	bump();
 	await invalidateMapList();
 }

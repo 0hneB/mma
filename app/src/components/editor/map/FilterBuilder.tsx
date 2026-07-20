@@ -10,7 +10,7 @@ import {
 	isListableField,
 } from "@/lib/data/fieldDefRegistry";
 import { pickPeriodEnd, hasTimeOfDay, dateParts, partsToEpoch } from "@/lib/data/fieldOps";
-import { useKnownFieldKeys, selectFilter } from "@/store/useMapStore";
+import { useKnownFieldKeys, addSelections } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
 import { OP_LABELS } from "@/store/selections";
 import { DatePicker } from "@/components/primitives/DatePicker";
@@ -562,7 +562,7 @@ export function FilterBuilder({ mapId }: { mapId: string }) {
 			persistKey={mapId}
 			submitLabel="Add filter"
 			onSubmit={(field, op, value, value2, tzLocal) =>
-				selectFilter(field, op, value, value2, tzLocal)
+				addSelections([{ type: "Filter", field, op, value, value2, tzLocal }])
 			}
 		/>
 	);

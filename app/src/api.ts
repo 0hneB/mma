@@ -252,12 +252,12 @@ const surface = {
 		importPaste: async (text: string) => {
 			await commands.storeImportPastePreview(text);
 			const r = await commands.storeImportFile([], null);
-			await store.mutate(Promise.resolve(r));
+			await store.mutate(() => Promise.resolve(r));
 			return [r];
 		},
 		importFile: async (droppedFields: string[], tagName?: string) => {
 			const r = await commands.storeImportFile(droppedFields, tagName ?? null);
-			await store.mutate(Promise.resolve(r));
+			await store.mutate(() => Promise.resolve(r));
 			return r;
 		},
 	},

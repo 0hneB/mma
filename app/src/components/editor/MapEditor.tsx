@@ -239,7 +239,7 @@ export function MapEditor() {
 	// Another window mutated this map
 	useEffect(() => {
 		const unlisten = listen<MutationResult & { mapId: string }>("store-external-mutation", (e) => {
-			if (e.payload.mapId === getCurrentMapId()) void mutate(Promise.resolve(e.payload));
+			if (e.payload.mapId === getCurrentMapId()) void mutate(() => Promise.resolve(e.payload));
 		});
 		return () => {
 			unlisten.then((f) => f());
