@@ -58,8 +58,8 @@ export function TagManager() {
 	const tagViewMode = useSetting("tagViewMode");
 	const [filterText, setFilterText] = useState("");
 	const sortMode = useSetting("tagSortMode");
-	const [virtualTags, setVirtualTags] = useMapSetting("virtualTags");
-	const [aliases, setAliases] = useMapSetting("aliases");
+	const [virtualTags, setVirtualTags] = useMapSetting("virtualTags", {});
+	const [aliases, setAliases] = useMapSetting("aliases", {});
 	const [addingAliasFor, setAddingAliasFor] = useState<{ id: number; name: string } | null>(null);
 	// The edited node carries descendant context so the dialog can offer a cascade rename
 	// (descendantCount is 0 for every leaf, including all of flat mode).
@@ -152,7 +152,7 @@ export function TagManager() {
 			}
 		}
 		commitTags(tagUpdates);
-		const nextVT = { ...(virtualTags ?? {}) };
+		const nextVT = { ...virtualTags };
 		for (const f of folders) nextVT[f] = { color };
 		setVirtualTags(nextVT);
 	};
@@ -247,8 +247,8 @@ export function TagManager() {
 					selectedTagIds={selectedTagIds}
 					tagCounts={tagCounts}
 					sortMode={sortMode}
-					virtualTags={virtualTags ?? {}}
-					aliases={aliases ?? {}}
+					virtualTags={virtualTags}
+					aliases={aliases}
 					onEditTag={handleEditTreeTag}
 					onEditVirtual={setEditingVirtualPath}
 					onRenameTag={setRenamingTag}
@@ -266,14 +266,14 @@ export function TagManager() {
 				<EditTagDialog
 					tag={editingTreeTag.tag}
 					commit={commitTags}
-					aliases={aliases ?? {}}
+					aliases={aliases}
 					setAliases={setAliases}
 					cascade={
 						editingTreeTag.descendantCount > 0
 							? {
 									descendantCount: editingTreeTag.descendantCount,
 									tags,
-									virtualTags: virtualTags ?? {},
+									virtualTags,
 									setVirtualTags,
 									onRenamed: (o, n) => treeRef.current?.remapExpanded(o, n),
 									onApplyColor: (color) => applyColorToSubtree(editingTreeTag.tag.name, color),
@@ -287,7 +287,7 @@ export function TagManager() {
 			{editingVirtualPath != null && (
 				<VirtualTagDialog
 					path={editingVirtualPath}
-					color={(virtualTags ?? {})[editingVirtualPath]?.color ?? null}
+					color={virtualTags[editingVirtualPath]?.color ?? null}
 					descendantCount={tags.filter((t) => t.name.startsWith(`${editingVirtualPath}/`)).length}
 					onClose={() => setEditingVirtualPath(null)}
 					onApplyColor={(color) => {
@@ -295,7 +295,6 @@ export function TagManager() {
 						setEditingVirtualPath(null);
 					}}
 					onSave={(color, newSegment) => {
-						const vt = virtualTags ?? {};
 						const i = editingVirtualPath.lastIndexOf("/");
 						const parent = i === -1 ? "" : editingVirtualPath.slice(0, i);
 						const newPath = parent ? `${parent}/${newSegment}` : newSegment;
@@ -304,7 +303,7 @@ export function TagManager() {
 								tagRenames,
 								virtualTags: nextVT,
 								aliases: nextAliases,
-							} = cascadeRename(editingVirtualPath, newPath, tags, vt, aliases ?? {});
+							} = cascadeRename(editingVirtualPath, newPath, tags, virtualTags, aliases);
 							if (tagRenames.length)
 								commitTags(tagRenames.map((r) => ({ id: r.id, patch: { name: r.name } })));
 							nextVT[newPath] = { color };
@@ -312,12 +311,12 @@ export function TagManager() {
 							setAliases(nextAliases);
 							treeRef.current?.remapExpanded(editingVirtualPath, newPath);
 						} else {
-							setVirtualTags({ ...vt, [editingVirtualPath]: { color } });
+							setVirtualTags({ ...virtualTags, [editingVirtualPath]: { color } });
 						}
 						setEditingVirtualPath(null);
 					}}
 					onReset={() => {
-						const next = { ...(virtualTags ?? {}) };
+						const next = { ...virtualTags };
 						delete next[editingVirtualPath];
 						setVirtualTags(next);
 						setEditingVirtualPath(null);
@@ -329,7 +328,7 @@ export function TagManager() {
 				<RenameInSelectionDialog
 					tag={renamingTag}
 					commit={commitTags}
-					aliases={aliases ?? {}}
+					aliases={aliases}
 					setAliases={setAliases}
 					onClose={() => setRenamingTag(null)}
 				/>
@@ -339,11 +338,11 @@ export function TagManager() {
 				<NewFolderDialog
 					parentPath={newFolderParent}
 					tags={tags}
-					virtualTags={virtualTags ?? {}}
-					aliases={aliases ?? {}}
+					virtualTags={virtualTags}
+					aliases={aliases}
 					onClose={() => setNewFolderParent(null)}
 					onSave={(path) => {
-						setVirtualTags({ ...(virtualTags ?? {}), [path]: {} });
+						setVirtualTags({ ...virtualTags, [path]: {} });
 						setNewFolderParent(null);
 					}}
 				/>
@@ -353,11 +352,11 @@ export function TagManager() {
 				<AddAliasDialog
 					tag={addingAliasFor}
 					tags={tags}
-					virtualTags={virtualTags ?? {}}
-					aliases={aliases ?? {}}
+					virtualTags={virtualTags}
+					aliases={aliases}
 					onClose={() => setAddingAliasFor(null)}
 					onSave={(aliasPath) => {
-						setAliases({ ...(aliases ?? {}), [aliasPath]: addingAliasFor.id });
+						setAliases({ ...aliases, [aliasPath]: addingAliasFor.id });
 						setAddingAliasFor(null);
 					}}
 				/>
