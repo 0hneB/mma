@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient module decl must be referenced so dts-bundle-generator pulls it into plugin type-gen
 /// <reference path="../../types/measuretool.d.ts" />
-import { useSyncExternalStore, useEffect } from "react";
+import { useEffect } from "react";
 import MeasureToolClass from "measuretool-googlemaps-v3";
 import type { LatLng } from "@/types";
-import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 
 // --- Measure tool state ---
 
@@ -49,7 +49,7 @@ export function endMeasure() {
 }
 
 export function useMeasureState() {
-	return useSyncExternalStore((cb) => subscribeEvent("measure:changed", cb), mSnap);
+	return useEventValue("measure:changed", mSnap);
 }
 
 export function useMeasure() {
@@ -61,17 +61,10 @@ export function useMeasure() {
 // --- Lat/lng anchor state ---
 
 let anchor: LatLng | null = null;
-function aSnap() {
-	return anchor;
-}
 
 export function setLatLngAnchor(v: LatLng | null) {
 	anchor = v;
 	emitEvent("anchor:changed");
-}
-
-export function useLatLngAnchor() {
-	return useSyncExternalStore((cb) => subscribeEvent("anchor:changed", cb), aSnap);
 }
 
 export function getLatLngAnchor() {

@@ -1,5 +1,4 @@
-import { useSyncExternalStore } from "react";
-import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
@@ -209,9 +208,9 @@ export function setSetting<K extends keyof AppSettings>(key: K, value: AppSettin
 }
 
 export function useSettings(): AppSettings {
-	return useSyncExternalStore((cb) => subscribeEvent("settings:changed", cb), getSettings);
+	return useEventValue("settings:changed", getSettings);
 }
 
 export function useSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
-	return useSyncExternalStore((cb) => subscribeEvent("settings:changed", cb), getSettings)[key];
+	return useEventValue("settings:changed", getSettings)[key];
 }

@@ -8,7 +8,8 @@ import { shortenMapsUrl } from "@/lib/sv/shortUrl";
 import { isOfficialPano } from "@/lib/sv/panoId";
 import { useSettings } from "@/store/settings";
 import { getCurrentMap, getActiveLocation, useActiveLocation } from "@/store/useMapStore";
-import { getPanoAltitude, subscribePanoAltitude } from "./PanoViewerContext";
+import { getPanoAltitude } from "./PanoViewerContext";
+import { subscribe as subscribeEvent } from "@/lib/events";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useHotkeyRef } from "@/lib/hooks/useHotkey";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
@@ -402,7 +403,7 @@ function CoordinateControl({ panorama }: { panorama: google.maps.StreetViewPanor
 				altitude === 0 ? ` zoom ${zoom}` : ` ${altitude.toFixed(2)}m · zoom ${zoom}`;
 	}, [panorama]);
 	usePanoEvent(panorama, "zoom_changed", updateDisplay);
-	useEffect(() => subscribePanoAltitude(updateDisplay), [updateDisplay]);
+	useEffect(() => subscribeEvent("altitude:changed", updateDisplay), [updateDisplay]);
 
 	return (
 		<div

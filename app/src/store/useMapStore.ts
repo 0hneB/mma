@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { memoOnRefs } from "@/lib/util/memoOnRefs";
 import type { WorkArea, MaybeLocation } from "@/types";
 import {
@@ -16,7 +16,7 @@ import type {
 	MapMetaPatch_Deserialize as MapMetaPatch,
 	SelectionSync,
 } from "@/bindings.gen";
-import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
@@ -63,7 +63,7 @@ import {
 
 function makeStoreHook<T>(getValue: () => T): () => T {
 	return function useStoreValue(): T {
-		return useSyncExternalStore((cb) => subscribeEvent("store:changed", cb), getValue);
+		return useEventValue("store:changed", getValue);
 	};
 }
 
@@ -161,7 +161,7 @@ export function hasCommitDiff(): boolean {
 }
 
 export function useCommitDiff() {
-	const version = useSyncExternalStore((cb) => subscribeEvent("store:changed", cb), getMapSnapshot);
+	const version = useEventValue("store:changed", getMapSnapshot);
 	useEffect(() => {
 		computeCommitDiff().then((d) => {
 			if (
@@ -1277,8 +1277,8 @@ export async function checkoutCommit(commitId: string) {
 
 export {
 	type ImportStaging,
-	useImportStaging,
 	useImportMarkerVersion,
+	getImportStaging,
 	getImportPreviewPositions,
 	beginImportFromPath,
 	beginImportPaste,
@@ -1288,7 +1288,6 @@ export {
 
 export {
 	type CommitDiffPreview,
-	useCommitDiffPreview,
 	useDiffMarkerVersion,
 	getCommitDiffPreview,
 	beginCommitDiffPreview,

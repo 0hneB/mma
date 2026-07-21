@@ -1,6 +1,5 @@
-import { useSyncExternalStore } from "react";
 import { getCommands, getCommand } from "@/store/commands";
-import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 
 const QUICKTAG_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 type QuicktagSlot = (typeof QUICKTAG_SLOTS)[number];
@@ -429,9 +428,5 @@ export function resetAllBindings(): void {
 }
 
 export function useBinding(action: HotkeyAction): string {
-	useSyncExternalStore(
-		(cb) => subscribeEvent("hotkeys:changed", cb),
-		() => getBinding(action),
-	);
-	return getBinding(action);
+	return useEventValue("hotkeys:changed", () => getBinding(action));
 }

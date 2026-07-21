@@ -4,9 +4,10 @@ import {
 	useMeasureState,
 	startMeasure,
 	endMeasure,
-	useLatLngAnchor,
+	getLatLngAnchor,
 	setLatLngAnchor,
 } from "@/lib/sv/measure";
+import { useEventValue } from "@/lib/events";
 import { getContextMenuTarget } from "@/lib/map/contextMenu";
 import { hostInstance, type MapHost } from "@/lib/map/host";
 
@@ -17,7 +18,7 @@ interface MapContextMenuProps {
 export const MapContextMenuContent = forwardRef<HTMLDivElement, MapContextMenuProps>(
 	({ host }, ref) => {
 		const { isMeasuring } = useMeasureState();
-		const anchor = useLatLngAnchor();
+		const anchor = useEventValue("anchor:changed", getLatLngAnchor);
 		// The measure tool is Google-only (measuretool-googlemaps-v3).
 		const gMap = hostInstance(host, "google");
 

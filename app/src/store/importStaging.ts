@@ -1,5 +1,4 @@
-﻿import { useSyncExternalStore } from "react";
-import { bboxTupleToBounds, isVirtualLocation } from "@/types";
+﻿import { bboxTupleToBounds, isVirtualLocation } from "@/types";
 import type { EditorImportPreview } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
@@ -7,7 +6,7 @@ import { mmaBufUrl } from "@/lib/util/util";
 import { fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import { whenSceneSettled } from "@/lib/render/sceneStore";
-import { subscribe as subscribeEvent } from "@/lib/events";
+import { useEventValue } from "@/lib/events";
 import {
 	bumpStore,
 	mutate,
@@ -32,18 +31,8 @@ let importStaging: ImportStaging | null = null;
 let importPreviewPositions = new Float32Array(0);
 let importMarkerVersion = 0;
 
-export function useImportStaging() {
-	return useSyncExternalStore(
-		(cb) => subscribeEvent("store:changed", cb),
-		() => importStaging,
-	);
-}
-
 export function useImportMarkerVersion() {
-	return useSyncExternalStore(
-		(cb) => subscribeEvent("store:changed", cb),
-		() => importMarkerVersion,
-	);
+	return useEventValue("store:changed", () => importMarkerVersion);
 }
 
 export function getImportPreviewPositions() {

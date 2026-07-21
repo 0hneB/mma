@@ -8,7 +8,7 @@ import { useSetting, getSettings } from "@/store/settings";
 import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
 import { getActiveLocation } from "@/store/useMapStore";
-import { subscribe } from "@/lib/events";
+import { subscribe, subscribeMany } from "@/lib/events";
 import { getReviewSession } from "@/lib/review/review";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
@@ -118,16 +118,14 @@ export function useMapSurface(
 		});
 	});
 
-	useEffect(() => {
-		const unsubs = [
-			subscribe("store:changed", scheduleRebuild),
-			subscribe("scene:changed", scheduleRebuild),
-			subscribe("trail:changed", scheduleRebuild),
-			subscribe("seen:changed", scheduleRebuild),
-			subscribe("anchor:changed", scheduleRebuild),
-		];
-		return () => unsubs.forEach((u) => u());
-	}, []);
+	useEffect(
+		() =>
+			subscribeMany(
+				["store:changed", "scene:changed", "trail:changed", "seen:changed", "anchor:changed"],
+				scheduleRebuild,
+			),
+		[],
+	);
 
 	const externalOverlay = opts.overlay ?? null;
 

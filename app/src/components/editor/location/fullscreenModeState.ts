@@ -1,6 +1,5 @@
-import { useSyncExternalStore } from "react";
 import { getSettings, setSetting } from "@/store/settings";
-import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 
 let panoFullscreen = false;
 let suspendedFullscreenMap = false;
@@ -13,10 +12,7 @@ function setPanoFullscreen(next: boolean): void {
 }
 
 export function usePanoFullscreen(): boolean {
-	return useSyncExternalStore(
-		(cb) => subscribeEvent("fullscreen:changed", cb),
-		() => panoFullscreen,
-	);
+	return useEventValue("fullscreen:changed", () => panoFullscreen);
 }
 
 export function togglePanoFullscreen(): void {
