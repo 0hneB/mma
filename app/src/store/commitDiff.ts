@@ -3,7 +3,8 @@ import type { LatLng } from "@/types";
 import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
-import { subscribeStore, bumpStore, getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
+import { subscribe as subscribeEvent } from "@/lib/events";
+import { bumpStore, getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
 
 /** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
  *  interleaved `[lng, lat]` f32; `diffMarkerVersion` bumps to rebuild the layers. */
@@ -20,11 +21,17 @@ let commitDiffPreview: CommitDiffPreview | null = null;
 let diffMarkerVersion = 0;
 
 export function useCommitDiffPreview() {
-	return useSyncExternalStore(subscribeStore, () => commitDiffPreview);
+	return useSyncExternalStore(
+		(cb) => subscribeEvent("store:changed", cb),
+		() => commitDiffPreview,
+	);
 }
 
 export function useDiffMarkerVersion() {
-	return useSyncExternalStore(subscribeStore, () => diffMarkerVersion);
+	return useSyncExternalStore(
+		(cb) => subscribeEvent("store:changed", cb),
+		() => diffMarkerVersion,
+	);
 }
 
 export function getCommitDiffPreview() {

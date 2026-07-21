@@ -7,18 +7,22 @@ const h = vi.hoisted(() => ({
 	storeListeners: [] as Array<() => void>,
 }));
 
+vi.mock("@/lib/events", () => ({
+	subscribe: (evt: string, fn: () => void) => {
+		if (evt === "store:changed") {
+			h.storeListeners.push(fn);
+			return () => {
+				h.storeListeners = h.storeListeners.filter((l) => l !== fn);
+			};
+		}
+		return () => {};
+	},
+}));
+
 vi.mock("@/store/useMapStore", () => ({
 	getActiveLocation: () => (h.activeId == null ? null : { id: h.activeId }),
 	getSelectedLocationIds: () => h.selected,
 	mapOpenMark: () => {},
-	renderDeltaBus: { on: () => () => {} },
-	selBitmaskBus: { on: () => () => {} },
-	subscribeStore: (fn: () => void) => {
-		h.storeListeners.push(fn);
-		return () => {
-			h.storeListeners = h.storeListeners.filter((l) => l !== fn);
-		};
-	},
 }));
 
 import { getScene, subscribeScene, startSceneEngine } from "@/lib/render/sceneStore";

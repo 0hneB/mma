@@ -7,8 +7,8 @@ import { mmaBufUrl } from "@/lib/util/util";
 import { fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import { whenSceneSettled } from "@/lib/render/sceneStore";
+import { subscribe as subscribeEvent } from "@/lib/events";
 import {
-	subscribeStore,
 	bumpStore,
 	mutate,
 	getCurrentMap,
@@ -33,11 +33,17 @@ let importPreviewPositions = new Float32Array(0);
 let importMarkerVersion = 0;
 
 export function useImportStaging() {
-	return useSyncExternalStore(subscribeStore, () => importStaging);
+	return useSyncExternalStore(
+		(cb) => subscribeEvent("store:changed", cb),
+		() => importStaging,
+	);
 }
 
 export function useImportMarkerVersion() {
-	return useSyncExternalStore(subscribeStore, () => importMarkerVersion);
+	return useSyncExternalStore(
+		(cb) => subscribeEvent("store:changed", cb),
+		() => importMarkerVersion,
+	);
 }
 
 export function getImportPreviewPositions() {

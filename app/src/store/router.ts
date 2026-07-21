@@ -11,13 +11,8 @@
 // render, before any async map load). The store (currentMap) is the data;
 // applyRoute reconciles the store to the URL.
 import { useSyncExternalStore } from "react";
-import {
-	openMap,
-	closeMap,
-	getCurrentMapId,
-	getCurrentMap,
-	subscribeStore,
-} from "@/store/useMapStore";
+import { openMap, closeMap, getCurrentMapId, getCurrentMap } from "@/store/useMapStore";
+import { subscribe as subscribeEvent } from "@/lib/events";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface Route {
@@ -103,6 +98,6 @@ function syncTitle() {
 export function initRouter() {
 	window.addEventListener("popstate", applyRoute);
 	window.addEventListener("hashchange", applyRoute);
-	subscribeStore(syncTitle);
+	subscribeEvent("store:changed", syncTitle);
 	applyRoute();
 }

@@ -8,7 +8,7 @@ import { useSetting, getSettings } from "@/store/settings";
 import { subscribeLatLngAnchor } from "@/lib/sv/measure";
 import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
-import { subscribeStore, getActiveLocation } from "@/store/useMapStore";
+import { getActiveLocation } from "@/store/useMapStore";
 import { subscribe } from "@/lib/events";
 import { getReviewSession } from "@/lib/review/review";
 import { useHotkey } from "@/lib/hooks/useHotkey";
@@ -123,7 +123,7 @@ export function useMapSurface(
 
 	useEffect(() => {
 		const unsubs = [
-			subscribeStore(scheduleRebuild),
+			subscribe("store:changed", scheduleRebuild),
 			subscribeScene(scheduleRebuild),
 			subscribeTrail(scheduleRebuild),
 			subscribeSeenOverlay(scheduleRebuild),

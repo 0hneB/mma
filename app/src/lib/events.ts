@@ -4,13 +4,21 @@ import type {
 	Update,
 	LocationPatch_Deserialize,
 	MapData,
+	RenderDelta,
 	Selection,
 	Tag,
 	TagPatch,
 } from "@/bindings.gen";
+import type { SelectedIds, SelCellEntry } from "@/lib/render/CellManager";
 
 /** Phantom helper: captures a payload type at the value level without a real value. */
 const event = <T>() => null as T;
+
+export interface SelectionBitmaskPayload {
+	selColors: [number, number, number][];
+	cellEntries: SelCellEntry[];
+	setIds: (ids: SelectedIds) => void;
+}
 
 const EVENT_DEFS = {
 	"location:add": event<Location[]>(),
@@ -23,6 +31,9 @@ const EVENT_DEFS = {
 	"active:change": event<number | null>(),
 	"map:open": event<MapData>(),
 	"map:close": event<void>(),
+	"store:changed": event<void>(),
+	"render:delta": event<RenderDelta>(),
+	"render:selection": event<SelectionBitmaskPayload>(),
 };
 
 export type EditorEventMap = typeof EVENT_DEFS;

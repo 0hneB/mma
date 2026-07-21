@@ -15,7 +15,7 @@ import type {
 	MapMetaPatch_Deserialize as MapMetaPatch,
 	SelectionSync,
 } from "@/bindings.gen";
-import { emit as emitEvent } from "@/lib/events";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
@@ -33,43 +33,10 @@ import {
 	type MergeWinner,
 } from "@/lib/data/fieldOps";
 import type { LocationPatch_Deserialize as LocationPatch, Update, TagPatch } from "@/bindings.gen";
-import type { RenderDelta } from "@/bindings.gen";
-import {
-	SelectedIds,
-	decodeSelectionBitmask,
-	type ReadonlyIdSet,
-	type SelCellEntry,
-} from "@/lib/render/CellManager";
+import { SelectedIds, decodeSelectionBitmask, type ReadonlyIdSet } from "@/lib/render/CellManager";
 import { resetImportState, bumpImportMarkerVersion } from "./importStaging";
 import { resetCommitDiffState } from "./commitDiff";
 import { setCachedMapList, invalidateMapList, reloadMapList } from "./mapList";
-
-/** Minimal pub/sub bus. `.on()` returns an unsubscribe function. */
-function createBus<T extends (...args: never[]) => void>() {
-	let handlers: T[] = [];
-	return {
-		on: (fn: T) => {
-			handlers.push(fn);
-			return () => {
-				handlers = handlers.filter((h) => h !== fn);
-			};
-		},
-		emit: ((...args: Parameters<T>) => {
-			for (const h of handlers) h(...args);
-		}) as T,
-	};
-}
-
-/** Fires when Rust sends incremental render changes (adds/removes/patches to cell buffers). */
-export const renderDeltaBus = createBus<(delta: RenderDelta) => void>();
-
-type SelectionBitmaskHandler = (
-	selColors: [number, number, number][],
-	cellEntries: SelCellEntry[],
-	setIds: (ids: SelectedIds) => void,
-) => void;
-/** Fires when selection bitmasks are resolved. Subscribers apply per-cell masks to the render overlay. */
-export const selBitmaskBus = createBus<SelectionBitmaskHandler>();
 
 import type { Selection, SelectionProps } from "@/bindings.gen";
 import {
@@ -93,23 +60,9 @@ import {
 	isolateGhostKeys,
 } from "./selections";
 
-const storeBus = createBus<() => void>();
-const subscribe = storeBus.on;
-const notify = storeBus.emit;
-
-/** Subscribe to any store mutation (map open/close, rename, edits, ...). */
-export const subscribeStore = subscribe;
-/** Fire the store bus directly (for sibling store modules). */
-export const notifyStore = notify;
-
-/** Build a reactive store hook: subscribe to the bus, return the latest value.
- *  The value itself is the useSyncExternalStore snapshot, so consumers re-render
- *  only when its reference changes (Object.is). Two invariants follow:
- *  - getValue must return a cached/stable reference, never construct per call
- *  - mutations must reassign the published reference, never mutate in place */
 function makeStoreHook<T>(getValue: () => T): () => T {
 	return function useStoreValue(): T {
-		return useSyncExternalStore(subscribe, getValue);
+		return useSyncExternalStore((cb) => subscribeEvent("store:changed", cb), getValue);
 	};
 }
 
@@ -179,7 +132,7 @@ function getMapSnapshot() {
 /** Mark the current map's content dirty and re-render its consumers. */
 function bump() {
 	mapVersion++;
-	notify();
+	emitEvent("store:changed");
 }
 /** Alias of bump() for sibling store modules. */
 export const bumpStore = bump;
@@ -225,7 +178,7 @@ export function hasCommitDiff(): boolean {
 }
 
 export function useCommitDiff() {
-	const version = useSyncExternalStore(subscribe, getMapSnapshot);
+	const version = useSyncExternalStore((cb) => subscribeEvent("store:changed", cb), getMapSnapshot);
 	useEffect(() => {
 		computeCommitDiff().then((d) => {
 			if (
@@ -318,7 +271,7 @@ export async function flushSave(): Promise<void> {
 /** One-time store startup. The app calls this; plugins never need to. */
 export async function initStore() {
 	setCachedMapList(await cmd.storeListMaps());
-	notify();
+	emitEvent("store:changed");
 	listen("map-list-changed", () => reloadMapList());
 }
 
@@ -359,7 +312,7 @@ export async function openMap(id: string) {
 	const t = trace("openMap");
 	currentMapId = id;
 	currentMap = null;
-	notify();
+	emitEvent("store:changed");
 	const meta = await cmd.storeGetMap(id);
 	t.step("getMap");
 
@@ -377,7 +330,7 @@ export async function openMap(id: string) {
 			log.error("[openMap] store_open_map failed:", e);
 			currentMap = null;
 			currentMapId = null;
-			notify();
+			emitEvent("store:changed");
 			return;
 		}
 		cmd.storeTouchMapOpened(id);
@@ -399,7 +352,13 @@ function resetMapState() {
 	knownFieldKeys = new Set();
 	resetForMapChange();
 
-	renderDeltaBus.emit({ added: [], updated: [], removed: [], colorPatches: [], fullReset: true });
+	emitEvent("render:delta", {
+		added: [],
+		updated: [],
+		removed: [],
+		colorPatches: [],
+		fullReset: true,
+	});
 	undoRedoState = { canUndo: false, canRedo: false };
 	tagCounts = {};
 	bump();
@@ -573,11 +532,15 @@ function syncMutationResult(r: MutationResult) {
 	if (r.selectionSync) applySelectionSync(r.selectionSync);
 }
 
-/** Decode the inline bitmask bytes from Rust and emit to selBitmaskBus. */
+/** Decode the inline bitmask bytes from Rust and emit to the event bus. */
 export function emitBitmask(bytes: number[]) {
 	const { selColors, cellEntries } = decodeSelectionBitmask(bytes);
-	selBitmaskBus.emit(selColors, cellEntries, (ids) => {
-		selectedLocationIds = ids;
+	emitEvent("render:selection", {
+		selColors,
+		cellEntries,
+		setIds: (ids) => {
+			selectedLocationIds = ids;
+		},
 	});
 }
 
@@ -604,7 +567,7 @@ export async function mutate(fn: () => Promise<MutationResult>): Promise<Mutatio
 	if (!currentMap) return EMPTY_MUTATION;
 	const r = await fn();
 	await inflightPersist;
-	renderDeltaBus.emit(r.delta);
+	emitEvent("render:delta", r.delta);
 	syncMutationResult(r);
 	bump();
 	scheduleSave();
@@ -1316,7 +1279,13 @@ export async function checkoutCommit(commitId: string) {
 	activeLocationId = null;
 	undoRedoState = { canUndo: false, canRedo: false };
 
-	renderDeltaBus.emit({ added: [], updated: [], removed: [], colorPatches: [], fullReset: true });
+	emitEvent("render:delta", {
+		added: [],
+		updated: [],
+		removed: [],
+		colorPatches: [],
+		fullReset: true,
+	});
 	bump();
 	await invalidateMapList();
 }

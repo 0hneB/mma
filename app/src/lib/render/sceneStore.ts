@@ -10,11 +10,9 @@ import {
 	getActiveLocation,
 	getSelectedLocationIds,
 	mapOpen,
-	renderDeltaBus,
-	selBitmaskBus,
 	setSelectedLocationIds,
-	subscribeStore,
 } from "@/store/useMapStore";
+import { subscribe as subscribeEvent } from "@/lib/events";
 import type { MarkerStyle } from "@/types";
 
 // Owns marker/scene data for every map surface. The editor map drives the
@@ -166,7 +164,7 @@ export function clearScene() {
 
 // Subscriptions live for the editor map's lifetime (one producer). Returns a stop fn.
 export function startSceneEngine(): () => void {
-	const unsubDelta = renderDeltaBus.on((delta) => {
+	const unsubDelta = subscribeEvent("render:delta", (delta) => {
 		if (delta.fullReset) {
 			void loadScene(lastMarkerStyle);
 			return;
@@ -186,7 +184,7 @@ export function startSceneEngine(): () => void {
 		if (affected.size > 0 || delta.colorPatches.length > 0) bumpScene();
 	});
 
-	const unsubSel = selBitmaskBus.on((selColors, cellEntries, setIds) => {
+	const unsubSel = subscribeEvent("render:selection", ({ selColors, cellEntries, setIds }) => {
 		const t = trace("selection", { summary: true });
 		const [r, g, b] = markerDefault;
 		const ids = scene.applySelectionBitmasks(selColors, cellEntries, [r, g, b]);
@@ -197,7 +195,7 @@ export function startSceneEngine(): () => void {
 
 	// Active-location switch fires a plain store mutation (store_set_active is fire-and-forget,
 	// no delta). Re-derive the scene's active highlight when the id changes.
-	const unsubStore = subscribeStore(() => {
+	const unsubStore = subscribeEvent("store:changed", () => {
 		const activeId = getActiveLocation()?.id ?? null;
 		if (activeId !== prevActiveId) {
 			applyActive();
