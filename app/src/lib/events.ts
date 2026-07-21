@@ -47,6 +47,10 @@ const EVENT_DEFS = {
 	"trail:changed": event<void>(),
 	"altitude:changed": event<void>(),
 	"seen:changed": event<void>(),
+	"update:changed": event<void>(),
+	"review:changed": event<void>(),
+	"fields:changed": event<void>(),
+	"route:changed": event<void>(),
 };
 
 export type EditorEventMap = typeof EVENT_DEFS;
@@ -89,6 +93,11 @@ export function useEvent(evt: EditorEvent | readonly EditorEvent[]): number {
 		(cb) => subscribeMany(events, cb),
 		() => events.reduce((sum, e) => sum + (versions.get(e) ?? 0), 0),
 	);
+}
+
+/** Non-hook read of the version counter for a single event. */
+export function getEventVersion(evt: EditorEvent): number {
+	return versions.get(evt) ?? 0;
 }
 
 export function subscribe<E extends EditorEvent>(evt: E, handler: EventHandler<E>): () => void {

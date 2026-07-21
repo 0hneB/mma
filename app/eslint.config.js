@@ -82,6 +82,12 @@ export default defineConfig([
 					selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
 					message: "No insertAdjacentHTML - use React or DOM APIs.",
 				},
+				{
+					selector:
+						"ImportDeclaration[source.value='react'] > ImportSpecifier[imported.name='useSyncExternalStore']",
+					message:
+						"Use useEvent/useEventValue from @/lib/events instead of raw useSyncExternalStore. The event system handles subscribe + versioning centrally.",
+				},
 			],
 			"@typescript-eslint/no-unused-vars": [
 				"error",
@@ -112,6 +118,41 @@ export default defineConfig([
 								"File dialogs belong in components, not the store. Call the dialog in the component, pass the result to a store function.",
 						},
 					],
+				},
+			],
+		},
+	},
+	{
+		files: ["src/lib/events.ts", "src/store/scope.ts", "src/lib/hooks/useLocalStorage.ts", "src/plugins/**/*.ts"],
+		rules: {
+			"no-restricted-syntax": [
+				"error",
+				{
+					selector: "JSXOpeningElement[name.name='select']",
+					message: "Use <NSelect> (@/components/primitives/NSelect) instead of a raw <select>.",
+				},
+				{
+					selector:
+						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='radio']",
+					message: 'Use <Radio> (@/components/primitives/Radio) instead of a raw <input type="radio">.',
+				},
+				{
+					selector:
+						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='checkbox']",
+					message:
+						'Use <Checkbox> (@/components/primitives/Checkbox) instead of a raw <input type="checkbox">.',
+				},
+				{
+					selector: "CallExpression[callee.name=/^(confirm|alert|prompt)$/]",
+					message: "Native confirm()/alert()/prompt() hang in WebView2 - use a Radix dialog instead.",
+				},
+				{
+					selector: "AssignmentExpression[left.property.name='innerHTML']",
+					message: "No raw innerHTML - use React or textContent.",
+				},
+				{
+					selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
+					message: "No insertAdjacentHTML - use React or DOM APIs.",
 				},
 			],
 		},

@@ -10,9 +10,8 @@
 // synchronously from the hash at module load, so it's correct on the very first
 // render, before any async map load). The store (currentMap) is the data;
 // applyRoute reconciles the store to the URL.
-import { useSyncExternalStore } from "react";
 import { openMap, closeMap, getCurrentMapId, getCurrentMap } from "@/store/useMapStore";
-import { subscribe as subscribeEvent } from "@/lib/events";
+import { emit, useEventValue, subscribe as subscribeEvent } from "@/lib/events";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface Route {
@@ -44,20 +43,15 @@ export function build(r: Route): string {
 // Parsed synchronously at module load (before first render) so the URL is the
 // render authority from frame one — no dependency on openMap's timing.
 let route: Route = parse(location.hash);
-const listeners = new Set<() => void>();
-const subscribe = (cb: () => void) => {
-	listeners.add(cb);
-	return () => listeners.delete(cb);
-};
 
 /** The map the URL says should be open (intent), independent of load state. */
 export function useTargetMapId(): string | null {
-	return useSyncExternalStore(subscribe, () => route.mapId);
+	return useEventValue("route:changed", () => route.mapId);
 }
 
 /** Manual overlay chapter from the URL, or null when closed. */
 export function useManualChapter(): string | null {
-	return useSyncExternalStore(subscribe, () => route.manual);
+	return useEventValue("route:changed", () => route.manual);
 }
 
 function applyRoute() {
@@ -69,7 +63,7 @@ function applyRoute() {
 		if (next.mapId) void openMap(next.mapId);
 		else void closeMap();
 	}
-	if (changed) for (const l of listeners) l();
+	if (changed) emit("route:changed");
 }
 
 function navigate(next: Route) {
