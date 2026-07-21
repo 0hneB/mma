@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { memoOnRefs } from "@/lib/util/memoOnRefs";
 import type { WorkArea, MaybeLocation } from "@/types";
 import {
 	isVirtualLocation,
@@ -63,24 +64,6 @@ import {
 function makeStoreHook<T>(getValue: () => T): () => T {
 	return function useStoreValue(): T {
 		return useSyncExternalStore((cb) => subscribeEvent("store:changed", cb), getValue);
-	};
-}
-
-/** Single-slot memo for values derived from store state: re-derives only when an
- *  input reference changes, so repeated calls return the same object. This is what
- *  lets a derived getter double as a hook snapshot (see makeStoreHook). Inputs
- *  must be the copy-on-write references the derivation reads. */
-function memoOnRefs<const I extends readonly unknown[], O>(
-	getInputs: () => I,
-	derive: (...inputs: I) => O,
-): () => O {
-	let slot: { inputs: I; output: O } | null = null;
-	return () => {
-		const inputs = getInputs();
-		if (!slot || slot.inputs.some((v, i) => v !== inputs[i])) {
-			slot = { inputs, output: derive(...inputs) };
-		}
-		return slot.output;
 	};
 }
 
