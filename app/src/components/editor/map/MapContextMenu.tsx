@@ -6,8 +6,8 @@ import {
 	endMeasure,
 	useLatLngAnchor,
 	setLatLngAnchor,
-	getContextMenuTarget,
 } from "@/lib/sv/measure";
+import { getContextMenuTarget } from "@/lib/map/contextMenu";
 import { hostInstance, type MapHost } from "@/lib/map/host";
 
 interface MapContextMenuProps {

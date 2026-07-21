@@ -8,7 +8,7 @@ import {
 	formatDistance,
 	useScoreMaxError,
 	WORLD_MAX_ERROR,
-} from "@/lib/sv/measure";
+} from "@/lib/geo/scoring";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Radio } from "@/components/primitives/Radio";
 

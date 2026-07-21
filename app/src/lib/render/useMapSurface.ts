@@ -5,7 +5,8 @@ import { getScene, subscribeScene } from "@/lib/render/sceneStore";
 import type { MapHost, DeckOverlayHandle } from "@/lib/map/host";
 
 import { useSetting, getSettings } from "@/store/settings";
-import { useScoreMaxError, subscribeLatLngAnchor } from "@/lib/sv/measure";
+import { subscribeLatLngAnchor } from "@/lib/sv/measure";
+import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
 import { subscribeStore, getActiveLocation } from "@/store/useMapStore";
 import { subscribe } from "@/lib/events";

@@ -9,7 +9,7 @@ import { tryInterceptClick, fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import type { ParsedLocation } from "@/lib/data/importExport";
 import { openSeenEntry } from "@/lib/seen/seenOverlay";
-import { openContextMenuLatLng, openContextMenuLocation } from "@/lib/sv/measure";
+import { openContextMenuLatLng, openContextMenuLocation } from "@/lib/map/contextMenu";
 import { trace } from "@/lib/util/debug";
 import {
 	addLocations,
