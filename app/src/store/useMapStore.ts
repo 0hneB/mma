@@ -35,7 +35,7 @@ import {
 } from "@/lib/data/fieldOps";
 import type { LocationPatch_Deserialize as LocationPatch, Update, TagPatch } from "@/bindings.gen";
 import { SelectedIds, decodeSelectionBitmask, type ReadonlyIdSet } from "@/lib/render/CellManager";
-import { resetImportState, bumpImportMarkerVersion } from "./importStaging";
+import { resetImportState } from "./importStaging";
 import { resetCommitDiffState } from "./commitDiff";
 import { setCachedMapList, invalidateMapList, reloadMapList } from "./mapList";
 
@@ -576,11 +576,7 @@ export async function removeLocations(ids: ReadonlyIdSet) {
 		await setActiveLocation(null);
 		return;
 	}
-	if (activeLocationId && ids.has(activeLocationId)) {
-		activeLocationId = null;
-		cachedActiveLocation = null;
-		workArea = "overview";
-	}
+	if (activeLocationId && ids.has(activeLocationId)) setWorkArea("overview");
 	emitEvent("store:changed");
 	await mutate(() => cmd.storeRemoveLocations([...ids])).catch((e) =>
 		log.error("[delete] store_remove_locations failed:", e),
@@ -953,7 +949,7 @@ export async function openStagedLocation(index: number) {
 		flags: loc.flags | LocationFlag.ImportPreview,
 	};
 	workArea = "location";
-	bumpImportMarkerVersion();
+	emitEvent("import-markers:changed");
 	emitEvent("store:changed");
 	emitEvent("active:change", null);
 }
@@ -973,6 +969,15 @@ export function previewVirtualLocation(loc: Location) {
 	emitEvent("active:change", null);
 }
 
+/** Drop the active location, keeping Rust's `active_id` and `active:change` in step. */
+function clearActiveLocation(): void {
+	if (activeLocationId == null && cachedActiveLocation == null) return;
+	if (activeLocationId != null) fireAndForget(cmd.storeSetActive(null), "clearActive");
+	activeLocationId = null;
+	cachedActiveLocation = null;
+	emitEvent("active:change", null);
+}
+
 /** Materialize a `MaybeLocation`. */
 export async function resolveLocation(m: MaybeLocation): Promise<Location | null> {
 	return typeof m === "number" ? await cmd.storeGetLocation(m) : m;
@@ -984,17 +989,16 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 	const t = trace("setActive");
 	const id = target == null ? null : locId(target);
 	if (cachedActiveLocation && isVirtualLocation(cachedActiveLocation)) {
-		bumpImportMarkerVersion();
+		emitEvent("import-markers:changed");
 		const wasStaged = isImportPreview(cachedActiveLocation);
 		if (id == null) {
-			cachedActiveLocation = null;
+			clearActiveLocation();
 
 			if (wasStaged) workArea = "import";
 			else if (activePluginId) workArea = "plugin";
 			else workArea = "overview";
 
 			emitEvent("store:changed");
-			emitEvent("active:change", null);
 			t.end();
 			return;
 		}
@@ -1009,23 +1013,23 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 			if (nearby.length >= 2) {
 				duplicateLocations = nearby;
 				workArea = "duplicates";
-				activeLocationId = null;
-				cachedActiveLocation = null;
+				clearActiveLocation();
 				emitEvent("store:changed");
-				emitEvent("active:change", null);
 				t.end({ duplicates: nearby.length });
 				return;
 			}
 		}
 		cachedActiveLocation = loc ?? null;
 		workArea = "location";
-	} else {
-		cachedActiveLocation = null;
-		duplicateLocations = [];
-		workArea = activePluginId ? "plugin" : "overview";
+		emitEvent("store:changed");
+		emitEvent("active:change", activeLocationId);
+		t.end();
+		return;
 	}
+	clearActiveLocation();
+	duplicateLocations = [];
+	workArea = activePluginId ? "plugin" : "overview";
 	emitEvent("store:changed");
-	emitEvent("active:change", activeLocationId);
 	t.end();
 }
 
@@ -1054,10 +1058,7 @@ export function closeDuplicates() {
  *  leaving "location" clears the active location, leaving "plugin" clears the plugin id. */
 export function setWorkArea(area: WorkArea) {
 	workArea = area;
-	if (area !== "location") {
-		activeLocationId = null;
-		cachedActiveLocation = null;
-	}
+	if (area !== "location") clearActiveLocation();
 	if (area !== "plugin") activePluginId = null;
 	emitEvent("store:changed");
 }
@@ -1175,11 +1176,8 @@ export async function removeTagFromAllLocations(tagId: number) {
 async function undoRedo(which: () => Promise<MutationResult>) {
 	try {
 		const r = await mutate(which);
-		if (activeLocationId && r.delta.removed.some((e) => e.id === activeLocationId)) {
-			activeLocationId = null;
-			cachedActiveLocation = null;
-			workArea = "overview";
-		}
+		if (activeLocationId && r.delta.removed.some((e) => e.id === activeLocationId))
+			setWorkArea("overview");
 	} catch (e) {
 		log.debug(`[${which.name}] nothing or failed:`, e);
 	}

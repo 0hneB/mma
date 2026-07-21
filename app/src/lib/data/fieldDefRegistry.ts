@@ -23,7 +23,7 @@
  * no layer declares the key (the UI falls back to the raw key name).
  */
 
-import { emit, getEventVersion } from "@/lib/events";
+import { emit } from "@/lib/events";
 import type { ExtraFieldDef } from "@/bindings.gen";
 
 /**
@@ -78,12 +78,6 @@ export function getBuiltinKeys(): string[] {
 
 let pluginDefs: Record<string, ExtraFieldDef> = {};
 let userDefs: Record<string, ExtraFieldDef> = {};
-
-/** Snapshot of the def-change version (bumps on every layer mutation). */
-export function getFieldDefsVersion(): number {
-	return getEventVersion("fields:changed");
-}
-
 /** Register field definitions from an enrichment provider (called at activation). */
 export function registerPluginFieldDefs(defs: Record<string, ExtraFieldDef>) {
 	pluginDefs = { ...pluginDefs, ...defs };

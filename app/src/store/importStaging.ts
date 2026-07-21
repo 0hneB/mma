@@ -42,10 +42,6 @@ export function resetImportState() {
 	importPreviewPositions = new Float32Array(0);
 }
 
-export function bumpImportMarkerVersion() {
-	emitEvent("import-markers:changed");
-}
-
 async function setImportStaging(preview: EditorImportPreview, source: "file" | "paste") {
 	let positions = new Float32Array(0);
 	try {

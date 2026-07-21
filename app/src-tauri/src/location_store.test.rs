@@ -1934,7 +1934,6 @@ fn delta_overlay_round_trip_preserves_store_state() {
 
 // -----------------------------------------------------------------------
 // Bug regression: active location removed by undo
-// (5ac390a)
 // -----------------------------------------------------------------------
 
 #[test]
