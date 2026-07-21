@@ -9,6 +9,51 @@ import noIpcInLoop from "./eslint-rules/no-ipc-in-loop.js";
 import noRedundantMutateGuard from "./eslint-rules/no-redundant-mutate-guard.js";
 import noSelectionAlias from "./eslint-rules/no-selection-alias.js";
 
+const RESTRICTED_IMPORT_PATHS = [
+	{
+		name: "@tauri-apps/api/core",
+		importNames: ["invoke"],
+		message: "Use the typed cmd proxy (lib/commands.ts) instead of raw invoke().",
+	},
+];
+
+const USE_SYNC_EXTERNAL_STORE_BAN = {
+	selector:
+		"ImportDeclaration[source.value='react'] > ImportSpecifier[imported.name='useSyncExternalStore']",
+	message:
+		"Use useEvent/useEventValue from @/lib/events instead of raw useSyncExternalStore. The event system handles subscribe + versioning centrally.",
+};
+
+const RESTRICTED_SYNTAX = [
+	{
+		selector: "JSXOpeningElement[name.name='select']",
+		message: "Use <NSelect> (@/components/primitives/NSelect) instead of a raw <select>.",
+	},
+	{
+		selector:
+			"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='radio']",
+		message: 'Use <Radio> (@/components/primitives/Radio) instead of a raw <input type="radio">.',
+	},
+	{
+		selector:
+			"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='checkbox']",
+		message:
+			'Use <Checkbox> (@/components/primitives/Checkbox) instead of a raw <input type="checkbox">.',
+	},
+	{
+		selector: "CallExpression[callee.name=/^(confirm|alert|prompt)$/]",
+		message: "Native confirm()/alert()/prompt() hang in WebView2 - use a Radix dialog instead.",
+	},
+	{
+		selector: "AssignmentExpression[left.property.name='innerHTML']",
+		message: "No raw innerHTML - use React or textContent.",
+	},
+	{
+		selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
+		message: "No insertAdjacentHTML - use React or DOM APIs.",
+	},
+];
+
 export default defineConfig([
 	globalIgnores(["dist", "src/bindings.gen.ts", "src/components/manual/manual-img-dims.gen.ts"]),
 	{
@@ -44,51 +89,10 @@ export default defineConfig([
 			"no-restricted-imports": [
 				"error",
 				{
-					paths: [
-						{
-							name: "@tauri-apps/api/core",
-							importNames: ["invoke"],
-							message: "Use the typed cmd proxy (lib/commands.ts) instead of raw invoke().",
-						},
-					],
+					paths: RESTRICTED_IMPORT_PATHS,
 				},
 			],
-			"no-restricted-syntax": [
-				"error",
-				{
-					selector: "JSXOpeningElement[name.name='select']",
-					message: "Use <NSelect> (@/components/primitives/NSelect) instead of a raw <select>.",
-				},
-				{
-					selector:
-						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='radio']",
-					message: 'Use <Radio> (@/components/primitives/Radio) instead of a raw <input type="radio">.',
-				},
-				{
-					selector:
-						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='checkbox']",
-					message:
-						'Use <Checkbox> (@/components/primitives/Checkbox) instead of a raw <input type="checkbox">.',
-				},
-				{
-					selector: "CallExpression[callee.name=/^(confirm|alert|prompt)$/]",
-					message: "Native confirm()/alert()/prompt() hang in WebView2 - use a Radix dialog instead.",
-				},
-				{
-					selector: "AssignmentExpression[left.property.name='innerHTML']",
-					message: "No raw innerHTML - use React or textContent.",
-				},
-				{
-					selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
-					message: "No insertAdjacentHTML - use React or DOM APIs.",
-				},
-				{
-					selector:
-						"ImportDeclaration[source.value='react'] > ImportSpecifier[imported.name='useSyncExternalStore']",
-					message:
-						"Use useEvent/useEventValue from @/lib/events instead of raw useSyncExternalStore. The event system handles subscribe + versioning centrally.",
-				},
-			],
+			"no-restricted-syntax": ["error", ...RESTRICTED_SYNTAX, USE_SYNC_EXTERNAL_STORE_BAN],
 			"@typescript-eslint/no-unused-vars": [
 				"error",
 				{
@@ -101,17 +105,14 @@ export default defineConfig([
 		},
 	},
 	{
+		// Store adds a ban on dialogs (dialogs belong in components, not the store).
 		files: ["src/store/**/*.ts"],
 		rules: {
 			"no-restricted-imports": [
 				"error",
 				{
 					paths: [
-						{
-							name: "@tauri-apps/api/core",
-							importNames: ["invoke"],
-							message: "Use the typed cmd proxy (lib/commands.ts) instead of raw invoke().",
-						},
+						...RESTRICTED_IMPORT_PATHS,
 						{
 							name: "@tauri-apps/plugin-dialog",
 							message:
@@ -123,38 +124,15 @@ export default defineConfig([
 		},
 	},
 	{
-		files: ["src/lib/events.ts", "src/store/scope.ts", "src/lib/hooks/useLocalStorage.ts", "src/plugins/**/*.ts"],
+		// Legitimate low-level users of useSyncExternalStore: exempt from that one ban.
+		files: [
+			"src/lib/events.ts",
+			"src/store/scope.ts",
+			"src/lib/hooks/useLocalStorage.ts",
+			"src/plugins/generator/ui/progressSignal.ts",
+		],
 		rules: {
-			"no-restricted-syntax": [
-				"error",
-				{
-					selector: "JSXOpeningElement[name.name='select']",
-					message: "Use <NSelect> (@/components/primitives/NSelect) instead of a raw <select>.",
-				},
-				{
-					selector:
-						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='radio']",
-					message: 'Use <Radio> (@/components/primitives/Radio) instead of a raw <input type="radio">.',
-				},
-				{
-					selector:
-						"JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='checkbox']",
-					message:
-						'Use <Checkbox> (@/components/primitives/Checkbox) instead of a raw <input type="checkbox">.',
-				},
-				{
-					selector: "CallExpression[callee.name=/^(confirm|alert|prompt)$/]",
-					message: "Native confirm()/alert()/prompt() hang in WebView2 - use a Radix dialog instead.",
-				},
-				{
-					selector: "AssignmentExpression[left.property.name='innerHTML']",
-					message: "No raw innerHTML - use React or textContent.",
-				},
-				{
-					selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
-					message: "No insertAdjacentHTML - use React or DOM APIs.",
-				},
-			],
+			"no-restricted-syntax": ["error", ...RESTRICTED_SYNTAX],
 		},
 	},
 	{
