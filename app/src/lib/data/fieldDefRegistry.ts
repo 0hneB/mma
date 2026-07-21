@@ -23,7 +23,7 @@
  * no layer declares the key (the UI falls back to the raw key name).
  */
 
-import { emit, useEvent, getEventVersion } from "@/lib/events";
+import { emit, getEventVersion } from "@/lib/events";
 import type { ExtraFieldDef } from "@/bindings.gen";
 
 /**
@@ -82,10 +82,6 @@ let userDefs: Record<string, ExtraFieldDef> = {};
 /** Snapshot of the def-change version (bumps on every layer mutation). */
 export function getFieldDefsVersion(): number {
 	return getEventVersion("fields:changed");
-}
-/** Reactive hook: re-renders when any field def changes (label, type, comparison, ...). */
-export function useFieldDefsVersion(): number {
-	return useEvent("fields:changed");
 }
 
 /** Register field definitions from an enrichment provider (called at activation). */

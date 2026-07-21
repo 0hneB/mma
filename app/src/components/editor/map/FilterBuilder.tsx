@@ -3,12 +3,8 @@ import { useState, useEffect, useMemo } from "react";
 import type { Selection, FilterOp, ExtraFieldDef } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { NSelect } from "@/components/primitives/NSelect";
-import {
-	fieldLabel,
-	useFieldDefsVersion,
-	getAllFieldDefs,
-	isListableField,
-} from "@/lib/data/fieldDefRegistry";
+import { fieldLabel, getAllFieldDefs, isListableField } from "@/lib/data/fieldDefRegistry";
+import { useEvent } from "@/lib/events";
 import { pickPeriodEnd, hasTimeOfDay, dateParts, partsToEpoch } from "@/lib/data/fieldOps";
 import { useKnownFieldKeys, addSelections } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
@@ -72,7 +68,7 @@ export interface FieldEntry {
 
 export function useExtraFieldKeys(): FieldEntry[] {
 	const keys = useKnownFieldKeys();
-	const defsVersion = useFieldDefsVersion();
+	const defsVersion = useEvent("fields:changed");
 	return useMemo(() => {
 		const allDefs = getAllFieldDefs();
 		const seen = new Set<string>();

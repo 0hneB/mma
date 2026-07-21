@@ -16,7 +16,7 @@ import type {
 	MapMetaPatch_Deserialize as MapMetaPatch,
 	SelectionSync,
 } from "@/bindings.gen";
-import { emit as emitEvent, useEventValue } from "@/lib/events";
+import { emit as emitEvent, useEvent, useEventValue } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
@@ -85,7 +85,6 @@ let activeLocationId: number | null = null;
 let duplicateLocations: Location[] = [];
 let workArea: WorkArea = "overview";
 let activePluginId: string | null = null;
-let mapVersion = 0;
 let tagCounts: Record<number, number> = {};
 let undoRedoState = { canUndo: false, canRedo: false };
 /** Extra-field keys known to exist in location data on the current map.
@@ -108,18 +107,6 @@ async function computeCommitDiff(): Promise<CommitDiff> {
 	return { added, removed, modified };
 }
 
-function getMapSnapshot() {
-	return mapVersion;
-}
-
-/** Mark the current map's content dirty and re-render its consumers. */
-function bump() {
-	mapVersion++;
-	emitEvent("store:changed");
-}
-/** Alias of bump() for sibling store modules. */
-export const bumpStore = bump;
-
 /** Reactive open map (metadata + settings), or null when no map is open. */
 export const useCurrentMap = makeStoreHook(() => currentMap);
 
@@ -138,8 +125,6 @@ export function getTag(id: number): Tag | undefined {
 	return currentMap?.meta.tags[id];
 }
 
-/** Reactive counter bumped on every map-content change; subscribe to re-render on any edit. */
-export const useMapVersion = makeStoreHook(() => mapVersion);
 /** Reactive set of all currently selected location ids. */
 export const useSelectedLocationIds = makeStoreHook(() => selectedLocationIds);
 
@@ -161,7 +146,7 @@ export function hasCommitDiff(): boolean {
 }
 
 export function useCommitDiff() {
-	const version = useEventValue("store:changed", getMapSnapshot);
+	const version = useEvent("store:changed");
 	useEffect(() => {
 		computeCommitDiff().then((d) => {
 			if (
@@ -170,7 +155,7 @@ export function useCommitDiff() {
 				d.modified !== cachedCommitDiff.modified
 			) {
 				cachedCommitDiff = d;
-				bump();
+				emitEvent("store:changed");
 			}
 		});
 	}, [version]);
@@ -219,7 +204,7 @@ export function scheduleAutoCommit(mapId: string, importedCount: number) {
 		.catch((e: unknown) => log.error("[import] background commit failed:", e))
 		.finally(() => {
 			inflightPersist = null;
-			bump();
+			emitEvent("store:changed");
 		});
 }
 
@@ -320,7 +305,7 @@ export async function openMap(id: string) {
 	}
 
 	clearEditState();
-	bump();
+	emitEvent("store:changed");
 	t.end();
 	if (currentMap) emitEvent("map:open", currentMap);
 }
@@ -344,7 +329,7 @@ function resetMapState() {
 	});
 	undoRedoState = { canUndo: false, canRedo: false };
 	tagCounts = {};
-	bump();
+	emitEvent("store:changed");
 }
 
 /** Close the open map, saving unsaved changes first. */
@@ -445,7 +430,7 @@ async function patchMapMeta(id: string, patch: MapMetaPatch) {
 		if (patch.labels != null) meta.labels = patch.labels;
 		currentMap = { ...currentMap, meta };
 	}
-	bump();
+	emitEvent("store:changed");
 	await cmd.storeUpdateMapMeta(id, patch);
 	await invalidateMapList();
 }
@@ -470,7 +455,7 @@ export async function setMapExtraFields(fields: Record<string, ExtraFieldDef>) {
 	const replaced = { ...current, fields };
 	currentMap = { ...currentMap, meta: { ...currentMap.meta, extra: replaced } };
 	setUserFieldDefs(fields);
-	bump();
+	emitEvent("store:changed");
 	await cmd.storeUpdateMapMeta(currentMapId, { extra: replaced } as Partial<MapMeta>);
 }
 
@@ -552,7 +537,7 @@ export async function mutate(fn: () => Promise<MutationResult>): Promise<Mutatio
 	await inflightPersist;
 	emitEvent("render:delta", r.delta);
 	syncMutationResult(r);
-	bump();
+	emitEvent("store:changed");
 	scheduleSave();
 	return r;
 }
@@ -596,7 +581,7 @@ export async function removeLocations(ids: ReadonlyIdSet) {
 		cachedActiveLocation = null;
 		workArea = "overview";
 	}
-	bump();
+	emitEvent("store:changed");
 	await mutate(() => cmd.storeRemoveLocations([...ids])).catch((e) =>
 		log.error("[delete] store_remove_locations failed:", e),
 	);
@@ -616,7 +601,7 @@ export async function updateLocations(
 	if (cachedActiveLocation && updates.some((u) => u.id === activeLocationId)) {
 		const activePatch = updates.find((u) => u.id === activeLocationId)?.patch;
 		if (activePatch) cachedActiveLocation = applyLocationPatch(cachedActiveLocation, activePatch);
-		bump();
+		emitEvent("store:changed");
 	}
 }
 
@@ -710,7 +695,7 @@ async function applySelectionUpdate(updater: (sels: Selection[]) => Selection[])
 	const result = await cmd.storeSyncSelections(sels);
 	t.step("ipc");
 	applySelectionSync(result);
-	bump();
+	emitEvent("store:changed");
 	t.step("apply");
 	t.end({ selected: result.selectedCount });
 	emitEvent("selection:change", selections);
@@ -969,7 +954,7 @@ export async function openStagedLocation(index: number) {
 	};
 	workArea = "location";
 	bumpImportMarkerVersion();
-	bump();
+	emitEvent("store:changed");
 	emitEvent("active:change", null);
 }
 
@@ -984,7 +969,7 @@ export function previewVirtualLocation(loc: Location) {
 		flags: loc.flags | LocationFlag.SeenOverlay,
 	};
 	workArea = "location";
-	bump();
+	emitEvent("store:changed");
 	emitEvent("active:change", null);
 }
 
@@ -1008,7 +993,7 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 			else if (activePluginId) workArea = "plugin";
 			else workArea = "overview";
 
-			bump();
+			emitEvent("store:changed");
 			emitEvent("active:change", null);
 			t.end();
 			return;
@@ -1026,7 +1011,7 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 				workArea = "duplicates";
 				activeLocationId = null;
 				cachedActiveLocation = null;
-				bump();
+				emitEvent("store:changed");
 				emitEvent("active:change", null);
 				t.end({ duplicates: nearby.length });
 				return;
@@ -1039,7 +1024,7 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 		duplicateLocations = [];
 		workArea = activePluginId ? "plugin" : "overview";
 	}
-	bump();
+	emitEvent("store:changed");
 	emitEvent("active:change", activeLocationId);
 	t.end();
 }
@@ -1050,13 +1035,13 @@ export function openDuplicateLocation(loc: Location) {
 	cachedActiveLocation = loc;
 	workArea = "location";
 	fireAndForget(cmd.storeSetActive(loc.id), "setActive");
-	bump();
+	emitEvent("store:changed");
 }
 
 /** Drop a location from the duplicate-resolution panel (does not delete it). */
 export function removeDuplicate(id: number) {
 	duplicateLocations = duplicateLocations.filter((l) => l.id !== id);
-	bump();
+	emitEvent("store:changed");
 }
 
 /** Close the duplicate-resolution panel and return to the overview. */
@@ -1074,7 +1059,7 @@ export function setWorkArea(area: WorkArea) {
 		cachedActiveLocation = null;
 	}
 	if (area !== "plugin") activePluginId = null;
-	bump();
+	emitEvent("store:changed");
 }
 
 // --- Plugin mode ---
@@ -1236,7 +1221,7 @@ export async function commitMap(message?: string): Promise<string> {
 	if (selections.length > 0) {
 		await applySelectionUpdate((s) => s);
 	} else {
-		bump();
+		emitEvent("store:changed");
 	}
 	return id;
 }
@@ -1269,7 +1254,7 @@ export async function checkoutCommit(commitId: string) {
 		colorPatches: [],
 		fullReset: true,
 	});
-	bump();
+	emitEvent("store:changed");
 	await invalidateMapList();
 }
 
@@ -1277,7 +1262,6 @@ export async function checkoutCommit(commitId: string) {
 
 export {
 	type ImportStaging,
-	useImportMarkerVersion,
 	getImportStaging,
 	getImportPreviewPositions,
 	beginImportFromPath,
@@ -1288,7 +1272,6 @@ export {
 
 export {
 	type CommitDiffPreview,
-	useDiffMarkerVersion,
 	getCommitDiffPreview,
 	beginCommitDiffPreview,
 	endCommitDiffPreview,

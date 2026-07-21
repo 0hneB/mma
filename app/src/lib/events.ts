@@ -51,6 +51,8 @@ const EVENT_DEFS = {
 	"review:changed": event<void>(),
 	"fields:changed": event<void>(),
 	"route:changed": event<void>(),
+	"import-markers:changed": event<void>(),
+	"diff-markers:changed": event<void>(),
 };
 
 export type EditorEventMap = typeof EVENT_DEFS;

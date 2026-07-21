@@ -2,11 +2,11 @@
 import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
-import { useEventValue } from "@/lib/events";
-import { bumpStore, getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
+import { emit as emitEvent } from "@/lib/events";
+import { getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
 
 /** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
- *  interleaved `[lng, lat]` f32; `diffMarkerVersion` bumps to rebuild the layers. */
+ *  interleaved `[lng, lat]` f32; `diff-markers:changed` fires to rebuild the layers. */
 export interface CommitDiffPreview {
 	commitId: string;
 	hash: string;
@@ -17,12 +17,6 @@ export interface CommitDiffPreview {
 }
 
 let commitDiffPreview: CommitDiffPreview | null = null;
-let diffMarkerVersion = 0;
-
-export function useDiffMarkerVersion() {
-	return useEventValue("store:changed", () => diffMarkerVersion);
-}
-
 export function getCommitDiffPreview() {
 	return commitDiffPreview;
 }
@@ -73,7 +67,7 @@ export async function beginCommitDiffPreview(commit: CommitInfo) {
 		removed: diffPositions(removed),
 		modified: diffPositions(modified),
 	};
-	diffMarkerVersion++;
+	emitEvent("diff-markers:changed");
 	setWorkArea("diff");
 	const all = [...added, ...removed, ...modified];
 	if (all.length > 0) {
@@ -94,7 +88,7 @@ export async function beginCommitDiffPreview(commit: CommitInfo) {
 /** Leave commit-diff preview and restore the regular markers. */
 export function endCommitDiffPreview() {
 	commitDiffPreview = null;
-	diffMarkerVersion++;
+	emitEvent("diff-markers:changed");
 	if (getWorkArea() === "diff") setWorkArea("overview");
-	else bumpStore();
+	else emitEvent("store:changed");
 }

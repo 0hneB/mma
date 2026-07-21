@@ -6,9 +6,8 @@ import { mmaBufUrl } from "@/lib/util/util";
 import { fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import { whenSceneSettled } from "@/lib/render/sceneStore";
-import { useEventValue } from "@/lib/events";
+import { emit as emitEvent } from "@/lib/events";
 import {
-	bumpStore,
 	mutate,
 	getCurrentMap,
 	getCurrentMapId,
@@ -29,12 +28,6 @@ export interface ImportStaging {
 
 let importStaging: ImportStaging | null = null;
 let importPreviewPositions = new Float32Array(0);
-let importMarkerVersion = 0;
-
-export function useImportMarkerVersion() {
-	return useEventValue("store:changed", () => importMarkerVersion);
-}
-
 export function getImportPreviewPositions() {
 	return importPreviewPositions;
 }
@@ -49,12 +42,11 @@ export function resetImportState() {
 	importPreviewPositions = new Float32Array(0);
 }
 
-/** Bump the import marker version (used by staged location preview). */
 export function bumpImportMarkerVersion() {
-	importMarkerVersion++;
+	emitEvent("import-markers:changed");
 }
 
-async function setImportStagingInternal(preview: EditorImportPreview, source: "file" | "paste") {
+async function setImportStaging(preview: EditorImportPreview, source: "file" | "paste") {
 	let positions = new Float32Array(0);
 	try {
 		const resp = await fetch(mmaBufUrl(preview.previewPositionsPath));
@@ -65,7 +57,7 @@ async function setImportStagingInternal(preview: EditorImportPreview, source: "f
 	}
 	importStaging = { preview, source };
 	importPreviewPositions = positions;
-	importMarkerVersion++;
+	emitEvent("import-markers:changed");
 	setWorkArea("import");
 	if (getSettings().panToImported)
 		fitMapToBounds(bboxTupleToBounds(preview.bounds), 100, getSettings().pastePadding);
@@ -73,12 +65,12 @@ async function setImportStagingInternal(preview: EditorImportPreview, source: "f
 
 /** Import from a known file path. Used by file picker and drag-and-drop. */
 export async function beginImportFromPath(path: string) {
-	await setImportStagingInternal(await cmd.storeImportPreview(path), "file");
+	await setImportStaging(await cmd.storeImportPreview(path), "file");
 }
 
 /** Stage pasted text for preview. Throws if no locations are found. */
 export async function beginImportPaste(text: string) {
-	await setImportStagingInternal(await cmd.storeImportPastePreview(text), "paste");
+	await setImportStaging(await cmd.storeImportPastePreview(text), "paste");
 }
 
 /** Commit the staged import, optionally dropping fields and applying a bulk tag. */
@@ -111,11 +103,11 @@ export async function confirmImport(droppedFields: string[], tagName?: string) {
 export function cancelImport() {
 	importStaging = null;
 	importPreviewPositions = new Float32Array(0);
-	importMarkerVersion++;
+	emitEvent("import-markers:changed");
 	const active = getActiveLocation();
 	if ((active && isVirtualLocation(active)) || getWorkArea() === "import") {
 		setWorkArea("overview");
 	} else {
-		bumpStore();
+		emitEvent("store:changed");
 	}
 }
