@@ -131,7 +131,9 @@ export function subscribeMany(events: readonly EditorEvent[], handler: () => voi
 
 /** Events under a given `namespace:` prefix, derived from the event map. */
 type EventsWithPrefix<P extends string> = Extract<EditorEvent, `${P}:${string}`>;
-const eventsWithPrefix = <P extends string>(prefix: P): EventsWithPrefix<P>[] =>
+const eventsWithPrefix = <P extends string>(
+	prefix: [EventsWithPrefix<P>] extends [never] ? `No events match prefix "${P}:"` : P,
+): EventsWithPrefix<P>[] =>
 	ALL_EVENTS.filter((e): e is EventsWithPrefix<P> => e.startsWith(`${prefix}:`));
 
 /** The events that fire whenever location data changes. */
