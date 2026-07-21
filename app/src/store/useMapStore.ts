@@ -61,12 +61,6 @@ import {
 	isolateGhostKeys,
 } from "./selections";
 
-function makeStoreHook<T>(getValue: () => T): () => T {
-	return function useStoreValue(): T {
-		return useEventValue("store:changed", getValue);
-	};
-}
-
 // --- Current map state ---
 let currentMapId: string | null = null;
 let currentMap: MapData | null = null;
@@ -95,7 +89,7 @@ let undoRedoState = { canUndo: false, canRedo: false };
 let knownFieldKeys = new Set<string>();
 
 /** Reactive per-tag location counts for the open map, keyed by tag id. */
-export const useTagCounts = makeStoreHook(() => tagCounts);
+export const useTagCounts = () => useEventValue("store:changed", getTagCounts);
 
 /** Per-tag location counts for the open map, keyed by tag id. */
 export function getTagCounts() {
@@ -108,7 +102,7 @@ async function computeCommitDiff(): Promise<CommitDiff> {
 }
 
 /** Reactive open map (metadata + settings), or null when no map is open. */
-export const useCurrentMap = makeStoreHook(() => currentMap);
+export const useCurrentMap = () => useEventValue("store:changed", getCurrentMap);
 
 const NO_TAGS: Tag[] = [];
 /** Tags that exist from the user's point of view. Raw `meta.tags` also holds soft-deleted ghosts (count=0, visible=false, kept for undo revival) — almost nothing outside the undo/revival machinery should enumerate those. */
@@ -117,7 +111,7 @@ export const getVisibleTags: () => Tag[] = memoOnRefs(
 	(tags) => (tags ? Object.values(tags).filter((t) => t.visible !== false) : NO_TAGS),
 );
 
-export const useVisibleTags = makeStoreHook(getVisibleTags);
+export const useVisibleTags = () => useEventValue("store:changed", getVisibleTags);
 
 /** Raw by-id tag lookup — includes soft-deleted ghosts so stale references
  *  (e.g. a selection whose tag just died) still resolve to a name. */
@@ -126,16 +120,20 @@ export function getTag(id: number): Tag | undefined {
 }
 
 /** Reactive set of all currently selected location ids. */
-export const useSelectedLocationIds = makeStoreHook(() => selectedLocationIds);
+export const useSelectedLocationIds = () => useEventValue("store:changed", getSelectedLocationIds);
 
 let cachedActiveLocation: Location | null = null;
 /** Reactive location currently open in the editor, or null. */
-export const useActiveLocation = makeStoreHook((): Location | null => cachedActiveLocation);
+export const useActiveLocation = () => useEventValue("store:changed", getActiveLocation);
+/** Locations shown in the duplicate-resolution panel. */
+export function getDuplicateLocations() {
+	return duplicateLocations;
+}
 /** Reactive locations shown in the duplicate-resolution panel. */
-export const useDuplicateLocations = makeStoreHook(() => duplicateLocations);
+export const useDuplicateLocations = () => useEventValue("store:changed", getDuplicateLocations);
 
 /** Reactive editor pane: "overview" | "location" | "duplicates" | "import" | "plugin". */
-export const useWorkArea = makeStoreHook(() => workArea);
+export const useWorkArea = () => useEventValue("store:changed", getWorkArea);
 
 let cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
 
@@ -361,7 +359,7 @@ export function getKnownFieldKeys(): ReadonlySet<string> {
 }
 
 /** Reactive hook for `knownFieldKeys`. Re-renders when keys are added. */
-export const useKnownFieldKeys = makeStoreHook((): ReadonlySet<string> => knownFieldKeys);
+export const useKnownFieldKeys = () => useEventValue("store:changed", getKnownFieldKeys);
 
 /** The location currently open in the editor, or null. */
 export function getActiveLocation(): Location | null {
@@ -649,13 +647,13 @@ async function migrateFieldReferences(from: string, to: string | null) {
 // --- Selections ---
 
 /** All selections including ghosted. Only for rendering/UI that needs the full list. */
-export const useAllSelections = makeStoreHook(() => selections);
+export const useAllSelections = () => useEventValue("store:changed", getAllSelections);
 
 /** Active (non-ghosted) selections — the default for any operational logic. */
-export const useSelections = makeStoreHook(getSelections);
+export const useSelections = () => useEventValue("store:changed", getSelections);
 
 /** Keyed per-node selection counts (by `Selection.key`). Look up a row's count by its key. */
-export const useSelectionCounts = makeStoreHook(() => selectionCounts);
+export const useSelectionCounts = () => useEventValue("store:changed", getSelectionCounts);
 
 /** Per-selection location counts, keyed by `Selection.key`. */
 export function getSelectionCounts() {
@@ -706,7 +704,7 @@ function pruneGhosted() {
 }
 
 /** Reactive set of ghosted (temporarily excluded) selection keys. */
-export const useGhostedSelections = makeStoreHook(() => ghostedSelections);
+export const useGhostedSelections = () => useEventValue("store:changed", getGhostedSelections);
 /** The set of ghosted (temporarily excluded) selection keys. */
 export const getGhostedSelections = () => ghostedSelections;
 
@@ -930,7 +928,7 @@ const getSelectedTagIds: () => ReadonlySet<number> = memoOnRefs(
 	},
 );
 
-export const useSelectedTagIds = makeStoreHook(getSelectedTagIds);
+export const useSelectedTagIds = () => useEventValue("store:changed", getSelectedTagIds);
 
 let virtualIdSeq = 0;
 /** Each preview gets a fresh negative id so its identity changes between previews (the pano viewer re-resolves on active-id change). */
@@ -1065,8 +1063,12 @@ export function setWorkArea(area: WorkArea) {
 
 // --- Plugin mode ---
 
+/** The id of the plugin whose sidebar is open, or null. */
+export function getActivePluginId() {
+	return activePluginId;
+}
 /** Reactive id of the plugin whose sidebar is open, or null. */
-export const useActivePluginId = makeStoreHook(() => activePluginId);
+export const useActivePluginId = () => useEventValue("store:changed", getActivePluginId);
 
 /** The current editor pane. */
 export function getWorkArea() {
@@ -1197,7 +1199,7 @@ export function getUndoRedoState() {
 	return undoRedoState;
 }
 
-export const useUndoRedo = makeStoreHook(() => undoRedoState);
+export const useUndoRedo = () => useEventValue("store:changed", getUndoRedoState);
 
 // --- Version control ---
 
