@@ -134,7 +134,7 @@ describe("Tag operations on locations", () => {
 
 	it("bulkAddTag adds tag to all selected locations", async () => {
 		const result = await withApi(async (api, tagId) => {
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
 			const locs = await api.fetchAllLocations();
 			const tagged = locs.filter((l: any) => l.tags.includes(tagId));
@@ -146,7 +146,7 @@ describe("Tag operations on locations", () => {
 	it("bulkAddTag is idempotent (no duplicates)", async () => {
 		const result = await withApi(
 			async (api, tagId, locId) => {
-				await api.selectEverything();
+				await api.addSelections([{ type: "Everything" }]);
 				await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
 				const loc = await api.fetchLocation(locId);
 				return loc!.tags.filter((t: number) => t === tagId).length;

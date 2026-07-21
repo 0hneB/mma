@@ -36,7 +36,7 @@ describe("Map management", () => {
 		const name = await withApi(async (api) => api.getCurrentMap()?.meta.name);
 		expect(name).toBe("Test Map 1");
 
-		const count = await withApi(async (api) => api.cmd.storeLocationCount());
+		const count = await getLocCount();
 		expect(count).toBe(0);
 
 		await closeMap();
@@ -203,7 +203,7 @@ describe("Empty map edge cases", () => {
 
 	it("selectEverything on empty map selects nothing", async () => {
 		const count = await withApi(async (api) => {
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			return api.getSelectedLocationIds().size;
 		});
 		expect(count).toBe(0);

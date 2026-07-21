@@ -1,4 +1,3 @@
- 
 import {
 	waitForReady,
 	createAndOpenMap,

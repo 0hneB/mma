@@ -52,8 +52,8 @@ describe("Selection composition", () => {
 
 	it("compose two selections into intersection", async () => {
 		const result = await withApi(async (api, tagId) => {
-			await api.selectPanoIds(); // 30 (flags=1, indices 0-29)
-			await api.selectTag(tagId); // 50 (indices 0-49)
+			await api.addSelections([{ type: "PanoIds" }]); // 30 (flags=1, indices 0-29)
+			await api.addSelections([{ type: "Tag", tagId: tagId }]); // 50 (indices 0-49)
 			const sels = api.getSelections();
 			const key1 = sels[0].key;
 			const key2 = sels[1].key;
@@ -72,8 +72,8 @@ describe("Selection composition", () => {
 
 	it("compose two selections into union", async () => {
 		const result = await withApi(async (api, tagId) => {
-			await api.selectPanoIds(); // 30
-			await api.selectTag(tagId); // 30 (indices 50-79)
+			await api.addSelections([{ type: "PanoIds" }]); // 30
+			await api.addSelections([{ type: "Tag", tagId: tagId }]); // 30 (indices 50-79)
 			const sels = api.getSelections();
 			api.composeSelections(sels[0].key, sels[1].key, "Union", null, null);
 			const after = api.getSelections();
@@ -90,8 +90,8 @@ describe("Selection composition", () => {
 
 	it("decompose extracts child as standalone", async () => {
 		const result = await withApi(async (api, tagId) => {
-			await api.selectPanoIds();
-			await api.selectTag(tagId);
+			await api.addSelections([{ type: "PanoIds" }]);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			const sels = api.getSelections();
 			api.composeSelections(sels[0].key, sels[1].key, "Union", null, null);
 
@@ -112,9 +112,9 @@ describe("Selection composition", () => {
 	it("removeChildFromSelection removes without extracting", async () => {
 		const result = await withApi(async (api, tagId) => {
 			api.resetSelections();
-			await api.selectPanoIds();
-			await api.selectTag(tagId);
-			await api.selectUntagged();
+			await api.addSelections([{ type: "PanoIds" }]);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
+			await api.addSelections([{ type: "Untagged" }]);
 			const sels = api.getSelections();
 
 			// Compose first two
@@ -182,9 +182,9 @@ describe("Selection composition edge cases", () => {
 	it("intersection of non-overlapping selections = empty", async () => {
 		const result = await withApi(async (api) => {
 			// PanoIds = flags=1 = indices 0-4
-			await api.selectPanoIds();
+			await api.addSelections([{ type: "PanoIds" }]);
 			// Untagged = indices 15-19
-			await api.selectUntagged();
+			await api.addSelections([{ type: "Untagged" }]);
 			await api.selectIntersection();
 			return api.getSelectedLocationIds().size;
 		});
@@ -193,10 +193,10 @@ describe("Selection composition edge cases", () => {
 
 	it("union of same selection = same count", async () => {
 		const result = await withApi(async (api, tagId) => {
-			await api.selectTag(tagId);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			const before = api.getSelectedLocationIds().size;
 			// Add another tag selection (same tag) -- won't duplicate since key is the same
-			await api.selectTag(tagId);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			await api.selectUnion();
 			return { before, after: api.getSelectedLocationIds().size };
 		}, edgeTagId);
@@ -205,7 +205,7 @@ describe("Selection composition edge cases", () => {
 
 	it("invert of everything = empty", async () => {
 		const result = await withApi(async (api) => {
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			await api.selectInverse();
 			return api.getSelectedLocationIds().size;
 		});
@@ -214,7 +214,7 @@ describe("Selection composition edge cases", () => {
 
 	it("invert of empty = everything", async () => {
 		const result = await withApi(async (api) => {
-			await api.selectPanoIds(); // just need a base selection
+			await api.addSelections([{ type: "PanoIds" }]); // just need a base selection
 			// Invert PanoIds (5 locations) = 15 non-panoId
 			await api.selectInverse();
 			return api.getSelectedLocationIds().size;

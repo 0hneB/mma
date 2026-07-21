@@ -197,7 +197,7 @@ describe("Delete syncs with selections", () => {
 	});
 
 	it("tag selection count decreases when tagged location is deleted", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const before = await refreshSelections();
 		expect(before.length).toBe(5);
 
@@ -210,7 +210,7 @@ describe("Delete syncs with selections", () => {
 	});
 
 	it("Everything selection count decreases on delete", async () => {
-		await withApi(async (api) => api.selectEverything());
+		await withApi(async (api) => api.addSelections([{ type: "Everything" }]));
 		const before = await refreshSelections();
 
 		await withApi(async (api, id) => {

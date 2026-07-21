@@ -149,7 +149,7 @@ export async function getAllLocs(): Promise<Location[]> {
 }
 
 export async function getLocCount(): Promise<number> {
-	return withApi(async (api) => api.cmd.storeLocationCount());
+	return withApi(async (api) => (await api.cmd.storeGetSummary()).locationCount);
 }
 
 export async function refreshSelections(): Promise<number[]> {

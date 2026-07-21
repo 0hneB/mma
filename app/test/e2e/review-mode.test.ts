@@ -211,7 +211,7 @@ describe("Review mode - delete", () => {
 			async (api, did, _nid, settle) => {
 				await api.reviewDelete();
 				await new Promise((r) => setTimeout(r, settle));
-				const count = await api.cmd.storeLocationCount();
+				const count = (await api.cmd.storeGetSummary()).locationCount;
 				const deleted = await api.fetchLocation(did).catch(() => null);
 				return {
 					activeId: api.getActiveLocation()?.id ?? null,

@@ -104,7 +104,7 @@ describe("Rust bulk import — confirm and verify", () => {
 			const maps = await api.cmd.storeListMaps();
 			const denmark = maps.find((m: MapMeta) => m.name === "Denmark Antennae")!;
 			await api._test.openMap(denmark.id);
-			const locCount = await api.cmd.storeLocationCount();
+			const locCount = (await api.cmd.storeGetSummary()).locationCount;
 			const map = api.getCurrentMap()!;
 			const locs = await api.fetchAllLocations();
 			return {
@@ -153,7 +153,7 @@ describe("Rust bulk import — confirm and verify", () => {
 		const result = await withApi(async (api) => {
 			const map = api.getCurrentMap()!;
 			const id = map.meta.id;
-			const beforeCount = await api.cmd.storeLocationCount();
+			const beforeCount = (await api.cmd.storeGetSummary()).locationCount;
 			const beforeLocs = await api.fetchAllLocations();
 			const beforeFirst = beforeLocs[0];
 
@@ -161,7 +161,7 @@ describe("Rust bulk import — confirm and verify", () => {
 			await api._test.closeMap();
 			await api._test.openMap(id);
 
-			const afterCount = await api.cmd.storeLocationCount();
+			const afterCount = (await api.cmd.storeGetSummary()).locationCount;
 			const afterLocs = await api.fetchAllLocations();
 			return {
 				beforeCount,
@@ -264,7 +264,7 @@ describe("Benchmarks — selection at scale", () => {
 	it("selectEverything on 100K", async () => {
 		const ms = await withApi(async (api) => {
 			const t0 = performance.now();
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			const elapsed = performance.now() - t0;
 			api.resetSelections();
 			return elapsed;
@@ -276,7 +276,7 @@ describe("Benchmarks — selection at scale", () => {
 	it("selectTag on 100K (33% match)", async () => {
 		const ms = await withApi(async (api, tagId) => {
 			const t0 = performance.now();
-			await api.selectTag(tagId);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			const elapsed = performance.now() - t0;
 			const count = api.getSelectedLocationIds().size;
 			api.resetSelections();
@@ -289,7 +289,7 @@ describe("Benchmarks — selection at scale", () => {
 	it("selectUnpanned on 100K (10% match)", async () => {
 		const ms = await withApi(async (api) => {
 			const t0 = performance.now();
-			await api.selectUnpanned();
+			await api.addSelections([{ type: "Unpanned" }]);
 			const elapsed = performance.now() - t0;
 			const count = api.getSelectedLocationIds().size;
 			api.resetSelections();
@@ -304,7 +304,7 @@ describe("Benchmarks — selection at scale", () => {
 	it("selectPanoIds on 100K (20% match)", async () => {
 		const ms = await withApi(async (api) => {
 			const t0 = performance.now();
-			await api.selectPanoIds();
+			await api.addSelections([{ type: "PanoIds" }]);
 			const elapsed = performance.now() - t0;
 			const count = api.getSelectedLocationIds().size;
 			api.resetSelections();
@@ -316,7 +316,7 @@ describe("Benchmarks — selection at scale", () => {
 
 	it("selectInverse on 100K", async () => {
 		const ms = await withApi(async (api, tagId) => {
-			await api.selectTag(tagId);
+			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			const t0 = performance.now();
 			await api.selectInverse();
 			const elapsed = performance.now() - t0;
@@ -330,7 +330,7 @@ describe("Benchmarks — selection at scale", () => {
 	it("selectDuplicates on 100K (dist=1)", async () => {
 		const ms = await withApi(async (api) => {
 			const t0 = performance.now();
-			await api.selectDuplicates(1);
+			await api.addSelections([{ type: "Duplicates", distance: 1 }]);
 			const elapsed = performance.now() - t0;
 			api.resetSelections();
 			return elapsed;
@@ -381,11 +381,11 @@ describe("Benchmarks — undo at scale", () => {
 
 	it("undo 100K location add", async () => {
 		const result = await withApi(async (api) => {
-			const before = await api.cmd.storeLocationCount();
+			const before = (await api.cmd.storeGetSummary()).locationCount;
 			const t0 = performance.now();
 			await api.undo();
 			const elapsed = performance.now() - t0;
-			const after = await api.cmd.storeLocationCount();
+			const after = (await api.cmd.storeGetSummary()).locationCount;
 			await api.redo();
 			return { ms: elapsed, before, after };
 		});

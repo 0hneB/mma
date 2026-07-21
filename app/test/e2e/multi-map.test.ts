@@ -107,7 +107,7 @@ describe("Multi-map isolation", () => {
 
 	it("selections are reset when switching maps", async () => {
 		await openMap(mapAId);
-		await withApi(async (api) => api.selectEverything());
+		await withApi(async (api) => api.addSelections([{ type: "Everything" }]));
 		const selCountA = await withApi(async (api) => api.getSelections().length);
 		expect(selCountA).toBeGreaterThan(0);
 		await closeMap();

@@ -109,7 +109,7 @@ describe("Delete selected locations + undo restores selection", () => {
 	});
 
 	it("select tag, delete 2 selected locations, selection count drops", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const before = await refreshSelections();
 		expect(before.length).toBe(8);
 

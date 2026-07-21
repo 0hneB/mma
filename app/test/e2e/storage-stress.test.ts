@@ -406,7 +406,7 @@ describe("Tag count accuracy", () => {
 		await addLocs(untaggedLocs);
 
 		await withApi(async (api, tId) => {
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			await api.addTagToLocations(tId, [...api.getSelectedLocationIds()]);
 		}, tagId);
 
@@ -685,7 +685,7 @@ describe("Export with scope", () => {
 		await addLocs(locs);
 
 		// Select by tag (first 5 have the tag)
-		await withApi((api, tId) => api.selectTag(tId), tagId);
+		await withApi((api, tId) => api.addSelections([{ type: "Tag", tagId: tId }]), tagId);
 
 		const selectedIds: number[] = await withApi((api) => [...api.getSelectedLocationIds()]);
 		expect(selectedIds.length).toBe(5);
@@ -911,7 +911,7 @@ describe("Rapid fire-and-forget mutations", () => {
 				);
 			}
 			await Promise.all(promises);
-			const count = await api.cmd.storeLocationCount();
+			const count = (await api.cmd.storeGetSummary()).locationCount;
 			return { count };
 		});
 		expect(result.count).toBe(20);
@@ -940,7 +940,7 @@ describe("Rapid fire-and-forget mutations", () => {
 			const addPromise = api.addLocations([api.createLocation({ lat: 99, lng: 99, zoom: 1 })]);
 			await Promise.all([removePromise, addPromise]);
 
-			const count = await api.cmd.storeLocationCount();
+			const count = (await api.cmd.storeGetSummary()).locationCount;
 			// 10 - 5 + 1 = 6, plus the 20 from previous test
 			return { count };
 		});
@@ -1005,7 +1005,7 @@ describe("Autosave racing with mutations", () => {
 			// One more save to capture the post-save location
 			await api.flushSave();
 
-			const count = await api.cmd.storeLocationCount();
+			const count = (await api.cmd.storeGetSummary()).locationCount;
 			return { count };
 		});
 		expect(result.count).toBe(51);
@@ -1062,7 +1062,7 @@ describe("Undo while save in-flight", () => {
 			const undoPromise = api.undo();
 			await Promise.all([savePromise, undoPromise]);
 
-			const count = await api.cmd.storeLocationCount();
+			const count = (await api.cmd.storeGetSummary()).locationCount;
 			return { count };
 		});
 		// After undo of batch 2, should have 20
@@ -1197,7 +1197,7 @@ describe("Selection during mutation", () => {
 
 		// Select by tag -- should get 30
 		const count1 = await withApi(async (api, tid) => {
-			await api.selectTag(tid);
+			await api.addSelections([{ type: "Tag", tagId: tid }]);
 			return api.getSelectedLocationIds().size;
 		}, tag.id);
 		expect(count1).toBe(30);
@@ -1211,7 +1211,7 @@ describe("Selection during mutation", () => {
 		// Re-select -- should now get 40
 		const count2 = await withApi(async (api, tid) => {
 			api.resetSelections();
-			await api.selectTag(tid);
+			await api.addSelections([{ type: "Tag", tagId: tid }]);
 			return api.getSelectedLocationIds().size;
 		}, tag.id);
 		expect(count2).toBe(40);
@@ -1220,13 +1220,13 @@ describe("Selection during mutation", () => {
 	it("removing selected locations updates selection", async () => {
 		const result = await withApi(async (api) => {
 			api.resetSelections();
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			const beforeCount = api.getSelectedLocationIds().size;
 			const ids = [...api.getSelectedLocationIds()].slice(0, 5);
 			api.removeLocations(new Set(ids));
 			// Give Rust a moment to refresh selections
 			await new Promise((r) => setTimeout(r, 100));
-			await api.selectEverything();
+			await api.addSelections([{ type: "Everything" }]);
 			return { before: beforeCount, after: api.getSelectedLocationIds().size };
 		});
 		expect(result.after).toBe(result.before - 5);

@@ -52,7 +52,7 @@ describe("Selection isolation across maps", () => {
 
 	it("selecting Everything in A, switching to B: B has no selections", async () => {
 		await openMap(mapAId);
-		await withApi(async (api) => api.selectEverything());
+		await withApi(async (api) => api.addSelections([{ type: "Everything" }]));
 		const selA = await withApi(async (api) => api.getSelections().length);
 		expect(selA).toBe(1);
 		await closeMap();
@@ -66,7 +66,7 @@ describe("Selection isolation across maps", () => {
 	it("tag selection in A does not create tag selection in B", async () => {
 		await openMap(mapAId);
 		const tag = await createTag("OnlyInA");
-		await withApi(async (api, tid) => api.selectTag(tid), tag.id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag.id);
 		const selsA = await withApi(async (api) => api.getSelections().length);
 		expect(selsA).toBeGreaterThan(0);
 		await closeMap();

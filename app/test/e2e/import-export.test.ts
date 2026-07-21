@@ -82,7 +82,7 @@ describe("JSON import/export round-trip", () => {
 
 			const parsed = JSON.parse(json);
 			const coords = (parsed.customCoordinates || []) as ExportedCoord[];
-			const locCount = await api.cmd.storeLocationCount();
+			const locCount = (await api.cmd.storeGetSummary()).locationCount;
 
 			return {
 				exportedCount: locCount,

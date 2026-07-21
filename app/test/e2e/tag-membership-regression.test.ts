@@ -71,21 +71,21 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 	});
 
 	it("tagA selection returns exactly 20 ids", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagAId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagAId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(20);
 		await withApi(async (api) => api.resetSelections());
 	});
 
 	it("tagB selection returns exactly 15 ids", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagBId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagBId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(15);
 		await withApi(async (api) => api.resetSelections());
 	});
 
 	it("tagC selection returns exactly 15 ids", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagCId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagCId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(15);
 		await withApi(async (api) => api.resetSelections());
@@ -121,7 +121,7 @@ describe("Remove tagged locations shrinks tag selection", () => {
 	});
 
 	it("selection starts at 20", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(20);
 		await withApi(async (api) => api.resetSelections());
@@ -133,7 +133,7 @@ describe("Remove tagged locations shrinks tag selection", () => {
 			await api.removeLocations(new Set(ids));
 		}, toRemove);
 
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(15);
 		await withApi(async (api) => api.resetSelections());
@@ -198,7 +198,7 @@ describe("Undo bulk remove restores tag membership", () => {
 	});
 
 	it("selection agrees with count after undo", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(12);
 		await withApi(async (api) => api.resetSelections());
@@ -213,7 +213,7 @@ describe("Undo bulk remove restores tag membership", () => {
 		}, tagId);
 		expect(count).toBe(6);
 
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(6);
 		await withApi(async (api) => api.resetSelections());
@@ -270,7 +270,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 	});
 
 	it("selection returns all 25", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(25);
 		await withApi(async (api) => api.resetSelections());
@@ -297,7 +297,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 		}, tagId);
 		expect(count).toBe(30);
 
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(30);
 		await withApi(async (api) => api.resetSelections());
@@ -345,21 +345,21 @@ describe("Multiple tags on same location", () => {
 	});
 
 	it("tag1 selection includes shared + exclusive = 15", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tag1Id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag1Id);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(15);
 		await withApi(async (api) => api.resetSelections());
 	});
 
 	it("tag2 selection includes only shared = 8", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tag2Id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag2Id);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(8);
 		await withApi(async (api) => api.resetSelections());
 	});
 
 	it("tag3 selection includes only shared = 8", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tag3Id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag3Id);
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(8);
 		await withApi(async (api) => api.resetSelections());
@@ -385,12 +385,12 @@ describe("Multiple tags on same location", () => {
 		}, tag2Id);
 		expect(tag2Count).toBe(0);
 
-		await withApi(async (api, tid) => api.selectTag(tid), tag1Id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag1Id);
 		const tag1Ids = await refreshSelections();
 		expect(tag1Ids.length).toBe(15);
 		await withApi(async (api) => api.resetSelections());
 
-		await withApi(async (api, tid) => api.selectTag(tid), tag3Id);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag3Id);
 		const tag3Ids = await refreshSelections();
 		expect(tag3Ids.length).toBe(8);
 		await withApi(async (api) => api.resetSelections());
@@ -433,7 +433,7 @@ describe("Full scene reset preserves selectedLocationIds", () => {
 	});
 
 	it("undo of >100 add (full_reset) keeps selection count correct", async () => {
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const beforeIds = await refreshSelections();
 		expect(beforeIds.length).toBe(150);
 
@@ -452,7 +452,7 @@ describe("Full scene reset preserves selectedLocationIds", () => {
 		}, tagId);
 		expect(count).toBe(150);
 
-		await withApi(async (api, tid) => api.selectTag(tid), tagId);
+		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const afterRedo = await refreshSelections();
 		expect(afterRedo.length).toBe(150);
 	});
