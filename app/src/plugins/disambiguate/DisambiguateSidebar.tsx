@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useAsync } from "@/lib/hooks/useAsync";
-import { useEventVersion } from "@/lib/hooks/useEditorEvents";
-import { SELECTION_EVENTS } from "@/lib/events";
+import { useEvent, SELECTION_EVENTS } from "@/lib/events";
 import { Sidebar, EmptyState } from "@/components/primitives/Sidebar";
 import type { Selection, ExtraFieldDef, Location } from "@/bindings.gen";
 import { computeDivergence, soleGroup } from "./engine";
@@ -178,7 +177,7 @@ async function analyze(): Promise<Analysis> {
 }
 
 export function DisambiguateSidebar({ onClose }: { onClose: () => void }) {
-	const version = useEventVersion(SELECTION_EVENTS);
+	const version = useEvent(SELECTION_EVENTS);
 	const selCount = MMA.getSelections().length;
 	// Synchronous null short-circuit: no loading flash while under two groups.
 	const {

@@ -77,15 +77,19 @@ export function emit<E extends EditorEvent>(evt: E, ...args: EmitArgs<E>): void 
 	}
 }
 
-/** Subscribe to an event and derive a reactive value from it. The canonical
- *  primitive for event-driven React state in this codebase. */
+/** Subscribe to an event and derive a reactive value from it. */
 export function useEventValue<T>(evt: EditorEvent, getValue: () => T): T {
 	return useSyncExternalStore((cb) => subscribe(evt, cb), getValue);
 }
 
-/** React hook: re-renders when the given event fires. Returns a version counter
- *  (opaque, only useful as a change signal). Replaces per-module version tracking. */
-export const useEvent = (evt: EditorEvent) => useEventValue(evt, () => versions.get(evt) ?? 0);
+/** React hook: re-renders when the given event(s) fire. Returns a version counter. */
+export function useEvent(evt: EditorEvent | readonly EditorEvent[]): number {
+	const events = Array.isArray(evt) ? evt : [evt];
+	return useSyncExternalStore(
+		(cb) => subscribeMany(events, cb),
+		() => events.reduce((sum, e) => sum + (versions.get(e) ?? 0), 0),
+	);
+}
 
 export function subscribe<E extends EditorEvent>(evt: E, handler: EventHandler<E>): () => void {
 	let set = handlers.get(evt);
