@@ -212,5 +212,5 @@ export function useSettings(): AppSettings {
 }
 
 export function useSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
-	return useEventValue("settings:changed", getSettings)[key];
+	return useEventValue("settings:changed", () => getSettings()[key]);
 }

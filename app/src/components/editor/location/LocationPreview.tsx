@@ -234,6 +234,7 @@ export function LocationPreview() {
 	const [pendingTags, setPendingTags] = useState<string[]>(() => idsToNames(location?.tags ?? []));
 	const visibleTags = useVisibleTags();
 	const [panoGeo, setPanoGeo] = useState<GeoDisplay | null>(null);
+	const geocodeProvider = useSetting("geocodeProvider");
 	const geoResult = useReverseGeocode(location?.lat ?? 0, location?.lng ?? 0, panoGeo);
 	const cancelTweenRef = useRef<(() => void) | null>(null);
 	const getGeoResult = useEffectEvent(() => geoResult);
@@ -688,7 +689,7 @@ export function LocationPreview() {
 				<div className="location-preview__meta">
 					<span className="location-preview__description">
 						{geoResult?.countryCode && (
-							<Tooltip content={GEOCODE_PROVIDER_LABELS[getSettings().geocodeProvider]}>
+							<Tooltip content={GEOCODE_PROVIDER_LABELS[geocodeProvider]}>
 								<span>
 									<img
 										height={15}
