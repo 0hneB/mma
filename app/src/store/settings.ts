@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
@@ -198,8 +198,6 @@ try {
 	// ignored
 }
 
-const { subscribe, getSnapshot, notify } = createSyncStore();
-
 export function getSettings(): AppSettings {
 	return settings;
 }
@@ -207,15 +205,13 @@ export function getSettings(): AppSettings {
 export function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
 	settings = { ...settings, [key]: value };
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-	notify();
+	emitEvent("settings:changed");
 }
 
 export function useSettings(): AppSettings {
-	useSyncExternalStore(subscribe, getSnapshot);
-	return settings;
+	return useSyncExternalStore((cb) => subscribeEvent("settings:changed", cb), getSettings);
 }
 
 export function useSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
-	useSyncExternalStore(subscribe, getSnapshot);
-	return settings[key];
+	return useSyncExternalStore((cb) => subscribeEvent("settings:changed", cb), getSettings)[key];
 }

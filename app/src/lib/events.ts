@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { log } from "@/lib/util/log";
 import type {
 	Location,
@@ -34,6 +35,18 @@ const EVENT_DEFS = {
 	"store:changed": event<void>(),
 	"render:delta": event<RenderDelta>(),
 	"render:selection": event<SelectionBitmaskPayload>(),
+	"settings:changed": event<void>(),
+	"fullscreen:changed": event<void>(),
+	"plugins:changed": event<void>(),
+	"hotkeys:changed": event<void>(),
+	"toasts:changed": event<void>(),
+	"scene:changed": event<void>(),
+	"measure:changed": event<void>(),
+	"anchor:changed": event<void>(),
+	"viewport-lock:changed": event<void>(),
+	"trail:changed": event<void>(),
+	"altitude:changed": event<void>(),
+	"seen:changed": event<void>(),
 };
 
 export type EditorEventMap = typeof EVENT_DEFS;
@@ -48,8 +61,10 @@ type EmitArgs<E extends EditorEvent> = EditorEventMap[E] extends void
 const ALL_EVENTS = Object.keys(EVENT_DEFS) as EditorEvent[];
 
 const handlers = new Map<EditorEvent, Set<(payload: never) => void>>();
+const versions = new Map<EditorEvent, number>();
 
 export function emit<E extends EditorEvent>(evt: E, ...args: EmitArgs<E>): void {
+	versions.set(evt, (versions.get(evt) ?? 0) + 1);
 	const set = handlers.get(evt);
 	if (!set) return;
 	const payload = args[0] as never;
@@ -60,6 +75,15 @@ export function emit<E extends EditorEvent>(evt: E, ...args: EmitArgs<E>): void 
 			log.error(`[event] ${evt}:`, e);
 		}
 	}
+}
+
+/** React hook: re-renders when the given event fires. Returns a version counter
+ *  (opaque, only useful as a change signal). Replaces per-module version tracking. */
+export function useEvent(evt: EditorEvent): number {
+	return useSyncExternalStore(
+		(cb) => subscribe(evt, cb),
+		() => versions.get(evt) ?? 0,
+	);
 }
 
 export function subscribe<E extends EditorEvent>(evt: E, handler: EventHandler<E>): () => void {

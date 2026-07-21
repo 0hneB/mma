@@ -1,4 +1,4 @@
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent } from "@/lib/events";
 
 interface ToastEntry {
 	id: number;
@@ -8,8 +8,6 @@ interface ToastEntry {
 
 let toasts: ToastEntry[] = [];
 let nextId = 0;
-const { subscribe: subscribeToasts, notify } = createSyncStore();
-export { subscribeToasts };
 
 export function toast(message: string, duration = 2500, container?: HTMLElement) {
 	if (container) {
@@ -23,10 +21,10 @@ export function toast(message: string, duration = 2500, container?: HTMLElement)
 	}
 	const id = nextId++;
 	toasts = [...toasts, { id, message }];
-	notify();
+	emitEvent("toasts:changed");
 	setTimeout(() => {
 		toasts = toasts.filter((t) => t.id !== id);
-		notify();
+		emitEvent("toasts:changed");
 	}, duration);
 }
 
@@ -38,23 +36,23 @@ export interface ProgressHandle {
 export function progressToast(message: string): ProgressHandle {
 	const id = nextId++;
 	toasts = [...toasts, { id, message, progress: { fraction: 0 } }];
-	notify();
+	emitEvent("toasts:changed");
 	return {
 		update(fraction: number, label?: string) {
 			toasts = toasts.map((t) => (t.id === id ? { ...t, progress: { fraction, label } } : t));
-			notify();
+			emitEvent("toasts:changed");
 		},
 		finish(message?: string, duration = 2500) {
 			if (message) {
 				toasts = toasts.map((t) => (t.id === id ? { ...t, message, progress: undefined } : t));
-				notify();
+				emitEvent("toasts:changed");
 				setTimeout(() => {
 					toasts = toasts.filter((t) => t.id !== id);
-					notify();
+					emitEvent("toasts:changed");
 				}, duration);
 			} else {
 				toasts = toasts.filter((t) => t.id !== id);
-				notify();
+				emitEvent("toasts:changed");
 			}
 		},
 	};

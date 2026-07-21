@@ -1,11 +1,7 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { useActivePluginId, useWorkArea, exitPluginMode } from "@/store/useMapStore";
-import {
-	getPlugin,
-	isPluginEnabled,
-	subscribeRegistry,
-	getRegistrySnapshot,
-} from "@/plugins/registry";
+import { getPlugin, isPluginEnabled } from "@/plugins/registry";
+import { useEvent } from "@/lib/events";
 
 /** Always mounted while a map is open. Normal plugin sidebars mount/unmount with
  *  plugin mode; keepAlive sidebars stay mounted after first open, hidden via
@@ -13,7 +9,7 @@ import {
 export function PluginSidebarHost() {
 	const pluginId = useActivePluginId();
 	const inPluginMode = useWorkArea() === "plugin";
-	useSyncExternalStore(subscribeRegistry, getRegistrySnapshot);
+	useEvent("plugins:changed");
 	const [kept, setKept] = useState<string[]>([]);
 
 	const active = pluginId ? getPlugin(pluginId) : null;

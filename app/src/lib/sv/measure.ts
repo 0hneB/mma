@@ -3,7 +3,7 @@
 import { useSyncExternalStore, useEffect } from "react";
 import MeasureToolClass from "measuretool-googlemaps-v3";
 import type { LatLng } from "@/types";
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 
 // --- Measure tool state ---
 
@@ -13,7 +13,6 @@ interface MeasureState {
 }
 
 let mState: MeasureState = { instance: null, isMeasuring: false };
-const mStore = createSyncStore();
 function mSnap() {
 	return mState;
 }
@@ -25,11 +24,11 @@ function createInstance(map: google.maps.Map) {
 	});
 	mt.addListener("measure_start", () => {
 		mState = { ...mState, isMeasuring: true };
-		mStore.notify();
+		emitEvent("measure:changed");
 	});
 	mt.addListener("measure_end", () => {
 		mState = { ...mState, isMeasuring: false };
-		mStore.notify();
+		emitEvent("measure:changed");
 		queueMicrotask(() => map.setOptions({ draggableCursor: "crosshair" }));
 	});
 	return mt;
@@ -40,7 +39,7 @@ export function startMeasure(map: google.maps.Map, latLng: LatLng) {
 	if (!instance) {
 		instance = createInstance(map);
 		mState = { ...mState, instance };
-		mStore.notify();
+		emitEvent("measure:changed");
 	}
 	instance.start([latLng]);
 }
@@ -50,7 +49,7 @@ export function endMeasure() {
 }
 
 export function useMeasureState() {
-	return useSyncExternalStore(mStore.subscribe, mSnap);
+	return useSyncExternalStore((cb) => subscribeEvent("measure:changed", cb), mSnap);
 }
 
 export function useMeasure() {
@@ -62,21 +61,18 @@ export function useMeasure() {
 // --- Lat/lng anchor state ---
 
 let anchor: LatLng | null = null;
-const aStore = createSyncStore();
 function aSnap() {
 	return anchor;
 }
 
 export function setLatLngAnchor(v: LatLng | null) {
 	anchor = v;
-	aStore.notify();
+	emitEvent("anchor:changed");
 }
 
 export function useLatLngAnchor() {
-	return useSyncExternalStore(aStore.subscribe, aSnap);
+	return useSyncExternalStore((cb) => subscribeEvent("anchor:changed", cb), aSnap);
 }
-
-export const subscribeLatLngAnchor = aStore.subscribe;
 
 export function getLatLngAnchor() {
 	return anchor;

@@ -1,20 +1,22 @@
 import { useSyncExternalStore } from "react";
 import { getSettings, setSetting } from "@/store/settings";
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 
 let panoFullscreen = false;
 let suspendedFullscreenMap = false;
 let suspendedPanoFullscreen = false;
-const store = createSyncStore();
 
 function setPanoFullscreen(next: boolean): void {
 	if (next === panoFullscreen) return;
 	panoFullscreen = next;
-	store.notify();
+	emitEvent("fullscreen:changed");
 }
 
 export function usePanoFullscreen(): boolean {
-	return useSyncExternalStore(store.subscribe, () => panoFullscreen);
+	return useSyncExternalStore(
+		(cb) => subscribeEvent("fullscreen:changed", cb),
+		() => panoFullscreen,
+	);
 }
 
 export function togglePanoFullscreen(): void {

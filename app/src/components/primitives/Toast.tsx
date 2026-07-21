@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from "react";
-import { subscribeToasts, getToasts } from "@/lib/util/toast";
+import { getToasts } from "@/lib/util/toast";
+import { subscribe as subscribeEvent } from "@/lib/events";
 
 export function ToastContainer() {
-	const entries = useSyncExternalStore(subscribeToasts, getToasts);
+	const entries = useSyncExternalStore((cb) => subscribeEvent("toasts:changed", cb), getToasts);
 	if (entries.length === 0) return null;
 	return (
 		<div className="toast-container">

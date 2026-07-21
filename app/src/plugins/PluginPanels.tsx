@@ -1,13 +1,13 @@
 import { memo, useState, createElement } from "react";
-import { useSyncExternalStore } from "react";
-import { getEnabledPlugins, subscribeRegistry, getRegistrySnapshot } from "@/plugins/registry";
+import { getEnabledPlugins } from "@/plugins/registry";
+import { useEvent } from "@/lib/events";
 import { useCurrentMap } from "@/store/useMapStore";
 import { setPluginMode } from "@/store/useMapStore";
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
 
 export function PluginToolbar() {
-	useSyncExternalStore(subscribeRegistry, getRegistrySnapshot);
+	useEvent("plugins:changed");
 	useCurrentMap();
 
 	const plugins = getEnabledPlugins();
@@ -51,7 +51,7 @@ export function PluginToolbar() {
 }
 
 export const PluginLocationPanels = memo(function PluginLocationPanels() {
-	useSyncExternalStore(subscribeRegistry, getRegistrySnapshot);
+	useEvent("plugins:changed");
 
 	const plugins = getEnabledPlugins().filter((p) => p.locationPanel);
 	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});

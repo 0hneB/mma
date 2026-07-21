@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useEffectEvent, useRef, type RefObject } from "react";
 import type { PickingInfo } from "@deck.gl/core";
 import { buildSceneLayers, type PolyGeom } from "@/lib/render/buildSceneLayers";
-import { getScene, subscribeScene } from "@/lib/render/sceneStore";
+import { getScene } from "@/lib/render/sceneStore";
 import type { MapHost, DeckOverlayHandle } from "@/lib/map/host";
 
 import { useSetting, getSettings } from "@/store/settings";
-import { subscribeLatLngAnchor } from "@/lib/sv/measure";
 import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
 import { getActiveLocation } from "@/store/useMapStore";
@@ -14,8 +13,6 @@ import { getReviewSession } from "@/lib/review/review";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useMapKeyboardNav } from "@/lib/hooks/useMapKeyboardNav";
-import { subscribeTrail } from "@/lib/sv/svTrail";
-import { subscribeSeenOverlay } from "@/lib/seen/seenOverlay";
 import type { MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 
 export interface MapSurfaceOpts {
@@ -124,10 +121,10 @@ export function useMapSurface(
 	useEffect(() => {
 		const unsubs = [
 			subscribe("store:changed", scheduleRebuild),
-			subscribeScene(scheduleRebuild),
-			subscribeTrail(scheduleRebuild),
-			subscribeSeenOverlay(scheduleRebuild),
-			subscribeLatLngAnchor(scheduleRebuild),
+			subscribe("scene:changed", scheduleRebuild),
+			subscribe("trail:changed", scheduleRebuild),
+			subscribe("seen:changed", scheduleRebuild),
+			subscribe("anchor:changed", scheduleRebuild),
 		];
 		return () => unsubs.forEach((u) => u());
 	}, []);

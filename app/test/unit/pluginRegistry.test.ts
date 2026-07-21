@@ -14,8 +14,8 @@ import {
 	deactivatePlugin,
 	deactivatePlugins,
 	setPendingManifest,
-	getRegistrySnapshot,
 } from "@/plugins/registry";
+import { subscribe } from "@/lib/events";
 import {
 	registerEnrichmentProvider,
 	getEnrichmentProviders,
@@ -220,28 +220,27 @@ describe("deactivatePlugins", () => {
 	});
 });
 
-describe("registrySnapshot", () => {
-	it("changes on register, unregister, and enable/disable", () => {
-		const v0 = getRegistrySnapshot();
+describe("plugins:changed event", () => {
+	it("fires on register, unregister, and enable/disable", () => {
+		let count = 0;
+		const unsub = subscribe("plugins:changed", () => count++);
 
 		registerPlugin(makePlugin("s", "S"));
-		const v1 = getRegistrySnapshot();
-		expect(v1).toBeGreaterThan(v0);
+		expect(count).toBe(1);
 
 		unregisterPlugin("s");
-		const v2 = getRegistrySnapshot();
-		expect(v2).toBeGreaterThan(v1);
+		expect(count).toBe(2);
 
 		registerPlugin(makePlugin("s2", "S2"));
-		const v3 = getRegistrySnapshot();
+		expect(count).toBe(3);
 
 		setPluginEnabled("s2", true);
-		const v4 = getRegistrySnapshot();
-		expect(v4).toBeGreaterThan(v3);
+		expect(count).toBe(4);
 
 		setPluginEnabled("s2", false);
-		const v5 = getRegistrySnapshot();
-		expect(v5).toBeGreaterThan(v4);
+		expect(count).toBe(5);
+
+		unsub();
 	});
 });
 

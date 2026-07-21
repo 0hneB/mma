@@ -17,7 +17,7 @@ import {
 } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
 import { singletonPano } from "@/lib/sv/panoSingleton";
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 import { hasLoadAsPanoId } from "@/types";
 import { isFieldEnabled } from "@/lib/data/fieldDefs";
 import { useTimezone } from "@/lib/util/timezone";
@@ -29,16 +29,15 @@ import { onFullscreenMapChanged, onLocationCleared } from "./fullscreenModeState
 // Altitude lives outside React: its only reader is the imperative coordinate
 // readout, so routing it through context would re-render every consumer.
 let panoAltitude = 0;
-const altitudeStore = createSyncStore();
 export function setPanoAltitude(v: number): void {
 	if (v === panoAltitude) return;
 	panoAltitude = v;
-	altitudeStore.notify();
+	emitEvent("altitude:changed");
 }
 export function getPanoAltitude(): number {
 	return panoAltitude;
 }
-export const subscribePanoAltitude = altitudeStore.subscribe;
+export const subscribePanoAltitude = (cb: () => void) => subscribeEvent("altitude:changed", cb);
 
 interface PanoViewerContextValue {
 	currentPano: Pick<google.maps.StreetViewPanoramaData, "location" | "imageDate"> | null;

@@ -7,7 +7,6 @@ import {
 	useState,
 	useCallback,
 	useEffectEvent,
-	useSyncExternalStore,
 } from "react";
 import {
 	LocationFlag,
@@ -74,12 +73,8 @@ import {
 	exitFullscreenMap,
 } from "./fullscreenModeState";
 import { FullscreenMiniLocationPreview } from "./FullscreenMiniLocationPreview";
-import {
-	applyViewportLock,
-	getViewportLockInfo,
-	subscribeViewportLock,
-	getViewportLockSnapshot,
-} from "@/lib/sv/viewportLock";
+import { applyViewportLock, getViewportLockInfo } from "@/lib/sv/viewportLock";
+import { useEvent } from "@/lib/events";
 import { resetTrail, pushTrail, clearTrail } from "@/lib/sv/svTrail";
 import { singletonPano, singletonDiv, getPanorama, applyResolved } from "@/lib/sv/panoSingleton";
 import { PanoDatePicker } from "./PanoDatePicker";
@@ -267,7 +262,7 @@ export function LocationPreview() {
 		obs.observe(el);
 		return () => obs.disconnect();
 	}, [isFullscreen, appSettings.showFullscreenTagbar, appSettings.showFullscreenDatePicker]);
-	useSyncExternalStore(subscribeViewportLock, getViewportLockSnapshot);
+	useEvent("viewport-lock:changed");
 	const lockInfo = getViewportLockInfo();
 
 	useEffect(() => {

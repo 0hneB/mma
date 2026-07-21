@@ -4,18 +4,28 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => ({
 	activeId: null as number | null,
 	selected: new Set<number>(),
-	storeListeners: [] as Array<() => void>,
+	listeners: new Map<string, Array<() => void>>(),
 }));
 
 vi.mock("@/lib/events", () => ({
+	emit: (evt: string) => {
+		for (const fn of h.listeners.get(evt) ?? []) fn();
+	},
 	subscribe: (evt: string, fn: () => void) => {
-		if (evt === "store:changed") {
-			h.storeListeners.push(fn);
-			return () => {
-				h.storeListeners = h.storeListeners.filter((l) => l !== fn);
-			};
+		let list = h.listeners.get(evt);
+		if (!list) {
+			list = [];
+			h.listeners.set(evt, list);
 		}
-		return () => {};
+		list.push(fn);
+		return () => {
+			const l = h.listeners.get(evt);
+			if (l)
+				h.listeners.set(
+					evt,
+					l.filter((f) => f !== fn),
+				);
+		};
 	},
 }));
 
@@ -25,14 +35,15 @@ vi.mock("@/store/useMapStore", () => ({
 	mapOpenMark: () => {},
 }));
 
-import { getScene, subscribeScene, startSceneEngine } from "@/lib/render/sceneStore";
+import { getScene, startSceneEngine } from "@/lib/render/sceneStore";
+import { subscribe as subscribeEvent } from "@/lib/events";
 
-const notifyStore = () => h.storeListeners.forEach((fn) => fn());
+const notifyStore = () => (h.listeners.get("store:changed") ?? []).forEach((fn) => fn());
 
 beforeEach(() => {
 	h.activeId = null;
 	h.selected = new Set();
-	h.storeListeners = [];
+	h.listeners.clear();
 });
 
 describe("sceneStore (single scene source)", () => {
@@ -42,7 +53,7 @@ describe("sceneStore (single scene source)", () => {
 
 	it("active-location change bumps the scene version (fast path, no reload)", () => {
 		let bumps = 0;
-		const unsub = subscribeScene(() => bumps++);
+		const unsub = subscribeEvent("scene:changed", () => bumps++);
 		const stop = startSceneEngine();
 
 		h.activeId = 5;
@@ -61,7 +72,7 @@ describe("sceneStore (single scene source)", () => {
 		const stop = startSceneEngine();
 		stop();
 		let bumps = 0;
-		const unsub = subscribeScene(() => bumps++);
+		const unsub = subscribeEvent("scene:changed", () => bumps++);
 		h.activeId = 9;
 		notifyStore();
 		expect(bumps).toBe(0);

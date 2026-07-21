@@ -1,7 +1,5 @@
-import { useSyncExternalStore } from "react";
 import { CellManager } from "@/lib/render/CellManager";
 import { cmd } from "@/lib/commands";
-import { createSyncStore } from "@/lib/util/syncStore";
 import { mmaBufUrl } from "@/lib/util/util";
 import type { RGB } from "@/lib/util/color";
 import { log } from "@/lib/util/log";
@@ -12,7 +10,7 @@ import {
 	mapOpen,
 	setSelectedLocationIds,
 } from "@/store/useMapStore";
-import { subscribe as subscribeEvent } from "@/lib/events";
+import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 import type { MarkerStyle } from "@/types";
 
 // Owns marker/scene data for every map surface. The editor map drives the
@@ -24,21 +22,12 @@ const ACTIVE_HIDDEN: [number, number, number, number] = [0, 0, 0, 0];
 let markerDefault: [number, number, number, number] = [42, 42, 42, 255];
 
 const scene = new CellManager();
-const sceneSync = createSyncStore();
-const bumpScene = sceneSync.notify;
 let prevActiveId: number | null = null;
 let lastMarkerStyle: MarkerStyle = "pin";
 let loadToken = 0;
 
 export function getScene(): CellManager {
 	return scene;
-}
-
-export const subscribeScene = sceneSync.subscribe;
-
-/** Reactive scene version. Bumps on load, delta, selection, and active-location change. */
-export function useScene(): number {
-	return useSyncExternalStore(sceneSync.subscribe, sceneSync.getSnapshot);
 }
 
 function patchMarker(id: number, rgba: [number, number, number, number]) {
@@ -95,7 +84,7 @@ export function recolorScene(mc: RGB) {
 	}
 	void cmd.storeSetMarkerColor([mc.r, mc.g, mc.b]);
 	scene.version++;
-	bumpScene();
+	emitEvent("scene:changed");
 }
 
 export function getMarkerDefaultColor(): [number, number, number, number] {
@@ -150,7 +139,7 @@ async function doLoadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
 		// since any bitmask decode in `mutate` ran against the pre-reload scene.
 		setSelectedLocationIds(scene.selectedIds());
 		t.end({ cells: scene.cells.size, total: scene.totalCount, bytes: buf.byteLength });
-		bumpScene();
+		emitEvent("scene:changed");
 	} catch (e) {
 		log.error("[scene] loadScene failed:", e);
 	}
@@ -159,7 +148,7 @@ async function doLoadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
 export function clearScene() {
 	scene.clear();
 	prevActiveId = null;
-	bumpScene();
+	emitEvent("scene:changed");
 }
 
 // Subscriptions live for the editor map's lifetime (one producer). Returns a stop fn.
@@ -181,7 +170,7 @@ export function startSceneEngine(): () => void {
 			scene.appendToSelectionOverlay(selPatches);
 		}
 		t.end({ affected: affected.size, added: delta.added.length, removed: delta.removed.length });
-		if (affected.size > 0 || delta.colorPatches.length > 0) bumpScene();
+		if (affected.size > 0 || delta.colorPatches.length > 0) emitEvent("scene:changed");
 	});
 
 	const unsubSel = subscribeEvent("render:selection", ({ selColors, cellEntries, setIds }) => {
@@ -190,7 +179,7 @@ export function startSceneEngine(): () => void {
 		const ids = scene.applySelectionBitmasks(selColors, cellEntries, [r, g, b]);
 		setIds(ids);
 		t.end({ cells: cellEntries.length, sels: selColors.length, ids: ids.size });
-		bumpScene();
+		emitEvent("scene:changed");
 	});
 
 	// Active-location switch fires a plain store mutation (store_set_active is fire-and-forget,
@@ -199,7 +188,7 @@ export function startSceneEngine(): () => void {
 		const activeId = getActiveLocation()?.id ?? null;
 		if (activeId !== prevActiveId) {
 			applyActive();
-			bumpScene();
+			emitEvent("scene:changed");
 		}
 	});
 

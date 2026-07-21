@@ -1,5 +1,5 @@
 import { useState, useCallback, type ComponentType, type SetStateAction } from "react";
-import { createSyncStore } from "@/lib/util/syncStore";
+import { emit as emitEvent } from "@/lib/events";
 import { runAsPlugin, disposePlugin } from "@/plugins/scope";
 
 export interface PluginSettingDef {
@@ -109,7 +109,7 @@ export function registerPlugin(plugin: Plugin | PluginBehavior) {
 	} else {
 		plugins.set((plugin as Plugin).id, plugin as Plugin);
 	}
-	notifyRegistry();
+	emitEvent("plugins:changed");
 }
 
 export function getPlugins(): Plugin[] {
@@ -122,7 +122,7 @@ export function getPlugin(id: string): Plugin | undefined {
 
 export function unregisterPlugin(id: string) {
 	plugins.delete(id);
-	notifyRegistry();
+	emitEvent("plugins:changed");
 }
 
 export function isPluginEnabled(id: string): boolean {
@@ -133,7 +133,7 @@ export function setPluginEnabled(id: string, enabled: boolean) {
 	if (enabled) enabledSet.add(id);
 	else enabledSet.delete(id);
 	saveEnabled(enabledSet);
-	notifyRegistry();
+	emitEvent("plugins:changed");
 }
 
 export function getEnabledPlugins(): Plugin[] {
@@ -221,7 +221,7 @@ export function getPluginSetting<T = unknown>(plugin: Plugin, key: string): T {
 
 export function setPluginSetting(id: string, key: string, value: unknown) {
 	createPluginStorage(id).set(key, value);
-	notifyRegistry();
+	emitEvent("plugins:changed");
 }
 
 // --- Activation lifecycle ---
@@ -233,7 +233,7 @@ export function activatePlugins() {
 			if (cleanup) cleanups.set(plugin.id, cleanup);
 		}
 	}
-	notifyRegistry();
+	emitEvent("plugins:changed");
 }
 
 export function deactivatePlugins() {
@@ -260,12 +260,3 @@ export function deactivatePlugin(id: string) {
 	// returned no cleanup — so a disabled plugin's providers/fields/listeners stop.
 	disposePlugin(id);
 }
-
-// --- React subscription for registry changes ---
-
-const {
-	subscribe: subscribeRegistry,
-	getSnapshot: getRegistrySnapshot,
-	notify: notifyRegistry,
-} = createSyncStore();
-export { subscribeRegistry, getRegistrySnapshot };
