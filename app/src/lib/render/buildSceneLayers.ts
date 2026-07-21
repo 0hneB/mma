@@ -17,11 +17,11 @@ import {
 import {
 	getCurrentMap,
 	getWorkArea,
-	getCommitDiffPreview,
 	getActiveLocation,
 	getAllSelections,
-	getImportPreviewPositions,
 } from "@/store/useMapStore";
+import { getCommitDiffPreview } from "@/store/commitDiff";
+import { getImportPreviewPositions } from "@/store/importStaging";
 import { getTrail } from "@/lib/sv/svTrail";
 import { getLatLngAnchor } from "@/lib/sv/measure";
 import type { RGB } from "@/lib/util/color";

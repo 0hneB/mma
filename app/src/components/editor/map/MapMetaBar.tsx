@@ -9,8 +9,8 @@ import {
 	undo,
 	redo,
 	commitMap,
-	beginImportFromPath,
 } from "@/store/useMapStore";
+import { beginImportFromPath } from "@/store/importStaging";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { ExportDialog } from "@/components/dialogs/ExportDialog";
 import { VersionHistory } from "@/components/dialogs/VersionHistory";

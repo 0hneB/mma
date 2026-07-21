@@ -10,9 +10,8 @@ import {
 	mutate,
 	removeLocations,
 	discardOpenMap,
-	beginImportPaste,
-	beginImportFromPath,
 } from "@/store/useMapStore";
+import { beginImportPaste, beginImportFromPath } from "@/store/importStaging";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { goToList } from "@/store/router";

@@ -1,17 +1,16 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { NSelect } from "@/components/primitives/NSelect";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { renameMap, updateMapLabels } from "@/store/useMapStore";
 import {
 	useMapList,
 	createMap,
 	deleteMap,
-	renameMap,
 	renameFolder,
 	deleteFolder,
 	moveMapToFolder,
 	invalidateMapList,
-	updateMapLabels,
-} from "@/store/useMapStore";
+} from "@/store/mapList";
 import { openMapWindow } from "@/lib/window";
 import { log, fireAndForget } from "@/lib/util/log";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";

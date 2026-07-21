@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
-import { useCurrentMap, checkoutCommit, beginCommitDiffPreview } from "@/store/useMapStore";
+import { useCurrentMap, checkoutCommit } from "@/store/useMapStore";
+import { beginCommitDiffPreview } from "@/store/commitDiff";
 import { cmd } from "@/lib/commands";
 import type { CommitInfo } from "@/bindings.gen";
 

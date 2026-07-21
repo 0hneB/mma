@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { getImportStaging, confirmImport, cancelImport, useVisibleTags } from "@/store/useMapStore";
+import { useVisibleTags } from "@/store/useMapStore";
+import { getImportStaging, confirmImport, cancelImport } from "@/store/importStaging";
 import { useEventValue } from "@/lib/events";
 import { fmt } from "@/lib/util/format";
 import { log } from "@/lib/util/log";

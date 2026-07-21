@@ -7,6 +7,10 @@
  */
 
 import * as store from "@/store/useMapStore";
+import * as importStaging from "@/store/importStaging";
+import * as commitDiff from "@/store/commitDiff";
+import * as scope from "@/store/scope";
+import * as mapList from "@/store/mapList";
 import * as review from "@/lib/review/review";
 import type { Scope, Location } from "@/bindings.gen";
 import { cmd as commands, type Cmd } from "@/lib/commands";
@@ -82,8 +86,8 @@ async function createLocationStore(): Promise<LocationStore> {
 
 	return {
 		locations: locs,
-		get(scope = { kind: "all" }) {
-			return store.applyScope(scope, [...locs.values()]);
+		get(s = { kind: "all" }) {
+			return scope.applyScope(s, [...locs.values()]);
 		},
 		onChange(cb) {
 			listeners.add(cb);
@@ -248,7 +252,7 @@ const surface = {
 			await store.closeMap();
 			goToList();
 		},
-		deleteMap: (id: string) => store.deleteMap(id),
+		deleteMap: (id: string) => mapList.deleteMap(id),
 		importPaste: async (text: string) => {
 			await commands.storeImportPastePreview(text);
 			const r = await commands.storeImportFile([], null);
@@ -264,14 +268,31 @@ const surface = {
 };
 
 type StoreApi = typeof store;
+type ImportStagingApi = typeof importStaging;
+type CommitDiffApi = typeof commitDiff;
+type ScopeApi = typeof scope;
+type MapListApi = typeof mapList;
 type ReviewApi = typeof review;
 type SurfaceApi = typeof surface;
 type LegacyApi = typeof legacy;
 
-export interface MMA extends StoreApi, ReviewApi, SurfaceApi, LegacyApi {}
+export interface MMA
+	extends
+		StoreApi,
+		ImportStagingApi,
+		CommitDiffApi,
+		ScopeApi,
+		MapListApi,
+		ReviewApi,
+		SurfaceApi,
+		LegacyApi {}
 
 const mma: MMA = {
 	...store,
+	...importStaging,
+	...commitDiff,
+	...scope,
+	...mapList,
 	...review,
 	...surface,
 	...legacy,

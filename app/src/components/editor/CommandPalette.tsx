@@ -10,7 +10,8 @@ import { getCommands, togglePinnedCommand, type CommandGroup } from "@/store/com
 import { useSetting } from "@/store/settings";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { getBinding, useBinding } from "@/lib/util/hotkeys";
-import { useMapList, getCurrentMapId, closeMap } from "@/store/useMapStore";
+import { getCurrentMapId, closeMap } from "@/store/useMapStore";
+import { useMapList } from "@/store/mapList";
 import { goToMap } from "@/store/router";
 
 interface PaletteContext {

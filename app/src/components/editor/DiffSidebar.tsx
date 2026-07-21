@@ -1,6 +1,6 @@
 import { mdiArrowLeft } from "@mdi/js";
 import { Icon } from "@/components/primitives/Icon";
-import { getCommitDiffPreview, endCommitDiffPreview } from "@/store/useMapStore";
+import { getCommitDiffPreview, endCommitDiffPreview } from "@/store/commitDiff";
 import { useEventValue } from "@/lib/events";
 import { fmt } from "@/lib/util/format";
 

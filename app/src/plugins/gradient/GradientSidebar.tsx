@@ -8,7 +8,7 @@ import { getFieldDef, fieldLabel } from "@/lib/data/fieldDefRegistry";
 import type { FieldEntry } from "@/components/editor/map/FilterBuilder";
 import { partitionKeyOptions, RANGE_ID } from "@/lib/data/fieldOps";
 import { isNumericField, colorPartition } from "./gradientMath";
-import { partition, useScope } from "@/store/useMapStore";
+import { partition, useScope } from "@/store/scope";
 import { usePluginState } from "@/plugins/registry";
 import { useSetting } from "@/store/settings";
 import "./gradient.css";

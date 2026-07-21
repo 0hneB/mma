@@ -9,11 +9,9 @@ import {
 	getCurrentMap,
 	addSelections,
 	fetchAllLocations,
-	useScope,
-	applyScope,
-	type ScopeController,
 	updateLocations,
 } from "@/store/useMapStore";
+import { useScope, applyScope, type ScopeController } from "@/store/scope";
 import type {
 	Scope,
 	Location,
