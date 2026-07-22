@@ -49,7 +49,13 @@ import {
 import { loadOpenSV, google } from "@/lib/sv/opensv";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 
-import { useSettings, useSetting, getSettings, GEOCODE_PROVIDER_LABELS } from "@/store/settings";
+import {
+	useSettings,
+	useSetting,
+	getSettings,
+	GEOCODE_PROVIDER_LABELS,
+	type GeocodeProvider,
+} from "@/store/settings";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { PluginLocationPanels } from "@/plugins/PluginPanels";
@@ -670,6 +676,17 @@ export function LocationPreview() {
 					</div>
 					{isFullscreen && appSettings.showFullscreenMinimap && <FullscreenMiniMap />}
 					{isFullscreen && (
+						<div className="fullscreen-topbar">
+							{appSettings.showFullscreenReviewBar && <ReviewBar />}
+							{appSettings.showFullscreenGeocode &&
+								(geoResult?.countryCode || geoResult?.address) && (
+									<div className="fullscreen-geocode">
+										<GeoSummary geo={geoResult} provider={geocodeProvider} />
+									</div>
+								)}
+						</div>
+					)}
+					{isFullscreen && (
 						<div className="fullscreen-bottom-tray" ref={bottomTrayRef}>
 							{appSettings.showFullscreenTagbar && (
 								<FullscreenTagBar
@@ -688,21 +705,7 @@ export function LocationPreview() {
 				</div>
 				<div className="location-preview__meta">
 					<span className="location-preview__description">
-						{geoResult?.countryCode && (
-							<Tooltip content={GEOCODE_PROVIDER_LABELS[geocodeProvider]}>
-								<span>
-									<img
-										height={15}
-										width={20}
-										src={`/flags/${geoResult.countryCode.toUpperCase()}.svg`}
-										alt={geoResult.countryCode}
-										style={{ borderRadius: "2px", verticalAlign: "middle" }}
-									/>
-								</span>
-							</Tooltip>
-						)}
-						{geoResult?.countryCode && geoResult.address && " "}
-						{geoResult?.address && <span>{geoResult.address}</span>}
+						<GeoSummary geo={geoResult} provider={geocodeProvider} />
 						{(geoResult?.address || geoResult?.countryCode) && (
 							<span className="location-preview__timestamp-sep"> · </span>
 						)}
@@ -763,6 +766,29 @@ export function LocationPreview() {
 					<PluginLocationPanels />
 				</div>
 			</section>
+		</>
+	);
+}
+
+function GeoSummary({ geo, provider }: { geo: GeoDisplay | null; provider: GeocodeProvider }) {
+	if (!geo?.countryCode && !geo?.address) return null;
+	return (
+		<>
+			{geo.countryCode && (
+				<Tooltip content={GEOCODE_PROVIDER_LABELS[provider]}>
+					<span>
+						<img
+							height={15}
+							width={20}
+							src={`/flags/${geo.countryCode.toUpperCase()}.svg`}
+							alt={geo.countryCode}
+							style={{ borderRadius: "2px", verticalAlign: "middle" }}
+						/>
+					</span>
+				</Tooltip>
+			)}
+			{geo.countryCode && geo.address && " "}
+			{geo.address && <span>{geo.address}</span>}
 		</>
 	);
 }

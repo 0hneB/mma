@@ -114,6 +114,8 @@ const DEFAULTS = {
 	fullscreenMinimapScale: 1,
 	showFullscreenTagbar: true,
 	showFullscreenDatePicker: true,
+	showFullscreenReviewBar: true,
+	showFullscreenGeocode: true,
 	customCss: "",
 	enableSeen: true,
 	enableSeenThumbnails: true,

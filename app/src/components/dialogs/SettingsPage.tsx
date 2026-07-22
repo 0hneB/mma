@@ -431,6 +431,8 @@ function StreetViewBody() {
 			<SettingRow setting="showFullscreenMinimap" label="Show minimap in fullscreen" />
 			<SettingRow setting="showFullscreenTagbar" label="Show tag bar in fullscreen" />
 			<SettingRow setting="showFullscreenDatePicker" label="Show date picker in fullscreen" />
+			<SettingRow setting="showFullscreenReviewBar" label="Show review bar in fullscreen" />
+			<SettingRow setting="showFullscreenGeocode" label="Show geocoding info in fullscreen" />
 
 			<GroupHeading>Date picker</GroupHeading>
 			<SettingRow setting="showCameraBadges" label="Show camera type badges (Gen1, Gen2, etc.)" />
