@@ -598,6 +598,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             borders::check_border_file,
             borders::download_border_file,
             borders::border_lookup,
+            borders::border_classify,
             geocoder::reverse_geocode,
             presence::discord_presence_set,
             presence::discord_presence_clear,
