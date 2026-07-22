@@ -19,6 +19,7 @@ export function FullscreenTagBar({
 }) {
 	const [input, setInput] = useState("");
 	const [focused, setFocused] = useState(false);
+	const [hovered, setHovered] = useState(false);
 	const tagSortMode = useSetting("tagSortMode");
 	useSetting("truncateTagPaths");
 	useSetting("tagViewMode");
@@ -50,7 +51,11 @@ export function FullscreenTagBar({
 		: available;
 
 	return (
-		<div className="fullscreen-tagbar">
+		<div
+			className="fullscreen-tagbar"
+			onPointerEnter={() => setHovered(true)}
+			onPointerLeave={() => setHovered(false)}
+		>
 			<ul className="tag-list">
 				{pendingTags.map((name) => (
 					<li key={name} className="tag is-small has-button" style={tagChipStyle(name, tags)}>
@@ -80,7 +85,7 @@ export function FullscreenTagBar({
 					onBlur={() => setTimeout(() => setFocused(false), 150)}
 				/>
 			</form>
-			{focused && filtered.length > 0 && (
+			{(focused || hovered) && filtered.length > 0 && (
 				<div className="fullscreen-tagbar__palette">
 					{filtered.map((t) => (
 						<button
@@ -88,7 +93,7 @@ export function FullscreenTagBar({
 							className="tag is-small fullscreen-tagbar__palette-tag"
 							style={{ backgroundColor: t.color, color: textColorFor(t.color) }}
 							onMouseDown={(e) => {
-								e.preventDefault(); // keep the input focused so the palette stays open
+								e.preventDefault(); // don't move focus: palette stays open, hotkeys keep working
 								toggleTag(t);
 							}}
 							type="button"
