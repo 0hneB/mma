@@ -119,18 +119,19 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 			});
 		}
 	});
+	const canZoom = () => getSettings().defaultMovementMode !== "nmpz";
 	useHotkey(useBinding("zoomIn"), () => {
-		if (singletonPano) {
+		if (singletonPano && canZoom()) {
 			singletonPano.setZoom(Math.min(PANO_ZOOM.max, Math.max(0, singletonPano.getZoom()) + 1));
 		}
 	});
 	useHotkey(useBinding("zoomOut"), () => {
-		if (singletonPano) {
+		if (singletonPano && canZoom()) {
 			singletonPano.setZoom(Math.max(0, singletonPano.getZoom() - 1));
 		}
 	});
 	useHotkey(useBinding("panoZoomReset"), () => {
-		if (singletonPano) singletonPano.setZoom(PANO_ZOOM.min);
+		if (singletonPano && canZoom()) singletonPano.setZoom(PANO_ZOOM.min);
 	});
 	useHotkey(
 		useBinding("copyLink"),

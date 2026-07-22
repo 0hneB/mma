@@ -69,6 +69,7 @@ export function usePanoNavigation(appSettings: AppSettings) {
 					if (alt.length === 1 && matchesKey(e, alt[0], { ignoreAlt: true })) {
 						if (action === "panoMoveForward" || action === "panoMoveBackward") {
 							if (!singletonPano) return;
+							if (getAppSettings().defaultMovementMode !== "moving") return;
 							const links = singletonPano
 								.getLinks()
 								?.filter((l): l is google.maps.StreetViewLink => l != null);
@@ -89,6 +90,7 @@ export function usePanoNavigation(appSettings: AppSettings) {
 							e.stopImmediatePropagation();
 							return;
 						}
+						if (getAppSettings().defaultMovementMode === "nmpz") return;
 						nav.held.add(action);
 						if (!nav.rafId) nav.rafId = requestAnimationFrame(tick);
 						e.preventDefault();
