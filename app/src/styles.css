@@ -3034,6 +3034,9 @@ input.date-picker__trigger:focus {
 	grid-gap: 1rem;
 	grid-template-rows: min-content min-content;
 	display: grid;
+	/* x hidden: overflow-y alone computes x to auto, and .tag-list's -4px margin
+	   bleed would otherwise make the whole section horizontally scrollable */
+	overflow-x: hidden;
 	overflow-y: auto;
 	scrollbar-width: none;
 }
@@ -5123,6 +5126,7 @@ body {
 	margin: 0;
 	padding: 0;
 	list-style: none;
+	overflow: visible;
 }
 .fullscreen-tagbar .form-add-tag {
 	display: flex;
