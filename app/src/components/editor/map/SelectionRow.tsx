@@ -45,7 +45,7 @@ import {
 	mdiGhost,
 	mdiGhostOutline,
 } from "@mdi/js";
-import { DropdownMenu } from "@/components/primitives/Menu";
+import { Menu } from "@base-ui-components/react/menu";
 import { fmt } from "@/lib/util/format";
 import { rgbCss } from "@/lib/util/color";
 import { getMapHost } from "@/lib/map/mapState";
@@ -354,117 +354,112 @@ export const SelectionRow = memo(function SelectionRow({
 							</button>
 						</>
 					)}
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger asChild>
-							<button className="icon-button" type="button" aria-label="Selection options">
-								<Icon path={mdiDotsVertical} />
-							</button>
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Portal>
-							<DropdownMenu.Content
-								className="context-menu"
-								align="end"
-								onCloseAutoFocus={() => setView("contextmenu")}
-							>
-								{view === "color" ? (
-									<div style={{ padding: "0.5rem", width: "14rem" }}>
-										<RgbColorPicker
-											color={{
-												r: selection.color[0],
-												g: selection.color[1],
-												b: selection.color[2],
-											}}
-											onChange={handleColorChange}
-										/>
-									</div>
-								) : (
-									<>
-										<DropdownMenu.Item
-											className="context-menu__item"
-											onSelect={() => selectInverse([selection.key])}
-										>
-											Invert selection
-										</DropdownMenu.Item>
-										{selection.props.type === "Filter" && (
-											<DropdownMenu.Item
-												className="context-menu__item"
-												onSelect={() => setEditingFilter(true)}
-											>
-												Edit filter
-											</DropdownMenu.Item>
-										)}
-										<DropdownMenu.Item
-											className="context-menu__item"
-											disabled={count === 0}
-											onSelect={async () => {
-												const ids = await cmd.storeResolveSelection(selection.props);
-												beginReview(ids, selection);
-											}}
-										>
-											Review selection
-										</DropdownMenu.Item>
-										{selection.props.type !== "Tag" && (
-											<DropdownMenu.Item
-												className="context-menu__item"
-												disabled={count === 0}
-												onSelect={() => {
-													const names = new Set(getVisibleTags().map((t) => t.name));
-													setTagName(uniqueTagName(selectionDisplayName(selection), names));
-													setSavingTag(true);
+					<Menu.Root onOpenChange={(open) => !open && setView("contextmenu")}>
+						<Menu.Trigger
+							render={
+								<button className="icon-button" type="button" aria-label="Selection options">
+									<Icon path={mdiDotsVertical} />
+								</button>
+							}
+						/>
+						<Menu.Portal>
+							<Menu.Positioner align="end">
+								<Menu.Popup className="context-menu">
+									{view === "color" ? (
+										<div style={{ padding: "0.5rem", width: "14rem" }}>
+											<RgbColorPicker
+												color={{
+													r: selection.color[0],
+													g: selection.color[1],
+													b: selection.color[2],
 												}}
-											>
-												Save as tag
-											</DropdownMenu.Item>
-										)}
-										{pruneDistance(selection) != null && (
-											<DropdownMenu.Item
+												onChange={handleColorChange}
+											/>
+										</div>
+									) : (
+										<>
+											<Menu.Item
 												className="context-menu__item"
-												disabled={count === 0}
-												onSelect={async () => {
-													const n = await pruneDuplicates(
-														selection.props,
-														pruneDistance(selection)!,
-													);
-													toast(`Pruned ${fmt.format(n)} duplicate${n === 1 ? "" : "s"}`);
-												}}
+												onClick={() => selectInverse([selection.key])}
 											>
-												Prune duplicates
-											</DropdownMenu.Item>
-										)}
-										{selection.props.type !== "Tag" && (
-											<DropdownMenu.Item
-												className="context-menu__item"
-												onSelect={(e) => {
-													e.preventDefault();
-													setView("color");
-												}}
-											>
-												Change color
-											</DropdownMenu.Item>
-										)}
-										{isPoly && (
-											<>
-												<DropdownMenu.Separator className="context-menu__separator" />
-												<DropdownMenu.Item
+												Invert selection
+											</Menu.Item>
+											{selection.props.type === "Filter" && (
+												<Menu.Item
 													className="context-menu__item"
-													onSelect={handleDownloadGeoJSON}
+													onClick={() => setEditingFilter(true)}
 												>
-													Download GeoJSON
-												</DropdownMenu.Item>
-												<DropdownMenu.Item className="context-menu__item" onSelect={handleRename}>
-													Rename
-												</DropdownMenu.Item>
-											</>
-										)}
-										<DropdownMenu.Separator className="context-menu__separator" />
-										<DropdownMenu.Item className="context-menu__item" onSelect={onRemove}>
-											Deselect
-										</DropdownMenu.Item>
-									</>
-								)}
-							</DropdownMenu.Content>
-						</DropdownMenu.Portal>
-					</DropdownMenu.Root>
+													Edit filter
+												</Menu.Item>
+											)}
+											<Menu.Item
+												className="context-menu__item"
+												disabled={count === 0}
+												onClick={async () => {
+													const ids = await cmd.storeResolveSelection(selection.props);
+													beginReview(ids, selection);
+												}}
+											>
+												Review selection
+											</Menu.Item>
+											{selection.props.type !== "Tag" && (
+												<Menu.Item
+													className="context-menu__item"
+													disabled={count === 0}
+													onClick={() => {
+														const names = new Set(getVisibleTags().map((t) => t.name));
+														setTagName(uniqueTagName(selectionDisplayName(selection), names));
+														setSavingTag(true);
+													}}
+												>
+													Save as tag
+												</Menu.Item>
+											)}
+											{pruneDistance(selection) != null && (
+												<Menu.Item
+													className="context-menu__item"
+													disabled={count === 0}
+													onClick={async () => {
+														const n = await pruneDuplicates(
+															selection.props,
+															pruneDistance(selection)!,
+														);
+														toast(`Pruned ${fmt.format(n)} duplicate${n === 1 ? "" : "s"}`);
+													}}
+												>
+													Prune duplicates
+												</Menu.Item>
+											)}
+											{selection.props.type !== "Tag" && (
+												<Menu.Item
+													className="context-menu__item"
+													closeOnClick={false}
+													onClick={() => setView("color")}
+												>
+													Change color
+												</Menu.Item>
+											)}
+											{isPoly && (
+												<>
+													<Menu.Separator className="context-menu__separator" />
+													<Menu.Item className="context-menu__item" onClick={handleDownloadGeoJSON}>
+														Download GeoJSON
+													</Menu.Item>
+													<Menu.Item className="context-menu__item" onClick={handleRename}>
+														Rename
+													</Menu.Item>
+												</>
+											)}
+											<Menu.Separator className="context-menu__separator" />
+											<Menu.Item className="context-menu__item" onClick={onRemove}>
+												Deselect
+											</Menu.Item>
+										</>
+									)}
+								</Menu.Popup>
+							</Menu.Positioner>
+						</Menu.Portal>
+					</Menu.Root>
 					{isTopLevel && (
 						<button
 							className="icon-button"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { ContextMenu } from "@/components/primitives/Menu";
+import { ContextMenu } from "@base-ui-components/react/context-menu";
 import {
 	mdiGoogleStreetView,
 	mdiMapMarker,
@@ -338,7 +338,7 @@ export function MapEmbed({
 	});
 
 	return (
-		<ContextMenu.Root modal={false}>
+		<ContextMenu.Root>
 			<div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
 			<div className="embed-controls">
 				{/* TopLeft: Map dropdown, Search */}
@@ -556,9 +556,7 @@ export function MapEmbed({
 					</DialogContent>
 				</Dialog>
 			)}
-			<ContextMenu.Trigger asChild>
-				<span ref={contextTriggerRef} title="Context menu" />
-			</ContextMenu.Trigger>
+			<ContextMenu.Trigger render={<span ref={contextTriggerRef} title="Context menu" />} />
 			<ContextMenu.Portal>
 				<MapContextMenuContent host={host} />
 			</ContextMenu.Portal>

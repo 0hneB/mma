@@ -9,7 +9,7 @@ import {
 } from "react";
 import { cmd } from "@/lib/commands";
 import { HslColorPicker } from "react-colorful";
-import { ContextMenu } from "@/components/primitives/Menu";
+import { ContextMenu } from "@base-ui-components/react/context-menu";
 import {
 	useMapState,
 	getMapState,
@@ -404,39 +404,41 @@ export function TagContextMenuContent({
 	const inSel = selCount ?? 0;
 
 	return (
-		<ContextMenu.Content className="context-menu">
-			<ContextMenu.Item
-				className="context-menu__item"
-				onSelect={() => removeTagFromAllLocations(tagId)}
-			>
-				Remove from all ({fmt.format(totalCount)} locations)
-			</ContextMenu.Item>
-			<ContextMenu.Item
-				className="context-menu__item"
-				disabled={inSel === 0}
-				onSelect={() => removeTagFromLocations(tagId, [...getMapState().selectedLocationIds])}
-			>
-				Remove from selection ({fmt.format(inSel)} locations)
-			</ContextMenu.Item>
-			<ContextMenu.Item className="context-menu__item" disabled={inSel === 0} onSelect={onRename}>
-				Rename in selection ({fmt.format(inSel)} locations)
-			</ContextMenu.Item>
-			{onAddAlias && (
-				<ContextMenu.Item className="context-menu__item" onSelect={onAddAlias}>
-					Add alias...
+		<ContextMenu.Positioner>
+			<ContextMenu.Popup className="context-menu">
+				<ContextMenu.Item
+					className="context-menu__item"
+					onClick={() => removeTagFromAllLocations(tagId)}
+				>
+					Remove from all ({fmt.format(totalCount)} locations)
 				</ContextMenu.Item>
-			)}
-			{onNewSubfolder && (
-				<ContextMenu.Item className="context-menu__item" onSelect={onNewSubfolder}>
-					New subfolder...
+				<ContextMenu.Item
+					className="context-menu__item"
+					disabled={inSel === 0}
+					onClick={() => removeTagFromLocations(tagId, [...getMapState().selectedLocationIds])}
+				>
+					Remove from selection ({fmt.format(inSel)} locations)
 				</ContextMenu.Item>
-			)}
-			{onRemoveAlias && (
-				<ContextMenu.Item className="context-menu__item" onSelect={onRemoveAlias}>
-					Remove alias
+				<ContextMenu.Item className="context-menu__item" disabled={inSel === 0} onClick={onRename}>
+					Rename in selection ({fmt.format(inSel)} locations)
 				</ContextMenu.Item>
-			)}
-		</ContextMenu.Content>
+				{onAddAlias && (
+					<ContextMenu.Item className="context-menu__item" onClick={onAddAlias}>
+						Add alias...
+					</ContextMenu.Item>
+				)}
+				{onNewSubfolder && (
+					<ContextMenu.Item className="context-menu__item" onClick={onNewSubfolder}>
+						New subfolder...
+					</ContextMenu.Item>
+				)}
+				{onRemoveAlias && (
+					<ContextMenu.Item className="context-menu__item" onClick={onRemoveAlias}>
+						Remove alias
+					</ContextMenu.Item>
+				)}
+			</ContextMenu.Popup>
+		</ContextMenu.Positioner>
 	);
 }
 

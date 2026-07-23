@@ -11,7 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
-import { ContextMenu } from "@/components/primitives/Menu";
+import { ContextMenu } from "@base-ui-components/react/context-menu";
 import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";
@@ -577,51 +577,57 @@ const TagTreeNodeRow = memo(function TagTreeNodeRow({
 
 	return (
 		<li className="tag-tree__node">
-			<ContextMenu.Root modal={false}>
-				<ContextMenu.Trigger asChild>
-					<div
-						className={`tag-tree__row${effectiveSelected ? " is-selected" : ""}${someChildrenSelected ? " is-partial" : ""}${dragPaths?.has(node.fullPath) ? " is-dragging" : ""}${dropTarget?.position === "into" && dropTarget.path === node.fullPath ? " is-drop-into" : ""}`}
-						style={{
-							backgroundColor: bg,
-							color: fg,
-							marginLeft: `${depth * 1.25}rem`,
-							cursor: "pointer",
-						}}
-						onClick={(e) => onRowClick(node, e.shiftKey, e.altKey)}
-						onMouseDown={(e) => drag.onMouseDown(e, node)}
-						onMouseMove={(e) => drag.onMouseMove(e, node, e.currentTarget)}
-					>
-						{hasChildren ? (
+			<ContextMenu.Root>
+				<ContextMenu.Trigger
+					render={
+						<div
+							className={`tag-tree__row${effectiveSelected ? " is-selected" : ""}${someChildrenSelected ? " is-partial" : ""}${dragPaths?.has(node.fullPath) ? " is-dragging" : ""}${dropTarget?.position === "into" && dropTarget.path === node.fullPath ? " is-drop-into" : ""}`}
+							style={{
+								backgroundColor: bg,
+								color: fg,
+								marginLeft: `${depth * 1.25}rem`,
+								cursor: "pointer",
+							}}
+							onClick={(e) => onRowClick(node, e.shiftKey, e.altKey)}
+							onMouseDown={(e) => drag.onMouseDown(e, node)}
+							onMouseMove={(e) => drag.onMouseMove(e, node, e.currentTarget)}
+						>
+							{hasChildren ? (
+								<button
+									className="tag-tree__chevron"
+									onClick={handleChevronClick}
+									type="button"
+									style={{ color: fg }}
+								>
+									<Icon path={isOpen ? mdiChevronDown : mdiChevronRight} size={18} />
+								</button>
+							) : (
+								<span className="tag-tree__chevron-spacer" />
+							)}
+							<span className="tag-tree__label">{node.segment}</span>
+							{!node.tag && (
+								<Icon
+									path={mdiFolder}
+									size={13}
+									style={{ color: fg, opacity: 0.5, flexShrink: 0 }}
+								/>
+							)}
+							<small className="tag-tree__count mono">{fmt.format(count)}</small>
 							<button
-								className="tag-tree__chevron"
-								onClick={handleChevronClick}
+								className="button tag-tree__edit"
+								onClick={(e) => {
+									e.stopPropagation();
+									if (node.tag) onEditTag(node);
+									else onEditVirtual(node.fullPath);
+								}}
 								type="button"
 								style={{ color: fg }}
 							>
-								<Icon path={isOpen ? mdiChevronDown : mdiChevronRight} size={18} />
+								<Icon path={mdiPencil} size={14} />
 							</button>
-						) : (
-							<span className="tag-tree__chevron-spacer" />
-						)}
-						<span className="tag-tree__label">{node.segment}</span>
-						{!node.tag && (
-							<Icon path={mdiFolder} size={13} style={{ color: fg, opacity: 0.5, flexShrink: 0 }} />
-						)}
-						<small className="tag-tree__count mono">{fmt.format(count)}</small>
-						<button
-							className="button tag-tree__edit"
-							onClick={(e) => {
-								e.stopPropagation();
-								if (node.tag) onEditTag(node);
-								else onEditVirtual(node.fullPath);
-							}}
-							type="button"
-							style={{ color: fg }}
-						>
-							<Icon path={mdiPencil} size={14} />
-						</button>
-					</div>
-				</ContextMenu.Trigger>
+						</div>
+					}
+				/>
 				{node.tag ? (
 					<ContextMenu.Portal>
 						<TagContextMenuContent
@@ -634,22 +640,24 @@ const TagTreeNodeRow = memo(function TagTreeNodeRow({
 					</ContextMenu.Portal>
 				) : (
 					<ContextMenu.Portal>
-						<ContextMenu.Content className="context-menu">
-							<ContextMenu.Item
-								className="context-menu__item"
-								onSelect={() => onNewFolder(node.fullPath)}
-							>
-								New subfolder...
-							</ContextMenu.Item>
-							{node.descendantTagIds.length === 0 && (
+						<ContextMenu.Positioner>
+							<ContextMenu.Popup className="context-menu">
 								<ContextMenu.Item
 									className="context-menu__item"
-									onSelect={() => onDeleteFolder(node.fullPath)}
+									onClick={() => onNewFolder(node.fullPath)}
 								>
-									Delete folder
+									New subfolder...
 								</ContextMenu.Item>
-							)}
-						</ContextMenu.Content>
+								{node.descendantTagIds.length === 0 && (
+									<ContextMenu.Item
+										className="context-menu__item"
+										onClick={() => onDeleteFolder(node.fullPath)}
+									>
+										Delete folder
+									</ContextMenu.Item>
+								)}
+							</ContextMenu.Popup>
+						</ContextMenu.Positioner>
 					</ContextMenu.Portal>
 				)}
 			</ContextMenu.Root>
@@ -804,36 +812,38 @@ const TagTreeLeaf = memo(function TagTreeLeaf({
 	const tag = node.tag!;
 
 	return (
-		<ContextMenu.Root modal={false}>
-			<ContextMenu.Trigger asChild>
-				<TagPill
-					as="li"
-					color={tag.color}
-					label={node.segment}
-					count={count}
-					className={clsx(
-						isSelected && "is-selected",
-						node.isAlias && "is-alias",
-						isDragging && "is-dragging",
-					)}
-					style={{ cursor: "pointer" }}
-					data-tag-id={tag.id}
-					onClick={(e: React.MouseEvent) => onRowClick(node, e.shiftKey, e.altKey)}
-					onMouseDown={(e: React.MouseEvent) => drag.onMouseDown(e, node)}
-					onMouseMove={(e: React.MouseEvent<HTMLElement>) =>
-						drag.onMouseMove(e, node, e.currentTarget, true)
-					}
-					button={
-						<TagPillButton
-							variant="edit"
-							onClick={(e) => {
-								e.stopPropagation();
-								onEditTag(node);
-							}}
-						/>
-					}
-				/>
-			</ContextMenu.Trigger>
+		<ContextMenu.Root>
+			<ContextMenu.Trigger
+				render={
+					<TagPill
+						as="li"
+						color={tag.color}
+						label={node.segment}
+						count={count}
+						className={clsx(
+							isSelected && "is-selected",
+							node.isAlias && "is-alias",
+							isDragging && "is-dragging",
+						)}
+						style={{ cursor: "pointer" }}
+						data-tag-id={tag.id}
+						onClick={(e: React.MouseEvent) => onRowClick(node, e.shiftKey, e.altKey)}
+						onMouseDown={(e: React.MouseEvent) => drag.onMouseDown(e, node)}
+						onMouseMove={(e: React.MouseEvent<HTMLElement>) =>
+							drag.onMouseMove(e, node, e.currentTarget, true)
+						}
+						button={
+							<TagPillButton
+								variant="edit"
+								onClick={(e) => {
+									e.stopPropagation();
+									onEditTag(node);
+								}}
+							/>
+						}
+					/>
+				}
+			/>
 			<ContextMenu.Portal>
 				<TagContextMenuContent
 					tagId={tag.id}

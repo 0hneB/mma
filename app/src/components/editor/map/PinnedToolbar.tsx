@@ -13,7 +13,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import { ContextMenu } from "@/components/primitives/Menu";
+import { ContextMenu } from "@base-ui-components/react/context-menu";
 
 export interface PanelDef {
 	render: (onClose: () => void) => ReactNode;
@@ -108,23 +108,27 @@ export function PinnedToolbar({
 					if (id === "---") {
 						return (
 							<ContextMenu.Root key={`sep-${i}`}>
-								<ContextMenu.Trigger asChild>
-									<span
-										className={`selection-manager__bar-sep${dragIdx === i ? " is-dragging" : ""}`}
-										data-drop={dropIdx === i ? "" : undefined}
-										onMouseDown={(e) => handleDragStart(i, e)}
-										onMouseMove={() => handleDragOver(i)}
-									/>
-								</ContextMenu.Trigger>
+								<ContextMenu.Trigger
+									render={
+										<span
+											className={`selection-manager__bar-sep${dragIdx === i ? " is-dragging" : ""}`}
+											data-drop={dropIdx === i ? "" : undefined}
+											onMouseDown={(e) => handleDragStart(i, e)}
+											onMouseMove={() => handleDragOver(i)}
+										/>
+									}
+								/>
 								<ContextMenu.Portal>
-									<ContextMenu.Content className="context-menu">
-										<ContextMenu.Item
-											className="context-menu__item"
-											onSelect={() => removePinnedAt(i)}
-										>
-											Remove separator
-										</ContextMenu.Item>
-									</ContextMenu.Content>
+									<ContextMenu.Positioner>
+										<ContextMenu.Popup className="context-menu">
+											<ContextMenu.Item
+												className="context-menu__item"
+												onClick={() => removePinnedAt(i)}
+											>
+												Remove separator
+											</ContextMenu.Item>
+										</ContextMenu.Popup>
+									</ContextMenu.Positioner>
 								</ContextMenu.Portal>
 							</ContextMenu.Root>
 						);
@@ -174,47 +178,49 @@ export function PinnedToolbar({
 					return (
 						<ContextMenu.Root key={id}>
 							<Tooltip content={command.label} side="bottom">
-								<ContextMenu.Trigger asChild>{btn}</ContextMenu.Trigger>
+								<ContextMenu.Trigger render={btn} />
 							</Tooltip>
 							<ContextMenu.Portal>
-								<ContextMenu.Content className="context-menu">
-									{!isFirst && (
+								<ContextMenu.Positioner>
+									<ContextMenu.Popup className="context-menu">
+										{!isFirst && (
+											<ContextMenu.Item
+												className="context-menu__item"
+												onClick={() => movePinnedCommand(i, -1)}
+											>
+												Move left
+											</ContextMenu.Item>
+										)}
+										{!isLast && (
+											<ContextMenu.Item
+												className="context-menu__item"
+												onClick={() => movePinnedCommand(i, 1)}
+											>
+												Move right
+											</ContextMenu.Item>
+										)}
+										<ContextMenu.Separator className="context-menu__separator" />
 										<ContextMenu.Item
 											className="context-menu__item"
-											onSelect={() => movePinnedCommand(i, -1)}
+											onClick={() => insertSeparator(i, "before")}
 										>
-											Move left
+											Add separator before
 										</ContextMenu.Item>
-									)}
-									{!isLast && (
 										<ContextMenu.Item
 											className="context-menu__item"
-											onSelect={() => movePinnedCommand(i, 1)}
+											onClick={() => insertSeparator(i, "after")}
 										>
-											Move right
+											Add separator after
 										</ContextMenu.Item>
-									)}
-									<ContextMenu.Separator className="context-menu__separator" />
-									<ContextMenu.Item
-										className="context-menu__item"
-										onSelect={() => insertSeparator(i, "before")}
-									>
-										Add separator before
-									</ContextMenu.Item>
-									<ContextMenu.Item
-										className="context-menu__item"
-										onSelect={() => insertSeparator(i, "after")}
-									>
-										Add separator after
-									</ContextMenu.Item>
-									<ContextMenu.Separator className="context-menu__separator" />
-									<ContextMenu.Item
-										className="context-menu__item"
-										onSelect={() => removePinnedAt(i)}
-									>
-										Remove from toolbar
-									</ContextMenu.Item>
-								</ContextMenu.Content>
+										<ContextMenu.Separator className="context-menu__separator" />
+										<ContextMenu.Item
+											className="context-menu__item"
+											onClick={() => removePinnedAt(i)}
+										>
+											Remove from toolbar
+										</ContextMenu.Item>
+									</ContextMenu.Popup>
+								</ContextMenu.Positioner>
 							</ContextMenu.Portal>
 						</ContextMenu.Root>
 					);
