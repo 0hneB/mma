@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { memoOnRefs } from "@/lib/util/memoOnRefs";
 import type { WorkArea, MaybeLocation } from "@/types";
 import {
@@ -8,7 +7,7 @@ import {
 	locId,
 	applyLocationPatch,
 } from "@/types";
-import type { Location, MapData, MapMeta, Tag, ExtraFieldDef, CommitDiff } from "@/bindings.gen";
+import type { Location, MapData, MapMeta, Tag, ExtraFieldDef } from "@/bindings.gen";
 import { listen } from "@tauri-apps/api/event";
 import { cmd } from "@/lib/commands";
 import type {
@@ -16,7 +15,7 @@ import type {
 	MapMetaPatch_Deserialize as MapMetaPatch,
 	SelectionSync,
 } from "@/bindings.gen";
-import { emit as emitEvent, useEvent, useEventValue } from "@/lib/events";
+import { emit as emitEvent, useEventValue } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
@@ -36,7 +35,7 @@ import {
 import type { LocationPatch_Deserialize as LocationPatch, Update, TagPatch } from "@/bindings.gen";
 import { SelectedIds, decodeSelectionBitmask, type ReadonlyIdSet } from "@/lib/render/CellManager";
 import { resetImportState } from "./importStaging";
-import { resetCommitDiffState } from "./commitDiff";
+import { resetCommitDiffState, resetCommitDiffCounts } from "./commitDiff";
 import { setCachedMapList, invalidateMapList, reloadMapList } from "./mapList";
 
 import type { Selection, SelectionProps } from "@/bindings.gen";
@@ -144,11 +143,6 @@ export function getMapState(): Readonly<MapState> {
 	return state;
 }
 
-async function computeCommitDiff(): Promise<CommitDiff> {
-	const [added, removed, modified] = await cmd.storeCommitDiff();
-	return { added, removed, modified };
-}
-
 /** Tags that exist from the user's point of view. Raw `tags` also holds soft-deleted ghosts (count=0, visible=false, kept for undo revival) — almost nothing outside the undo/revival machinery should enumerate those. */
 export const getVisibleTags: () => Tag[] = memoOnRefs(
 	() => [state.tags] as const,
@@ -159,31 +153,6 @@ export const getVisibleTags: () => Tag[] = memoOnRefs(
  *  (e.g. a selection whose tag just died) still resolve to a name. */
 export function getTag(id: number): Tag | undefined {
 	return state.tags[id];
-}
-
-let cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
-
-export function hasCommitDiff(): boolean {
-	return (
-		cachedCommitDiff.added > 0 || cachedCommitDiff.removed > 0 || cachedCommitDiff.modified > 0
-	);
-}
-
-export function useCommitDiff() {
-	const version = useEvent("store:changed");
-	useEffect(() => {
-		computeCommitDiff().then((d) => {
-			if (
-				d.added !== cachedCommitDiff.added ||
-				d.removed !== cachedCommitDiff.removed ||
-				d.modified !== cachedCommitDiff.modified
-			) {
-				cachedCommitDiff = d;
-				emitEvent("store:changed");
-			}
-		});
-	}, [version]);
-	return cachedCommitDiff;
 }
 
 // --- Autosave ---
@@ -223,7 +192,7 @@ export function scheduleAutoCommit(mapId: string, importedCount: number) {
 		.storeCommit(mapId, `Import ${importedCount} locations`)
 		.then(() => {
 			setState({ canUndo: false, canRedo: false });
-			cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
+			resetCommitDiffCounts();
 		})
 		.catch((e: unknown) => log.error("[import] background commit failed:", e))
 		.finally(() => {
@@ -1160,7 +1129,7 @@ export async function commitMap(message?: string): Promise<string> {
 	t.step("commit");
 	t.end();
 	setState({ canUndo: false, canRedo: false });
-	cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
+	resetCommitDiffCounts();
 
 	// Commit clears the overlay; commit-sensitive selections (e.g. Uncommitted) must
 	// re-resolve against the new baseline instead of showing now-committed rows.

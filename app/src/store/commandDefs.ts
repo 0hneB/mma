@@ -61,9 +61,9 @@ import {
 	deleteTags,
 	getActiveSelections,
 	removeLocations,
-	hasCommitDiff,
 	toggleGhostAllSelections,
 } from "./useMapStore";
+import { hasCommitDiff } from "./commitDiff";
 import { loadGeoJSON } from "@/lib/util/loadGeoJSON";
 import { downloadBlob } from "@/lib/util/util";
 import { toggleSeenOverlay } from "@/lib/seen/seenOverlay";

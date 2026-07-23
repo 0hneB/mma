@@ -1,9 +1,44 @@
-﻿import type { LatLng } from "@/types";
+﻿import { useEffect } from "react";
+import type { LatLng } from "@/types";
 import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
-import { emit as emitEvent } from "@/lib/events";
+import { emit as emitEvent, useEvent } from "@/lib/events";
 import { getMapState, setWorkArea } from "./useMapStore";
+
+// --- Uncommitted-diff counts (drives the Commit button + palette enablement) ---
+
+let cachedCommitDiff: CommitDiff = { added: 0, removed: 0, modified: 0 };
+
+export function hasCommitDiff(): boolean {
+	return (
+		cachedCommitDiff.added > 0 || cachedCommitDiff.removed > 0 || cachedCommitDiff.modified > 0
+	);
+}
+
+/** Zero the cached counts (a commit just cleared the overlay). */
+export function resetCommitDiffCounts() {
+	cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
+}
+
+export function useCommitDiff() {
+	const version = useEvent("store:changed");
+	useEffect(() => {
+		cmd.storeCommitDiff().then(([added, removed, modified]) => {
+			if (
+				added !== cachedCommitDiff.added ||
+				removed !== cachedCommitDiff.removed ||
+				modified !== cachedCommitDiff.modified
+			) {
+				cachedCommitDiff = { added, removed, modified };
+				emitEvent("store:changed");
+			}
+		});
+	}, [version]);
+	return cachedCommitDiff;
+}
+
+// --- Commit-diff preview overlay ---
 
 /** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
  *  interleaved `[lng, lat]` f32; `diff-markers:changed` fires to rebuild the layers. */

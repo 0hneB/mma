@@ -1,14 +1,8 @@
 import { useState, useCallback } from "react";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import {
-	useMapState,
-	useCommitDiff,
-	hasCommitDiff,
-	undo,
-	redo,
-	commitMap,
-} from "@/store/useMapStore";
+import { useMapState, undo, redo, commitMap } from "@/store/useMapStore";
+import { useCommitDiff, hasCommitDiff } from "@/store/commitDiff";
 import { beginImportFromPath } from "@/store/importStaging";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { ExportDialog } from "@/components/dialogs/ExportDialog";
