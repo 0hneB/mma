@@ -160,12 +160,6 @@ let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 let inflightPersist: Promise<void> | null = null;
 const AUTOSAVE_DELAY_MS = 2000;
 
-/** Number of uncommitted changes (the overlay size). */
-export async function getDirtyCount(): Promise<number> {
-	const result = await cmd.storeGetSummary();
-	return result.dirtyCount;
-}
-
 /** Schedule an autosave shortly. Mutations call this automatically; debounced. */
 export function scheduleSave() {
 	if (autosaveTimer) clearTimeout(autosaveTimer);

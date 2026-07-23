@@ -115,7 +115,7 @@ describe("Dirty state isolation across maps", () => {
 		await closeMap();
 
 		await openMap(mapBId);
-		const dirty = await withApi(async (api) => api.getDirtyCount());
+		const dirty = await withApi(async (api) => (await api.cmd.storeGetSummary()).dirtyCount);
 		expect(dirty).toBe(0);
 		await closeMap();
 	});

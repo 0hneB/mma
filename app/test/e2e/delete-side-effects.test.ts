@@ -49,7 +49,7 @@ describe("Delete marks store dirty", () => {
 		}, locIds[0]);
 
 		// dirtyCount is 0-or-1 (boolean flag from Rust)
-		const dirty = await withApi(async (api) => api.getDirtyCount());
+		const dirty = await withApi(async (api) => (await api.cmd.storeGetSummary()).dirtyCount);
 		expect(dirty).toBe(1);
 	});
 });

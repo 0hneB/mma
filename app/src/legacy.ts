@@ -4,6 +4,7 @@
 import { getMapHost, waitForMapHost } from "@/lib/map/mapState";
 import { hostInstance } from "@/lib/map/host";
 import { getMapState, getActiveSelections } from "@/store/useMapStore";
+import { cmd } from "@/lib/commands";
 
 /** @deprecated v0.8.1. Use `MMA.getMapHost()` and narrow via `hostInstance`. */
 export function getGoogleMap(): google.maps.Map | null {
@@ -63,4 +64,9 @@ export function getGhostedSelections() {
 /** @deprecated v0.8.2. Use `MMA.getActiveSelections()`. */
 export function getSelections() {
 	return getActiveSelections();
+}
+
+/** @deprecated v0.8.2. Read `(await MMA.cmd.storeGetSummary()).dirtyCount`. */
+export async function getDirtyCount(): Promise<number> {
+	return (await cmd.storeGetSummary()).dirtyCount;
 }
