@@ -83,21 +83,27 @@ export function emit<E extends EditorEvent>(evt: E, ...args: EmitArgs<E>): void 
 	}
 }
 
+/** Normalizes event input into a stable key, event list, and subscribe callback. */
+function useEventSubscription(evt: EditorEvent | readonly EditorEvent[]) {
+	const key = Array.isArray(evt) ? evt.join("|") : (evt as string);
+	const events = useMemo(() => key.split("|") as EditorEvent[], [key]);
+	const sub = useCallback((cb: () => void) => subscribeMany(events, cb), [events]);
+	return { events, sub };
+}
+
 /** Subscribe to an event and derive a reactive value from it. The value itself is the
  *  `useSyncExternalStore` snapshot, so consumers re-render only when its reference
  *  changes (`Object.is`). Two invariants follow:
  *  - `getValue` must return a cached/stable reference, never construct one per call
  *  - producers must reassign the published reference, never mutate it in place */
-export function useEventValue<T>(evt: EditorEvent, getValue: () => T): T {
-	const sub = useCallback((cb: () => void) => subscribe(evt, cb), [evt]);
+export function useEventValue<T>(evt: EditorEvent | readonly EditorEvent[], getValue: () => T): T {
+	const { sub } = useEventSubscription(evt);
 	return useSyncExternalStore(sub, getValue);
 }
 
 /** React hook: re-renders when the given event(s) fire. Returns a version counter. */
 export function useEvent(evt: EditorEvent | readonly EditorEvent[]): number {
-	const key = Array.isArray(evt) ? evt.join("|") : (evt as string);
-	const events = useMemo(() => key.split("|") as EditorEvent[], [key]);
-	const sub = useCallback((cb: () => void) => subscribeMany(events, cb), [events]);
+	const { events, sub } = useEventSubscription(evt);
 	const snap = useCallback(
 		() => events.reduce((sum, e) => sum + (versions.get(e) ?? 0), 0),
 		[events],
