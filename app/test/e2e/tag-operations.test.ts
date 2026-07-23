@@ -45,8 +45,7 @@ describe("Tag reordering", () => {
 		const result = await withApi(
 			async (api, id1, id2, id3) => {
 				await api.reorderTags([id3, id1, id2]);
-				const map = api.getCurrentMap();
-				const tags = map!.meta.tags as any;
+				const tags = api.getMapState().tags as any;
 				return {
 					order1: tags[String(id1)]?.order,
 					order2: tags[String(id2)]?.order,
@@ -69,8 +68,7 @@ describe("Tag reordering", () => {
 
 		const result = await withApi(
 			async (api, id1, id2, id3) => {
-				const map = api.getCurrentMap();
-				const tags = map!.meta.tags as any;
+				const tags = api.getMapState().tags as any;
 				return {
 					order1: tags[String(id1)]?.order,
 					order2: tags[String(id2)]?.order,
@@ -317,8 +315,7 @@ describe("Tag color update", () => {
 		}, colorTagId);
 
 		const color = await withApi(async (api, tagId) => {
-			const map = api.getCurrentMap();
-			return (map!.meta.tags as any)[String(tagId)]?.color;
+			return (api.getMapState().tags as any)[String(tagId)]?.color;
 		}, colorTagId);
 		expect(color).toBe("#ff0000");
 	});
@@ -333,8 +330,7 @@ describe("Tag color update", () => {
 		await openMap(mapId);
 
 		const color = await withApi(async (api, tagId) => {
-			const map = api.getCurrentMap();
-			return (map!.meta.tags as any)[String(tagId)]?.color;
+			return (api.getMapState().tags as any)[String(tagId)]?.color;
 		}, colorTagId);
 		expect(color).toBe("#00ff00");
 	});

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { LatLng, Bounds } from "@/types";
 import { isWorldBounds, scoreTupleToBounds } from "@/types";
-import { useCurrentMap } from "@/store/useMapStore";
+import { useMapState } from "@/store/useMapStore";
 import { cmd } from "@/lib/commands";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { distMeters } from "@/lib/geo/geo";
@@ -100,7 +100,7 @@ export function resolveScoreMaxErrorFromBounds(
  * value that drives both the Scoring editor display and the measurement score.
  */
 export function useScoreMaxError(): number {
-	const map = useCurrentMap();
+	const map = useMapState((s) => s.map);
 	const raw = map?.meta.scoreBounds ?? "auto";
 	const bounds: "auto" | Bounds = typeof raw === "string" ? "auto" : scoreTupleToBounds(raw);
 	const isAuto = bounds === "auto";

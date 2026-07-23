@@ -1148,9 +1148,8 @@ function HeatmapSidebar({ onClose }) {
       removeCSS();
     };
   }, []);
-  const map = MMA.useCurrentMap();
-  const selectedIds = MMA.useSelectedLocationIds();
-  const allCount = map?.meta.locationCount ?? 0;
+  const allCount = MMA.useMapState((s) => s.locationCount);
+  const selectedIds = MMA.useMapState((s) => s.selectedLocationIds);
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "map-sidebar heatmap-sidebar", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "heatmap-sidebar__header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon-button", onClick: onClose, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { path: ARROW_LEFT }) }),

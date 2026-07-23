@@ -13,7 +13,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { ProgressDisplay } from "./ProgressDisplay";
 import { tickProgress } from "./progressSignal";
 import { google } from "@/lib/sv/opensv";
-import { getSelections, useSelections, createTags } from "@/store/useMapStore";
+import { getSelections, useMapState, createTags } from "@/store/useMapStore";
 import type { Selection } from "@/bindings.gen";
 import { createPluginStorage } from "@/plugins/registry";
 import { Sidebar, Section } from "@/components/primitives/Sidebar";
@@ -154,7 +154,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 	const [tagName, setTagName] = useState(() => genStore.get<string>("tagName", ""));
 	const [, rerender] = useState(0);
 	const engineRef = useRef<GenerationEngine | null>(sessionEngine);
-	const selections = useSelections();
+	const selections = useMapState(getSelections);
 
 	useEffect(() => {
 		sessionMeta = meta;

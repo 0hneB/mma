@@ -177,11 +177,17 @@ describe("Undo history isolation across maps", () => {
 
 	it("undo state reports correctly per map", async () => {
 		await openMap(mapAId);
-		const stateA = await withApi(async (api) => api.getUndoRedoState());
+		const stateA = await withApi(async (api) => ({
+			canUndo: api.getMapState().canUndo,
+			canRedo: api.getMapState().canRedo,
+		}));
 		await closeMap();
 
 		await openMap(mapBId);
-		const stateB = await withApi(async (api) => api.getUndoRedoState());
+		const stateB = await withApi(async (api) => ({
+			canUndo: api.getMapState().canUndo,
+			canRedo: api.getMapState().canRedo,
+		}));
 		await closeMap();
 
 		// Both should have undo available (we added locs to both)

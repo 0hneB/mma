@@ -592,7 +592,7 @@ describe("Unicode in all fields", () => {
 		expect(loc.tags).toContain(result.tagIds[2]);
 
 		// Verify tag names in meta
-		const tags = await withApi((api) => api.getCurrentMap()!.meta.tags);
+		const tags = await withApi((api) => api.getMapState().tags);
 		expect(tags[result.tagIds[0]].name).toBe("東京タワー");
 		expect(tags[result.tagIds[1]].name).toBe("café crème");
 		expect(tags[result.tagIds[2]].name).toBe("Москва");
@@ -699,7 +699,7 @@ describe("Export with scope", () => {
 				exportExtras: true,
 				scope,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));

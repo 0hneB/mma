@@ -97,9 +97,9 @@ export async function reconcile(
 
 	// The command is not abortable; it has already pushed and written the push half's mapping rows.
 	// An abort now just skips the pull applies - the persisted mapping stays consistent regardless.
-	const map = assertStillOpen();
+	assertStillOpen();
 	const nameToId = new Map<string, number>();
-	for (const t of Object.values(map.meta.tags)) nameToId.set(t.name, t.id);
+	for (const t of Object.values(M.getMapState().tags)) nameToId.set(t.name, t.id);
 
 	// Create any local tags the incoming pulls reference, then resolve names -> ids.
 	if (result.neededTags.length) {

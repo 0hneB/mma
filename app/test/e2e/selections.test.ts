@@ -308,7 +308,7 @@ describe("Selection operations", () => {
 			return {
 				count: sels.length,
 				type: sels[0]?.props?.type,
-				locCount: sels[0] ? api.getSelectionCounts()[sels[0].key] : undefined,
+				locCount: sels[0] ? api.getMapState().selectionCounts[sels[0].key] : undefined,
 			};
 		});
 		expect(result.count).toBe(1);

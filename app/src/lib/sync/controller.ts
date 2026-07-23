@@ -117,7 +117,7 @@ export function createSyncController(provider: SyncProvider, pluginId: string): 
 			const link = getLink();
 			return link ? provider.remoteMapUrl(link.remoteMapId) : null;
 		},
-		localLocationCount: () => window.MMA.getCurrentMap()?.meta.locationCount ?? 0,
+		localLocationCount: () => window.MMA.getMapState().locationCount,
 
 		async link(map, remoteUserId) {
 			const id = currentMapId();

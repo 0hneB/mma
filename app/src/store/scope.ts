@@ -5,7 +5,7 @@ import { compareNatural } from "@/lib/util/util";
 import { compareMonthOrder } from "@/lib/util/date";
 import { resolveSavedSelectionIds } from "./savedSelections";
 
-import { useSelectedLocationIds, useCurrentMap, getSelectedLocationIds } from "./useMapStore";
+import { useMapState, getSelectedLocationIds } from "./useMapStore";
 
 /** The user-facing "which locations" concept: Rust's mechanical Scope widened with
  *  saved selections, which resolve to ids in JS (Rust never sees saved definitions). */
@@ -69,13 +69,13 @@ function defaultScope(): Scope {
  *  whose scope lives entirely in a React sidebar; reach for `createScope` when an imperative
  *  renderer (e.g. a deck.gl overlay) outside React also needs to read the scope. */
 export function useScope(initial?: Scope): ScopeController {
-	const selectedIds = useSelectedLocationIds();
-	const map = useCurrentMap();
+	const selectedIds = useMapState((s) => s.selectedLocationIds);
+	const allCount = useMapState((s) => s.locationCount);
 	const [scope, setScope] = useState<Scope>(() => initial ?? defaultScope());
 	return {
 		scope,
 		setScope,
-		allCount: map?.meta.locationCount ?? 0,
+		allCount,
 		selectionCount: selectedIds.size,
 	};
 }
@@ -112,12 +112,12 @@ export function createScope(initial?: Scope): ScopeHandle {
 		subscribe: sub,
 		use(): ScopeController {
 			useSyncExternalStore(sub, get);
-			const selectedIds = useSelectedLocationIds();
-			const map = useCurrentMap();
+			const selectedIds = useMapState((s) => s.selectedLocationIds);
+			const allCount = useMapState((s) => s.locationCount);
 			return {
 				scope,
 				setScope: set,
-				allCount: map?.meta.locationCount ?? 0,
+				allCount,
 				selectionCount: selectedIds.size,
 			};
 		},

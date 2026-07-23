@@ -1,14 +1,13 @@
 import { memo, useState, createElement } from "react";
 import { getEnabledPlugins } from "@/plugins/registry";
 import { useEvent } from "@/lib/events";
-import { useCurrentMap } from "@/store/useMapStore";
-import { setPluginMode } from "@/store/useMapStore";
+import { useMapState, setPluginMode } from "@/store/useMapStore";
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
 
 export function PluginToolbar() {
 	useEvent("plugins:changed");
-	useCurrentMap();
+	useMapState((s) => s.map);
 
 	const plugins = getEnabledPlugins();
 	const [modalId, setModalId] = useState<string | null>(null);

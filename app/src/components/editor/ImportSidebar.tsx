@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useVisibleTags } from "@/store/useMapStore";
+import { useMapState, getVisibleTags } from "@/store/useMapStore";
 import { getImportStaging, confirmImport, cancelImport } from "@/store/importStaging";
 import { useEventValue } from "@/lib/events";
 import { fmt } from "@/lib/util/format";
@@ -37,7 +37,7 @@ function previewColor(name: string): string {
 /** Import staging sidebar: field picker, file tags, bulk tag, and warnings. */
 export function ImportSidebar() {
 	const staging = useEventValue("store:changed", getImportStaging);
-	const visibleTags = useVisibleTags();
+	const visibleTags = useMapState(getVisibleTags);
 	const [droppedFields, setDroppedFields] = useState(loadDroppedFields);
 	const [bulkTag, setBulkTag] = useState<string | null>(null);
 	const [tagInput, setTagInput] = useState("");

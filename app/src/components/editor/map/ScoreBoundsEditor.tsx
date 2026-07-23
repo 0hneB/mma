@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import type { ScoreBounds } from "@/bindings.gen";
 import type { Bounds } from "@/types";
 import { isWorldBounds, scoreTupleToBounds, boundsToScoreTuple } from "@/types";
-import { useCurrentMap, updateMapMeta } from "@/store/useMapStore";
+import { useMapState, updateMapMeta } from "@/store/useMapStore";
 import {
 	resolveScoreMaxError,
 	formatDistance,
@@ -21,7 +21,7 @@ function modeOf(bounds: ScoreBounds): Mode {
 
 /** "Scoring" section of the edit-map modal. */
 export function ScoreBoundsEditor() {
-	const map = useCurrentMap();
+	const map = useMapState((s) => s.map);
 	const bounds: ScoreBounds = map?.meta.scoreBounds ?? "auto";
 	const mode = modeOf(bounds);
 	const resolvedError = useScoreMaxError();

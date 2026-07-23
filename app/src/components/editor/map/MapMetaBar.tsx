@@ -2,8 +2,7 @@ import { useState, useCallback } from "react";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import {
-	useCurrentMap,
-	useUndoRedo,
+	useMapState,
 	useCommitDiff,
 	hasCommitDiff,
 	undo,
@@ -24,8 +23,10 @@ import { mdiUndo, mdiRedo } from "@mdi/js";
 import { fmt } from "@/lib/util/format";
 
 export function MapMetaBar() {
-	const map = useCurrentMap();
-	const { canUndo, canRedo } = useUndoRedo();
+	const map = useMapState((s) => s.map);
+	const locationCount = useMapState((s) => s.locationCount);
+	const canUndo = useMapState((s) => s.canUndo);
+	const canRedo = useMapState((s) => s.canRedo);
 	const diff = useCommitDiff();
 	const hasDiff = hasCommitDiff();
 	const [showExport, setShowExport] = useState(false);
@@ -54,7 +55,7 @@ export function MapMetaBar() {
 	return (
 		<>
 			<span className="map-meta__total">
-				<span className="mono">{fmt.format(map.meta.locationCount)}</span> locations
+				<span className="mono">{fmt.format(locationCount)}</span> locations
 			</span>
 			<span className="map-meta__actions">
 				<Button variant="primary" disabled={!hasDiff} onClick={() => commitMap()}>

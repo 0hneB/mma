@@ -61,39 +61,92 @@ import {
 	isolateGhostKeys,
 } from "./selections";
 
-// --- Current map state ---
-let currentMapId: string | null = null;
-let currentMap: MapData | null = null;
-/** Persisted bitmasks per selection key. Updated incrementally on each
- *  mutation (delta refresh) when the column store is available. */
-let selections: Selection[] = [];
-/** Resolved count per selection node (top-level and nested), keyed by `Selection.key`.
- *  The sole source for sidebar counts — refreshed wholesale from Rust on every sync. */
-let selectionCounts: Record<string, number> = {};
-/** Keys of selections that are "ghosted": kept in the list but excluded from the
- *  Rust sync, so they neither render nor count toward the selected set. Ephemeral.
- *  Reassigned on every change (never mutated in place) — it is a hook snapshot. */
-let ghostedSelections: ReadonlySet<string> = new Set<string>();
-let selectedLocationIds: SelectedIds = SelectedIds.EMPTY;
-let activeLocationId: number | null = null;
-let duplicateLocations: Location[] = [];
-let workArea: WorkArea = "overview";
-let activePluginId: string | null = null;
-let tagCounts: Record<number, number> = {};
-let undoRedoState = { canUndo: false, canRedo: false };
-/** Extra-field keys known to exist in location data on the current map.
- *  Populated from `StoreStatus.knownFieldKeys` on map open, extended
- *  incrementally via `MutationResult.newFieldDefs`.
- *  Treat as immutable -- reassign, never mutate in place: consumers memo on
- *  the Set's reference identity (`useMemo(..., [keys])`). */
-let knownFieldKeys = new Set<string>();
+// --- Map state ---
+export interface MapState {
+	mapId: string | null;
+	/** Persisted identity slice (metadata + settings). Changes rarely. */
+	map: MapData | null;
+	locationCount: number;
+	canUndo: boolean;
+	canRedo: boolean;
+	/** All tags by id, including soft-deleted ghosts (visible=false, kept for undo revival). */
+	tags: Record<number, Tag>;
+	/** Per-tag location counts for the open map, keyed by tag id. */
+	tagCounts: Record<number, number>;
+	/** Resolved count per selection node (top-level and nested), keyed by `Selection.key`.
+	 *  The sole source for sidebar counts — refreshed wholesale from Rust on every sync. */
+	selectionCounts: Record<string, number>;
+	/** Extra-field keys known to exist in location data on the current map.
+	 *  Populated from `StoreStatus.knownFieldKeys` on map open, extended
+	 *  incrementally via `MutationResult.newFieldDefs`. */
+	knownFieldKeys: ReadonlySet<string>;
+	selections: Selection[];
+	/** Keys of selections that are "ghosted": kept in the list but excluded from the
+	 *  Rust sync, so they neither render nor count toward the selected set. Ephemeral. */
+	ghostedSelections: ReadonlySet<string>;
+	selectedLocationIds: SelectedIds;
+	activeLocationId: number | null;
+	/** The location open in the editor, or null. Virtual locations (staged
+	 *  imports, seen previews) live here with negative ids. */
+	activeLocation: Location | null;
+	duplicateLocations: Location[];
+	workArea: WorkArea;
+	activePluginId: string | null;
+}
 
-/** Reactive per-tag location counts for the open map, keyed by tag id. */
-export const useTagCounts = () => useEventValue("store:changed", getTagCounts);
+const INITIAL_STATE: MapState = {
+	mapId: null,
+	map: null,
+	locationCount: 0,
+	canUndo: false,
+	canRedo: false,
+	tags: {},
+	tagCounts: {},
+	selectionCounts: {},
+	knownFieldKeys: new Set(),
+	selections: [],
+	ghostedSelections: new Set(),
+	selectedLocationIds: SelectedIds.EMPTY,
+	activeLocationId: null,
+	activeLocation: null,
+	duplicateLocations: [],
+	workArea: "overview",
+	activePluginId: null,
+};
+
+let state: MapState = INITIAL_STATE;
+
+/** Re-mint the state object with a shallow patch. Field values are hook
+ *  snapshots: reassign, never mutate in place. */
+function setState(patch: Partial<MapState>) {
+	state = { ...state, ...patch };
+}
+
+/** Merge non-null fields into the state (JSON merge patch: null = unchanged). */
+function mergeState(patch: { [K in keyof MapState]?: MapState[K] | null }) {
+	const next = { ...state };
+	for (const key of Object.keys(patch) as (keyof MapState)[]) {
+		const v = patch[key];
+		if (v != null) (next as Record<keyof MapState, unknown>)[key] = v;
+	}
+	state = next;
+}
+
+/** Reactive slice of the map state. Re-renders only when the selected value's
+ *  reference changes (`Object.is`), so selectors must return state fields or
+ *  cached derivations — never construct a value per call. */
+export function useMapState<T>(selector: (s: MapState) => T): T {
+	return useEventValue("store:changed", () => selector(state));
+}
+
+/** Imperative snapshot of the map state. */
+export function getMapState(): Readonly<MapState> {
+	return state;
+}
 
 /** Per-tag location counts for the open map, keyed by tag id. */
 export function getTagCounts() {
-	return tagCounts;
+	return state.tagCounts;
 }
 
 async function computeCommitDiff(): Promise<CommitDiff> {
@@ -101,39 +154,17 @@ async function computeCommitDiff(): Promise<CommitDiff> {
 	return { added, removed, modified };
 }
 
-/** Reactive open map (metadata + settings), or null when no map is open. */
-export const useCurrentMap = () => useEventValue("store:changed", getCurrentMap);
-
-const NO_TAGS: Tag[] = [];
-/** Tags that exist from the user's point of view. Raw `meta.tags` also holds soft-deleted ghosts (count=0, visible=false, kept for undo revival) — almost nothing outside the undo/revival machinery should enumerate those. */
+/** Tags that exist from the user's point of view. Raw `tags` also holds soft-deleted ghosts (count=0, visible=false, kept for undo revival) — almost nothing outside the undo/revival machinery should enumerate those. */
 export const getVisibleTags: () => Tag[] = memoOnRefs(
-	() => [currentMap?.meta.tags] as const,
-	(tags) => (tags ? Object.values(tags).filter((t) => t.visible !== false) : NO_TAGS),
+	() => [state.tags] as const,
+	(tags) => Object.values(tags).filter((t) => t.visible !== false),
 );
-
-export const useVisibleTags = () => useEventValue("store:changed", getVisibleTags);
 
 /** Raw by-id tag lookup — includes soft-deleted ghosts so stale references
  *  (e.g. a selection whose tag just died) still resolve to a name. */
 export function getTag(id: number): Tag | undefined {
-	return currentMap?.meta.tags[id];
+	return state.tags[id];
 }
-
-/** Reactive set of all currently selected location ids. */
-export const useSelectedLocationIds = () => useEventValue("store:changed", getSelectedLocationIds);
-
-let cachedActiveLocation: Location | null = null;
-/** Reactive location currently open in the editor, or null. */
-export const useActiveLocation = () => useEventValue("store:changed", getActiveLocation);
-/** Locations shown in the duplicate-resolution panel. */
-export function getDuplicateLocations() {
-	return duplicateLocations;
-}
-/** Reactive locations shown in the duplicate-resolution panel. */
-export const useDuplicateLocations = () => useEventValue("store:changed", getDuplicateLocations);
-
-/** Reactive editor pane: "overview" | "location" | "duplicates" | "import" | "plugin". */
-export const useWorkArea = () => useEventValue("store:changed", getWorkArea);
 
 let cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
 
@@ -196,7 +227,7 @@ export function scheduleAutoCommit(mapId: string, importedCount: number) {
 	inflightPersist = cmd
 		.storeCommit(mapId, `Import ${importedCount} locations`)
 		.then(() => {
-			undoRedoState = { canUndo: false, canRedo: false };
+			setState({ canUndo: false, canRedo: false });
 			cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
 		})
 		.catch((e: unknown) => log.error("[import] background commit failed:", e))
@@ -207,7 +238,7 @@ export function scheduleAutoCommit(mapId: string, importedCount: number) {
 }
 
 async function doSave(): Promise<void> {
-	if (!currentMapId || !currentMap) return;
+	if (!state.mapId || !state.map) return;
 	await inflightPersist;
 
 	const t = trace("save");
@@ -258,11 +289,13 @@ export const mapOpen = {
 
 /** Reset all per-map editing state to its initial values. */
 function clearEditState() {
-	selections = [];
-	selectedLocationIds = SelectedIds.EMPTY;
-	activeLocationId = null;
-	cachedActiveLocation = null;
-	workArea = "overview";
+	setState({
+		selections: [],
+		selectedLocationIds: SelectedIds.EMPTY,
+		activeLocationId: null,
+		activeLocation: null,
+		workArea: "overview",
+	});
 	resetImportState();
 	resetCommitDiffState();
 }
@@ -276,8 +309,7 @@ export async function openMap(id: string) {
 	await inflightPersist;
 
 	const t = trace("openMap");
-	currentMapId = id;
-	currentMap = null;
+	setState({ mapId: id, map: null });
 	emitEvent("store:changed");
 	const meta = await cmd.storeGetMap(id);
 	t.step("getMap");
@@ -287,15 +319,19 @@ export async function openMap(id: string) {
 			const openResult = await cmd.storeOpenMap(id);
 			t.step("store_open_map");
 			mapOpen.mark("data");
-			currentMap = meta;
-			tagCounts = openResult.tagCounts ?? {};
-			undoRedoState = { canUndo: openResult.canUndo, canRedo: openResult.canRedo };
-			knownFieldKeys = new Set(openResult.knownFieldKeys);
+			setState({
+				map: meta,
+				locationCount: meta.meta.locationCount,
+				tags: meta.meta.tags,
+				tagCounts: openResult.tagCounts ?? {},
+				canUndo: openResult.canUndo,
+				canRedo: openResult.canRedo,
+				knownFieldKeys: new Set(openResult.knownFieldKeys),
+			});
 			setUserFieldDefs(meta.meta.extra?.fields ?? {});
 		} catch (e) {
 			log.error("[openMap] store_open_map failed:", e);
-			currentMap = null;
-			currentMapId = null;
+			setState({ mapId: null, map: null });
 			emitEvent("store:changed");
 			return;
 		}
@@ -305,17 +341,16 @@ export async function openMap(id: string) {
 	clearEditState();
 	emitEvent("store:changed");
 	t.end();
-	if (currentMap) emitEvent("map:open", currentMap);
+	if (state.map) emitEvent("map:open", state.map);
 }
 
 /** Tear down all in-memory state for the open map. */
 function resetMapState() {
 	emitEvent("map:close");
-	currentMapId = null;
-	currentMap = null;
+	setState({ mapId: null, map: null });
 
 	clearEditState();
-	knownFieldKeys = new Set();
+	setState({ knownFieldKeys: new Set() });
 	resetForMapChange();
 
 	emitEvent("render:delta", {
@@ -325,8 +360,7 @@ function resetMapState() {
 		colorPatches: [],
 		fullReset: true,
 	});
-	undoRedoState = { canUndo: false, canRedo: false };
-	tagCounts = {};
+	setState({ canUndo: false, canRedo: false, tags: {}, tagCounts: {}, locationCount: 0 });
 	emitEvent("store:changed");
 }
 
@@ -345,25 +379,22 @@ export function discardOpenMap() {
 
 /** Id of the open map, or null. */
 export function getCurrentMapId() {
-	return currentMapId;
+	return state.mapId;
 }
 
 /** The open map (metadata + settings), or null. */
 export function getCurrentMap() {
-	return currentMap;
+	return state.map;
 }
 
 /** Returns the set of extra-field keys known to exist on the current map. */
 export function getKnownFieldKeys(): ReadonlySet<string> {
-	return knownFieldKeys;
+	return state.knownFieldKeys;
 }
-
-/** Reactive hook for `knownFieldKeys`. Re-renders when keys are added. */
-export const useKnownFieldKeys = () => useEventValue("store:changed", getKnownFieldKeys);
 
 /** The location currently open in the editor, or null. */
 export function getActiveLocation(): Location | null {
-	return cachedActiveLocation;
+	return state.activeLocation;
 }
 
 /** Fetch every location in the map. */
@@ -385,23 +416,23 @@ export async function fetchLocationsByIds(ids: number[]): Promise<Location[]> {
 
 /** All selections including ghosted. Only for rendering/UI that needs the full list. */
 export function getAllSelections() {
-	return selections;
+	return state.selections;
 }
 
 /** Active (non-ghosted) selections, the default for any operational logic. */
 export const getSelections: () => Selection[] = memoOnRefs(
-	() => [selections, ghostedSelections] as const,
+	() => [state.selections, state.ghostedSelections] as const,
 	(sels, ghosts) => (ghosts.size === 0 ? sels : sels.filter((s) => !ghosts.has(s.key))),
 );
 
 /** The set of all currently selected location ids (the union of all selections). */
 export function getSelectedLocationIds() {
-	return selectedLocationIds;
+	return state.selectedLocationIds;
 }
 
 /** Overwrite the selected-id set directly, bypassing selection resolution. Rarely what you want -- prefer `addSelections`. */
 export function setSelectedLocationIds(ids: SelectedIds) {
-	selectedLocationIds = ids;
+	setState({ selectedLocationIds: ids });
 }
 
 /** @internal Test-only. Forces a full selection re-resolve in Rust and returns
@@ -417,8 +448,8 @@ export async function syncSelections(): Promise<{ ids: number[] }> {
 
 /** Optimistically patch map meta, persist, and refresh the map list. */
 async function patchMapMeta(id: string, patch: MapMetaPatch) {
-	if (currentMap && currentMapId === id) {
-		const meta = { ...currentMap.meta };
+	if (state.map && state.mapId === id) {
+		const meta = { ...state.map.meta };
 		if (patch.name != null) meta.name = patch.name;
 		if (patch.description != null) meta.description = patch.description;
 		if (patch.folder !== undefined) meta.folder = patch.folder;
@@ -426,7 +457,7 @@ async function patchMapMeta(id: string, patch: MapMetaPatch) {
 		if (patch.scoreBounds != null) meta.scoreBounds = patch.scoreBounds;
 		if (patch.extra != null) meta.extra = patch.extra;
 		if (patch.labels != null) meta.labels = patch.labels;
-		currentMap = { ...currentMap, meta };
+		setState({ map: { ...state.map, meta } });
 	}
 	emitEvent("store:changed");
 	await cmd.storeUpdateMapMeta(id, patch);
@@ -442,59 +473,51 @@ export function updateMapLabels(id: string, labels: string[]) {
 }
 
 export function updateMapMeta(patch: MapMetaPatch) {
-	if (!currentMapId) return;
-	return patchMapMeta(currentMapId, patch);
+	if (!state.mapId) return;
+	return patchMapMeta(state.mapId, patch);
 }
 
 /** Replace the map's extra-field definitions (types/labels for `Location.extra` keys). */
 export async function setMapExtraFields(fields: Record<string, ExtraFieldDef>) {
-	if (!currentMapId || !currentMap) return;
-	const current = currentMap.meta.extra ?? {};
+	if (!state.mapId || !state.map) return;
+	const current = state.map.meta.extra ?? {};
 	const replaced = { ...current, fields };
-	currentMap = { ...currentMap, meta: { ...currentMap.meta, extra: replaced } };
+	setState({ map: { ...state.map, meta: { ...state.map.meta, extra: replaced } } });
 	setUserFieldDefs(fields);
 	emitEvent("store:changed");
-	await cmd.storeUpdateMapMeta(currentMapId, { extra: replaced } as Partial<MapMeta>);
+	await cmd.storeUpdateMapMeta(state.mapId, { extra: replaced } as Partial<MapMeta>);
 }
 
-/** Sync JS-side state (location count, undo/redo, tag counts, field keys, selections) from a Rust MutationResult. */
-function syncMutationResult(r: MutationResult) {
-	if (!currentMap) return;
-	const hasNewDefs = r.newFieldDefs != null && Object.keys(r.newFieldDefs).length > 0;
-	if (hasNewDefs) {
-		knownFieldKeys = new Set(knownFieldKeys);
-		for (const key of Object.keys(r.newFieldDefs!)) knownFieldKeys.add(key);
-		mergeUserFieldDefs(r.newFieldDefs!);
-	}
-	// Published references are hook snapshots: only replace them when the value
-	// actually changed, so unrelated consumers keep a stable reference.
-	if (currentMap.meta.locationCount !== r.locationCount) {
-		currentMap = {
-			...currentMap,
-			meta: {
-				...currentMap.meta,
-				locationCount: r.locationCount,
-			},
-		};
-	}
-	if (undoRedoState.canUndo !== r.canUndo || undoRedoState.canRedo !== r.canRedo) {
-		undoRedoState = { canUndo: r.canUndo, canRedo: r.canRedo };
-	}
-	if (r.tagCounts) tagCounts = r.tagCounts;
-	if (r.tags) {
-		const oldTags = currentMap.meta.tags;
-		currentMap = { ...currentMap, meta: { ...currentMap.meta, tags: r.tags } };
-		const removedKeys: string[] = [];
-		for (const idStr of Object.keys(oldTags)) {
-			const id = Number(idStr);
-			const was = oldTags[id];
-			const now = r.tags[id];
-			if (was && was.visible !== false && (!now || now.visible === false)) {
-				removedKeys.push(`tag:${id}`);
-			}
+/** Keys of tag selections whose tag just died (deleted or went invisible). */
+function deadTagKeys(oldTags: Record<number, Tag>, newTags: Record<number, Tag>): string[] {
+	const keys: string[] = [];
+	for (const idStr of Object.keys(oldTags)) {
+		const id = Number(idStr);
+		const was = oldTags[id];
+		const now = newTags[id];
+		if (was && was.visible !== false && (!now || now.visible === false)) {
+			keys.push(`tag:${id}`);
 		}
-		removeSelections(removedKeys);
 	}
+	return keys;
+}
+
+/** Merge a Rust MutationResult into the state: present fields are set, null
+ *  fields were unchanged and are skipped (JSON-merge-patch semantics). */
+function applyMutation(r: MutationResult) {
+	if (!state.map) return;
+	const oldTags = state.tags;
+	mergeState({
+		locationCount: r.locationCount,
+		canUndo: r.canUndo,
+		canRedo: r.canRedo,
+		tagCounts: r.tagCounts,
+		tags: r.tags,
+		knownFieldKeys:
+			r.newFieldDefs && new Set([...state.knownFieldKeys, ...Object.keys(r.newFieldDefs)]),
+	});
+	if (r.newFieldDefs) mergeUserFieldDefs(r.newFieldDefs);
+	if (r.tags) removeSelections(deadTagKeys(oldTags, r.tags));
 	if (r.selectionSync) applySelectionSync(r.selectionSync);
 }
 
@@ -505,13 +528,13 @@ export function emitBitmask(bytes: number[]) {
 		selColors,
 		cellEntries,
 		setIds: (ids) => {
-			selectedLocationIds = ids;
+			setState({ selectedLocationIds: ids });
 		},
 	});
 }
 
 function applySelectionSync(sync: SelectionSync) {
-	selectionCounts = sync.counts;
+	setState({ selectionCounts: sync.counts });
 	if (sync.bitmask) emitBitmask(sync.bitmask);
 }
 
@@ -530,11 +553,11 @@ const EMPTY_MUTATION: MutationResult = {
 
 /** Run a mutation IPC, emit its render delta, sync JS state, and schedule a save. */
 export async function mutate(fn: () => Promise<MutationResult>): Promise<MutationResult> {
-	if (!currentMap) return EMPTY_MUTATION;
+	if (!state.map) return EMPTY_MUTATION;
 	const r = await fn();
 	await inflightPersist;
 	emitEvent("render:delta", r.delta);
-	syncMutationResult(r);
+	applyMutation(r);
 	emitEvent("store:changed");
 	scheduleSave();
 	return r;
@@ -558,7 +581,7 @@ export async function addLocations(locs: Location[], opts?: { hideInDelta?: bool
 
 /** Clone a location in place and return the new id, or null if it doesn't exist. Undoable. */
 export async function duplicateLocation(id: number): Promise<number | null> {
-	if (!currentMap || isVirtualLocation({ id })) return null;
+	if (!state.map || isVirtualLocation({ id })) return null;
 	const loc = await cmd.storeGetLocation(id);
 	if (!loc) return null;
 	const now = nowUnix();
@@ -574,7 +597,7 @@ export async function removeLocations(ids: ReadonlyIdSet) {
 		await setActiveLocation(null);
 		return;
 	}
-	if (activeLocationId && ids.has(activeLocationId)) setWorkArea("overview");
+	if (state.activeLocationId && ids.has(state.activeLocationId)) setWorkArea("overview");
 	emitEvent("store:changed");
 	await mutate(() => cmd.storeRemoveLocations([...ids])).catch((e) =>
 		log.error("[delete] store_remove_locations failed:", e),
@@ -592,9 +615,11 @@ export async function updateLocations(
 	if (updates.some((u) => isVirtualLocation(u))) return;
 	await mutate(() => cmd.storeUpdateLocations(updates, opts?.undoable ?? true));
 	emitEvent("location:update", updates);
-	if (cachedActiveLocation && updates.some((u) => u.id === activeLocationId)) {
-		const activePatch = updates.find((u) => u.id === activeLocationId)?.patch;
-		if (activePatch) cachedActiveLocation = applyLocationPatch(cachedActiveLocation, activePatch);
+	if (state.activeLocation && updates.some((u) => u.id === state.activeLocationId)) {
+		const activePatch = updates.find((u) => u.id === state.activeLocationId)?.patch;
+		if (activePatch) {
+			setState({ activeLocation: applyLocationPatch(state.activeLocation, activePatch) });
+		}
 		emitEvent("store:changed");
 	}
 }
@@ -605,27 +630,28 @@ export async function updateLocations(
  *  its definition and every selection that references it. Merge ≡ rename; `winner`
  *  decides the survivor only where a location already holds `to`. */
 export async function renameField(from: string, to: string, winner: MergeWinner = "from") {
-	if (!currentMap || from === to || !to) return;
+	if (!state.map || from === to || !to) return;
 	const updates = planFieldMove(await fetchAllLocations(), from, to, winner);
-	const nextKeys = new Set(knownFieldKeys);
+	const nextKeys = new Set(state.knownFieldKeys);
 	if (updates.length) {
 		await updateLocations(updates, { undoable: false });
 		nextKeys.add(to);
 	}
 	nextKeys.delete(from);
-	knownFieldKeys = nextKeys;
+	setState({ knownFieldKeys: nextKeys });
 	await migrateFieldReferences(from, to);
 }
 
 /** Delete extra-field `key` from every location, its definition, and references. */
 export async function deleteField(key: string) {
-	if (!currentMap) return;
+	if (!state.map) return;
 	const updates = planFieldDelete(await fetchAllLocations(), key);
 	if (updates.length) {
 		await updateLocations(updates, { undoable: false });
 	}
-	knownFieldKeys = new Set(knownFieldKeys);
-	knownFieldKeys.delete(key);
+	const nextKeys = new Set(state.knownFieldKeys);
+	nextKeys.delete(key);
+	setState({ knownFieldKeys: nextKeys });
 	await migrateFieldReferences(key, null);
 }
 
@@ -634,8 +660,8 @@ export async function deleteField(key: string) {
  *  rules resolved against whichever map is open, so a map-local rename/delete
  *  must not mutate them (the rule simply stops resolving here). */
 async function migrateFieldReferences(from: string, to: string | null) {
-	if (!currentMap) return;
-	const defs = { ...(currentMap.meta.extra?.fields ?? {}) };
+	if (!state.map) return;
+	const defs = { ...(state.map.meta.extra?.fields ?? {}) };
 	if (defs[from]) {
 		if (to && !defs[to]) defs[to] = defs[from];
 		delete defs[from];
@@ -646,24 +672,10 @@ async function migrateFieldReferences(from: string, to: string | null) {
 
 // --- Selections ---
 
-/** All selections including ghosted. Only for rendering/UI that needs the full list. */
-export const useAllSelections = () => useEventValue("store:changed", getAllSelections);
-
-/** Active (non-ghosted) selections — the default for any operational logic. */
-export const useSelections = () => useEventValue("store:changed", getSelections);
-
-/** Keyed per-node selection counts (by `Selection.key`). Look up a row's count by its key. */
-export const useSelectionCounts = () => useEventValue("store:changed", getSelectionCounts);
-
-/** Per-selection location counts, keyed by `Selection.key`. */
-export function getSelectionCounts() {
-	return selectionCounts;
-}
-
 /** Resolve a selection's overlay color, substituting the live tag color for Tag selections. */
 function selectionSyncColor(s: Selection): [number, number, number] {
-	if (s.props.type === "Tag" && currentMap) {
-		const tag = currentMap.meta.tags[s.props.tagId];
+	if (s.props.type === "Tag") {
+		const tag = state.tags[s.props.tagId];
 		if (tag) return hexToRgb(tag.color);
 	}
 	return s.color;
@@ -671,20 +683,23 @@ function selectionSyncColor(s: Selection): [number, number, number] {
 
 /** All selections, each flagged ghosted or not. Rust counts every one, renders/selects only non-ghosted. */
 function buildSyncInputs() {
-	return selections.map((s) => ({
+	return state.selections.map((s) => ({
 		key: s.key,
 		props: s.props,
 		color: selectionSyncColor(s),
-		ghosted: ghostedSelections.has(s.key),
+		ghosted: state.ghostedSelections.has(s.key),
 	}));
 }
 
 /** Apply a pure selection transform, then IPC to Rust to resolve bitmasks and sync the overlay. */
 async function applySelectionUpdate(updater: (sels: Selection[]) => Selection[]) {
-	if (!currentMap) return;
+	if (!state.map) return;
 	const t = trace("selection", { summary: true });
-	selections = updater(selections);
-	pruneGhosted();
+	const selections = updater(state.selections);
+	setState({
+		selections,
+		ghostedSelections: pruneGhosted(selections, state.ghostedSelections),
+	});
 	const sels = buildSyncInputs();
 	const result = await cmd.storeSyncSelections(sels);
 	t.step("ipc");
@@ -696,43 +711,45 @@ async function applySelectionUpdate(updater: (sels: Selection[]) => Selection[])
 }
 
 /** Drop ghosted keys that no longer correspond to a live selection. */
-function pruneGhosted() {
-	if (ghostedSelections.size === 0) return;
+function pruneGhosted(selections: Selection[], ghosted: ReadonlySet<string>): ReadonlySet<string> {
+	if (ghosted.size === 0) return ghosted;
 	const live = new Set(selections.map((s) => s.key));
-	const pruned = new Set([...ghostedSelections].filter((k) => live.has(k)));
-	if (pruned.size !== ghostedSelections.size) ghostedSelections = pruned;
+	const pruned = new Set([...ghosted].filter((k) => live.has(k)));
+	return pruned.size !== ghosted.size ? pruned : ghosted;
 }
 
-/** Reactive set of ghosted (temporarily excluded) selection keys. */
-export const useGhostedSelections = () => useEventValue("store:changed", getGhostedSelections);
 /** The set of ghosted (temporarily excluded) selection keys. */
-export const getGhostedSelections = () => ghostedSelections;
+export const getGhostedSelections = () => state.ghostedSelections;
 
 /** Toggle a selection's ghosted state and re-sync (excludes/includes it from the overlay). */
 export function toggleGhostSelection(key: string) {
-	const next = new Set(ghostedSelections);
+	const next = new Set(state.ghostedSelections);
 	if (next.has(key)) next.delete(key);
 	else next.add(key);
-	ghostedSelections = next;
+	setState({ ghostedSelections: next });
 	return applySelectionUpdate((sels) => sels);
 }
 
 /** "Solo" a selection: ghost every other top-level selection, keep this one visible.
  *  If it is already the only visible one, un-ghost everything (toggle back). */
 export function isolateSelection(key: string) {
-	ghostedSelections = isolateGhostKeys(
-		selections.map((s) => s.key),
-		ghostedSelections,
-		key,
-	);
+	setState({
+		ghostedSelections: isolateGhostKeys(
+			state.selections.map((s) => s.key),
+			state.ghostedSelections,
+			key,
+		),
+	});
 	return applySelectionUpdate((sels) => sels);
 }
 
 /** Ghost every top-level selection; if all are already ghosted, un-ghost them all. */
 export function toggleGhostAllSelections() {
-	const keys = selections.map((s) => s.key);
-	const allGhosted = keys.length > 0 && keys.every((k) => ghostedSelections.has(k));
-	ghostedSelections = allGhosted ? new Set() : new Set([...ghostedSelections, ...keys]);
+	const keys = state.selections.map((s) => s.key);
+	const allGhosted = keys.length > 0 && keys.every((k) => state.ghostedSelections.has(k));
+	setState({
+		ghostedSelections: allGhosted ? new Set() : new Set([...state.ghostedSelections, ...keys]),
+	});
 	return applySelectionUpdate((sels) => sels);
 }
 
@@ -747,7 +764,7 @@ export function addSelections(props: SelectionProps[]) {
 
 /** No-op (no sync) when none of the keys are live selections. */
 export function removeSelections(keys: string[]) {
-	const live = new Set(selections.map((s) => s.key));
+	const live = new Set(state.selections.map((s) => s.key));
 	const present = keys.filter((k) => live.has(k));
 	if (present.length === 0) return;
 	return applySelectionUpdate((sels) => {
@@ -822,7 +839,7 @@ export async function mergeDuplicates(distance: number) {
  * get a +5 score bonus. Returns the number pruned.
  */
 export async function pruneDuplicates(props: SelectionProps, distance: number): Promise<number> {
-	if (!currentMap) return 0;
+	if (!state.map) return 0;
 	const ids = await cmd.storeResolveSelection(props);
 	if (ids.length === 0) return 0;
 	const keepTagIds = getVisibleTags()
@@ -843,13 +860,13 @@ export function updateFilterSelection(oldKey: string, props: SelectionProps) {
 		if (next.length === sels.length) {
 			let migrated: Set<string> | null = null;
 			for (let i = 0; i < sels.length; i++) {
-				if (next[i].key !== sels[i].key && ghostedSelections.has(sels[i].key)) {
-					migrated ??= new Set(ghostedSelections);
+				if (next[i].key !== sels[i].key && state.ghostedSelections.has(sels[i].key)) {
+					migrated ??= new Set(state.ghostedSelections);
 					migrated.delete(sels[i].key);
 					migrated.add(next[i].key);
 				}
 			}
-			if (migrated) ghostedSelections = migrated;
+			if (migrated) setState({ ghostedSelections: migrated });
 		}
 		return next;
 	});
@@ -906,7 +923,7 @@ export function removeChildFromSelection(parentKey: string, childKey: string) {
 
 /** Toggle tag selections on/off for the given tags (used by tag-pill clicks). */
 export function toggleTagSelections(tagIds: number[]) {
-	if (!currentMap || tagIds.length === 0) return;
+	if (!state.map || tagIds.length === 0) return;
 	applySelectionUpdate((sels) => {
 		let result = sels;
 		for (const tagId of tagIds) {
@@ -919,16 +936,15 @@ export function toggleTagSelections(tagIds: number[]) {
 	});
 }
 
-const getSelectedTagIds: () => ReadonlySet<number> = memoOnRefs(
-	() => [selections] as const,
+/** Tag ids that currently have a Tag selection (cached; keyed on the selection list). */
+export const getSelectedTagIds: () => ReadonlySet<number> = memoOnRefs(
+	() => [state.selections] as const,
 	(sels) => {
 		const ids = new Set<number>();
 		for (const s of sels) if (s.props.type === "Tag") ids.add(s.props.tagId);
 		return ids;
 	},
 );
-
-export const useSelectedTagIds = () => useEventValue("store:changed", getSelectedTagIds);
 
 let virtualIdSeq = 0;
 /** Each preview gets a fresh negative id so its identity changes between previews (the pano viewer re-resolves on active-id change). */
@@ -938,15 +954,17 @@ const freshVirtualId = () => --virtualIdSeq;
  *  virtual (negative id; ImportPreview flag) so identity and mutate-guards derive from it. */
 export async function openStagedLocation(index: number) {
 	const loc = await cmd.storeImportStagedLocation(index);
-	activeLocationId = null;
 	// Rust's active_id must not stay pinned to the previous real location.
 	fireAndForget(cmd.storeSetActive(null), "stagedOpen:setActive");
-	cachedActiveLocation = {
-		...loc,
-		id: freshVirtualId(),
-		flags: loc.flags | LocationFlag.ImportPreview,
-	};
-	workArea = "location";
+	setState({
+		activeLocationId: null,
+		activeLocation: {
+			...loc,
+			id: freshVirtualId(),
+			flags: loc.flags | LocationFlag.ImportPreview,
+		},
+		workArea: "location",
+	});
 	emitEvent("import-markers:changed");
 	emitEvent("store:changed");
 	emitEvent("active:change", null);
@@ -955,24 +973,25 @@ export async function openStagedLocation(index: number) {
 /** Open an arbitrary location read-only as a virtual seen-preview: loads its pano without
  *  adding anything to the map. The caller sets LoadAsPanoId so the exact pano resolves. */
 export function previewVirtualLocation(loc: Location) {
-	activeLocationId = null;
 	fireAndForget(cmd.storeSetActive(null), "virtualPreview:setActive");
-	cachedActiveLocation = {
-		...loc,
-		id: freshVirtualId(),
-		flags: loc.flags | LocationFlag.SeenOverlay,
-	};
-	workArea = "location";
+	setState({
+		activeLocationId: null,
+		activeLocation: {
+			...loc,
+			id: freshVirtualId(),
+			flags: loc.flags | LocationFlag.SeenOverlay,
+		},
+		workArea: "location",
+	});
 	emitEvent("store:changed");
 	emitEvent("active:change", null);
 }
 
 /** Drop the active location, keeping Rust's `active_id` and `active:change` in step. */
 function clearActiveLocation(): void {
-	if (activeLocationId == null && cachedActiveLocation == null) return;
-	if (activeLocationId != null) fireAndForget(cmd.storeSetActive(null), "clearActive");
-	activeLocationId = null;
-	cachedActiveLocation = null;
+	if (state.activeLocationId == null && state.activeLocation == null) return;
+	if (state.activeLocationId != null) fireAndForget(cmd.storeSetActive(null), "clearActive");
+	setState({ activeLocationId: null, activeLocation: null });
 	emitEvent("active:change", null);
 }
 
@@ -986,22 +1005,21 @@ export async function resolveLocation(m: MaybeLocation): Promise<Location | null
 export async function setActiveLocation(target: MaybeLocation | null, checkDuplicates = true) {
 	const t = trace("setActive");
 	const id = target == null ? null : locId(target);
-	if (cachedActiveLocation && isVirtualLocation(cachedActiveLocation)) {
+	if (state.activeLocation && isVirtualLocation(state.activeLocation)) {
 		emitEvent("import-markers:changed");
-		const wasStaged = isImportPreview(cachedActiveLocation);
+		const wasStaged = isImportPreview(state.activeLocation);
 		if (id == null) {
 			clearActiveLocation();
 
-			if (wasStaged) workArea = "import";
-			else if (activePluginId) workArea = "plugin";
-			else workArea = "overview";
-
+			setState({
+				workArea: wasStaged ? "import" : state.activePluginId ? "plugin" : "overview",
+			});
 			emitEvent("store:changed");
 			t.end();
 			return;
 		}
 	}
-	activeLocationId = id;
+	setState({ activeLocationId: id });
 	fireAndForget(cmd.storeSetActive(id), "setActive");
 	if (id) {
 		const loc = await resolveLocation(target!);
@@ -1009,75 +1027,66 @@ export async function setActiveLocation(target: MaybeLocation | null, checkDupli
 		if (checkDuplicates && loc) {
 			const nearby = await cmd.storeFindNearby(loc.lat, loc.lng, 2.0);
 			if (nearby.length >= 2) {
-				duplicateLocations = nearby;
-				workArea = "duplicates";
+				setState({ duplicateLocations: nearby, workArea: "duplicates" });
 				clearActiveLocation();
 				emitEvent("store:changed");
 				t.end({ duplicates: nearby.length });
 				return;
 			}
 		}
-		cachedActiveLocation = loc ?? null;
-		workArea = "location";
+		setState({ activeLocation: loc ?? null, workArea: "location" });
 		emitEvent("store:changed");
-		emitEvent("active:change", activeLocationId);
+		emitEvent("active:change", state.activeLocationId);
 		t.end();
 		return;
 	}
 	clearActiveLocation();
-	duplicateLocations = [];
-	workArea = activePluginId ? "plugin" : "overview";
+	setState({
+		duplicateLocations: [],
+		workArea: state.activePluginId ? "plugin" : "overview",
+	});
 	emitEvent("store:changed");
 	t.end();
 }
 
 /** Open one location from the duplicate-resolution panel in the editor. */
 export function openDuplicateLocation(loc: Location) {
-	activeLocationId = loc.id;
-	cachedActiveLocation = loc;
-	workArea = "location";
+	setState({ activeLocationId: loc.id, activeLocation: loc, workArea: "location" });
 	fireAndForget(cmd.storeSetActive(loc.id), "setActive");
 	emitEvent("store:changed");
 }
 
 /** Drop a location from the duplicate-resolution panel (does not delete it). */
 export function removeDuplicate(id: number) {
-	duplicateLocations = duplicateLocations.filter((l) => l.id !== id);
+	setState({ duplicateLocations: state.duplicateLocations.filter((l) => l.id !== id) });
 	emitEvent("store:changed");
 }
 
 /** Close the duplicate-resolution panel and return to the overview. */
 export function closeDuplicates() {
-	duplicateLocations = [];
+	setState({ duplicateLocations: [] });
 	setWorkArea("overview");
 }
 
 /** Transition the editor pane, enforcing state invariants:
  *  leaving "location" clears the active location, leaving "plugin" clears the plugin id. */
 export function setWorkArea(area: WorkArea) {
-	workArea = area;
+	setState({ workArea: area });
 	if (area !== "location") clearActiveLocation();
-	if (area !== "plugin") activePluginId = null;
+	if (area !== "plugin") setState({ activePluginId: null });
 	emitEvent("store:changed");
 }
 
 // --- Plugin mode ---
 
-/** The id of the plugin whose sidebar is open, or null. */
-export function getActivePluginId() {
-	return activePluginId;
-}
-/** Reactive id of the plugin whose sidebar is open, or null. */
-export const useActivePluginId = () => useEventValue("store:changed", getActivePluginId);
-
 /** The current editor pane. */
 export function getWorkArea() {
-	return workArea;
+	return state.workArea;
 }
 
 /** Open a plugin's sidebar (switches the editor pane to "plugin"). */
 export function setPluginMode(pluginId: string) {
-	activePluginId = pluginId;
+	setState({ activePluginId: pluginId });
 	setWorkArea("plugin");
 }
 
@@ -1095,9 +1104,7 @@ export async function createTags(names: string[]): Promise<Tag[]> {
 	if (names.length === 0) return [];
 	await mutate(() => cmd.storeCreateTags(names));
 	const lower = new Set(names.map((n) => n.toLowerCase()));
-	const created = Object.values(currentMap!.meta.tags).filter((t) =>
-		lower.has(t.name.toLowerCase()),
-	);
+	const created = Object.values(state.tags).filter((t) => lower.has(t.name.toLowerCase()));
 	emitEvent("tag:add", created);
 	return created;
 }
@@ -1111,7 +1118,7 @@ export async function updateTags(updates: Update<TagPatch>[]) {
 	emitEvent("tag:update", updates);
 	// ONLY resync on color change, everything else is resolved by Rust
 	if (
-		selections.some((s) => {
+		state.selections.some((s) => {
 			const p = s.props;
 			return p.type === "Tag" && updates.some((q) => q.id === p.tagId && q.patch.color != null);
 		})
@@ -1167,7 +1174,7 @@ export function removeTagFromLocations(tagId: number, locationIds: number[]) {
 
 /** Remove a tag from every location that has it. Undoable. */
 export async function removeTagFromAllLocations(tagId: number) {
-	if (!currentMap) return;
+	if (!state.map) return;
 	const allWithTag = await cmd.storeResolveSelection({ type: "Tag", tagId });
 	if (allWithTag.length > 0) await removeTagFromLocations(tagId, allWithTag);
 }
@@ -1178,7 +1185,7 @@ export async function removeTagFromAllLocations(tagId: number) {
 async function undoRedo(which: () => Promise<MutationResult>) {
 	try {
 		const r = await mutate(which);
-		if (activeLocationId && r.delta.removed.some((e) => e.id === activeLocationId))
+		if (state.activeLocationId && r.delta.removed.some((e) => e.id === state.activeLocationId))
 			setWorkArea("overview");
 	} catch (e) {
 		log.debug(`[${which.name}] nothing or failed:`, e);
@@ -1194,31 +1201,24 @@ export function redo() {
 	return undoRedo(cmd.storeRedo);
 }
 
-/** Whether undo/redo are currently available. */
-export function getUndoRedoState() {
-	return undoRedoState;
-}
-
-export const useUndoRedo = () => useEventValue("store:changed", getUndoRedoState);
-
 // --- Version control ---
 
 /** Bake overlay, write the commit delta, create a VCS commit. Resets undo stack. */
 export async function commitMap(message?: string): Promise<string> {
-	if (!currentMapId) throw new Error("No map open");
+	if (!state.mapId) throw new Error("No map open");
 	const t = trace("commit");
 	cancelAutosave();
 	await inflightPersist;
 
-	const id = await cmd.storeCommit(currentMapId, message ?? null);
+	const id = await cmd.storeCommit(state.mapId, message ?? null);
 	t.step("commit");
 	t.end();
-	undoRedoState = { canUndo: false, canRedo: false };
+	setState({ canUndo: false, canRedo: false });
 	cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
 
 	// Commit clears the overlay; commit-sensitive selections (e.g. Uncommitted) must
 	// re-resolve against the new baseline instead of showing now-committed rows.
-	if (selections.length > 0) {
+	if (state.selections.length > 0) {
 		await applySelectionUpdate((s) => s);
 	} else {
 		emitEvent("store:changed");
@@ -1228,24 +1228,30 @@ export async function commitMap(message?: string): Promise<string> {
 
 /** Restore the map to a previous commit's state and reopen it. Clears undo/redo. */
 export async function checkoutCommit(commitId: string) {
-	if (!currentMapId) return;
+	if (!state.mapId) return;
 	await flushSave();
 	try {
 		await cmd.storeCloseMap();
-		await cmd.storeCheckoutCommit(currentMapId, commitId);
-		await cmd.storeOpenMap(currentMapId);
+		await cmd.storeCheckoutCommit(state.mapId, commitId);
+		await cmd.storeOpenMap(state.mapId);
 		await cmd.storeResetUndo();
 		const msg = `Revert to ${commitId.slice(0, 7)}`;
-		await cmd.storeCommit(currentMapId, msg);
+		await cmd.storeCommit(state.mapId, msg);
 	} catch (e) {
 		log.error("[checkout] restore failed:", e);
 		throw e;
 	}
-	currentMap = await cmd.storeGetMap(currentMapId);
-	selections = [];
-	selectedLocationIds = SelectedIds.EMPTY;
-	activeLocationId = null;
-	undoRedoState = { canUndo: false, canRedo: false };
+	const map = await cmd.storeGetMap(state.mapId);
+	setState({
+		map,
+		locationCount: map?.meta.locationCount ?? 0,
+		tags: map?.meta.tags ?? {},
+		selections: [],
+		selectedLocationIds: SelectedIds.EMPTY,
+		activeLocationId: null,
+		canUndo: false,
+		canRedo: false,
+	});
 
 	emitEvent("render:delta", {
 		added: [],

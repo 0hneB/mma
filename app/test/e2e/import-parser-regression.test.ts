@@ -450,7 +450,7 @@ describe("Import — export/reimport tag round-trip", () => {
 				exportExtras: true,
 				scope: null,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));
@@ -467,8 +467,7 @@ describe("Import — export/reimport tag round-trip", () => {
 			const preview = await api.cmd.storeImportPreview(path);
 			await api._test.importFile([]);
 			const locs = await api.fetchAllLocations();
-			const map = api.getCurrentMap()!;
-			const tagNames = Object.values(map.meta.tags)
+			const tagNames = Object.values(api.getMapState().tags)
 				.map((t: any) => t.name)
 				.sort();
 			const alp = locs.find((l: any) => l.panoId === "alp1");

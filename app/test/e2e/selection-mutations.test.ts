@@ -1057,16 +1057,16 @@ describe("Slot reuse correctness", () => {
 			await api.addSelections([{ type: "PanoIds" }]);
 			const tagKey = api.getSelections().find((s) => s.props.type === "Tag")?.key;
 			const panoKey = api.getSelections().find((s) => s.props.type === "PanoIds")?.key;
-			const tagBefore = tagKey ? api.getSelectionCounts()[tagKey] : undefined;
-			const panoBefore = panoKey ? api.getSelectionCounts()[panoKey] : undefined;
+			const tagBefore = tagKey ? api.getMapState().selectionCounts[tagKey] : undefined;
+			const panoBefore = panoKey ? api.getMapState().selectionCounts[panoKey] : undefined;
 
 			// Remove indices 0-4 (tagged AND flagged)
 			const toRemove = locs.slice(0, 5).map((l) => l.id);
 			api.removeLocations(new Set(toRemove));
 			await api.syncSelections();
 
-			const tagAfterRemove = tagKey ? api.getSelectionCounts()[tagKey] : undefined;
-			const panoAfterRemove = panoKey ? api.getSelectionCounts()[panoKey] : undefined;
+			const tagAfterRemove = tagKey ? api.getMapState().selectionCounts[tagKey] : undefined;
+			const panoAfterRemove = panoKey ? api.getMapState().selectionCounts[panoKey] : undefined;
 
 			// Add new locs: 3 tagged+flagged, 2 untagged+unflagged
 			const refill: Location[] = [];
@@ -1083,8 +1083,8 @@ describe("Slot reuse correctness", () => {
 			await api.addLocations(refill);
 			await api.syncSelections();
 
-			const tagAfterRefill = tagKey ? api.getSelectionCounts()[tagKey] : undefined;
-			const panoAfterRefill = panoKey ? api.getSelectionCounts()[panoKey] : undefined;
+			const tagAfterRefill = tagKey ? api.getMapState().selectionCounts[tagKey] : undefined;
+			const panoAfterRefill = panoKey ? api.getMapState().selectionCounts[panoKey] : undefined;
 
 			return {
 				tagBefore,

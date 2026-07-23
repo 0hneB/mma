@@ -105,11 +105,10 @@ describe("Rust bulk import — confirm and verify", () => {
 			const denmark = maps.find((m: MapMeta) => m.name === "Denmark Antennae")!;
 			await api._test.openMap(denmark.id);
 			const locCount = (await api.cmd.storeGetSummary()).locationCount;
-			const map = api.getCurrentMap()!;
 			const locs = await api.fetchAllLocations();
 			return {
 				locationCount: locCount,
-				tagCount: Object.keys(map.meta.tags).length,
+				tagCount: Object.keys(api.getMapState().tags).length,
 				firstLat: locs[0]?.lat,
 			};
 		});
@@ -122,8 +121,7 @@ describe("Rust bulk import — confirm and verify", () => {
 
 	it("imported tags have correct colors", async () => {
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
-			const tags = Object.values(map.meta.tags);
+			const tags = Object.values(api.getMapState().tags);
 			return tags.map((t: Tag) => ({ name: t.name, color: t.color }));
 		});
 
@@ -137,8 +135,7 @@ describe("Rust bulk import — confirm and verify", () => {
 
 	it("location tag references resolve to valid tags", async () => {
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
-			const tagIds = new Set(Object.keys(map.meta.tags));
+			const tagIds = new Set(Object.keys(api.getMapState().tags));
 			const locs = await api.fetchAllLocations();
 			const tagged = locs.filter((l) => l.tags.length > 0);
 			const orphaned = tagged.filter((l) => l.tags.some((id) => !tagIds.has(String(id))));

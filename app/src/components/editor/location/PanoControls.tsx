@@ -7,7 +7,7 @@ import { lookupStreetView } from "@/lib/sv/lookup";
 import { shortenMapsUrl } from "@/lib/sv/shortUrl";
 import { isOfficialPano } from "@/lib/sv/panoId";
 import { useSettings } from "@/store/settings";
-import { getCurrentMap, getActiveLocation, useActiveLocation } from "@/store/useMapStore";
+import { getMapState, getActiveLocation, useMapState } from "@/store/useMapStore";
 import { getPanoAltitude } from "./PanoViewerContext";
 import { subscribe as subscribeEvent } from "@/lib/events";
 import { useBinding } from "@/lib/util/hotkeys";
@@ -362,7 +362,7 @@ function ReturnToSpawnControl({
 	panorama: google.maps.StreetViewPanorama;
 	onReturnToSpawn: () => void;
 }) {
-	const location = useActiveLocation();
+	const location = useMapState((s) => s.activeLocation);
 	const [hasChanged, setHasChanged] = useState(false);
 	const checkChanged = () => {
 		if (!location) return;
@@ -422,7 +422,7 @@ function CoordinateControl({ panorama }: { panorama: google.maps.StreetViewPanor
 // --- PanoControls ---
 
 function PanoMetadataControl() {
-	const location = useActiveLocation();
+	const location = useMapState((s) => s.activeLocation);
 	if (!location) return null;
 	return (
 		<div
@@ -508,7 +508,7 @@ export const PanoControls = memo(function PanoControls({
 			if (!url) return;
 			const location = getActiveLocation();
 			if (!noTags && location) {
-				const tagsById = getCurrentMap()?.meta.tags ?? {};
+				const tagsById = getMapState().tags;
 				for (const id of location.tags) {
 					const name = tagsById[id]?.name;
 					if (name) url.searchParams.append("extra[tags]", name);

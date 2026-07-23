@@ -23,18 +23,15 @@ import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
 import { SV_SEARCH_RADIUS } from "@/lib/sv/constants";
 import type { Tag } from "@/bindings.gen";
 import {
-	useActiveLocation,
-	useCurrentMap,
+	useMapState,
 	updateLocations,
 	getActiveLocation,
-	getCurrentMap,
+	getMapState,
 	removeLocations,
 	addLocations,
 	createTags,
 	setActiveLocation,
 	getVisibleTags,
-	useVisibleTags,
-	useTagCounts,
 } from "@/store/useMapStore";
 import { sortTagsByMode, tagColorFor, appendTagName } from "@/lib/util/util";
 import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
@@ -89,7 +86,7 @@ import { useLocationHotkeys } from "./useLocationHotkeys";
 
 /** Tags are staged by name, not ID, because some tags do not exist yet. */
 function idsToNames(ids: number[]): string[] {
-	const tags = getCurrentMap()?.meta.tags ?? {};
+	const tags = getMapState().tags;
 	return ids.map((id) => tags[id]?.name).filter((n): n is string => n != null);
 }
 
@@ -105,8 +102,8 @@ const TagEditor = memo(function TagEditor({
 	isImport: boolean;
 }) {
 	const [tagInput, setTagInput] = useState("");
-	const visibleTags = useVisibleTags();
-	const tagCounts = useTagCounts();
+	const visibleTags = useMapState(getVisibleTags);
+	const tagCounts = useMapState((s) => s.tagCounts);
 	const tagSortMode = useSetting("tagSortMode");
 	const suggestionLimit = useSetting("tagSuggestionLimit");
 
@@ -210,8 +207,8 @@ const TagEditor = memo(function TagEditor({
 });
 
 export function LocationPreview() {
-	const location = useActiveLocation();
-	const map = useCurrentMap();
+	const location = useMapState((s) => s.activeLocation);
+	const map = useMapState((s) => s.map);
 	const reviewSession = useReviewSession();
 	const isReviewMode = reviewSession !== null;
 	const panoContainerRef = useRef<HTMLDivElement>(null);
@@ -227,7 +224,7 @@ export function LocationPreview() {
 	} = usePanoViewer();
 	const isFullscreen = usePanoFullscreen();
 	const [pendingTags, setPendingTags] = useState<string[]>(() => idsToNames(location?.tags ?? []));
-	const visibleTags = useVisibleTags();
+	const visibleTags = useMapState(getVisibleTags);
 	const [panoGeo, setPanoGeo] = useState<GeoDisplay | null>(null);
 	const geocodeProvider = useSetting("geocodeProvider");
 	const geoResult = useReverseGeocode(location?.lat ?? 0, location?.lng ?? 0, panoGeo);

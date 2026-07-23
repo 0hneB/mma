@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cmd } from "@/lib/commands";
-import { getCurrentMap } from "@/store/useMapStore";
+import { getCurrentMap, getMapState } from "@/store/useMapStore";
 import { subscribe, MAP_LIFECYCLE_EVENTS, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { useSetting } from "@/store/settings";
 import type { DiscordPresenceMode } from "@/store/settings";
@@ -32,7 +32,7 @@ function buildActivity(level: Exclude<DiscordPresenceMode, "off">): PresenceActi
 	const start = sessionStart;
 	if (level === "generic") return { ...base, details: "Editing a map", start };
 
-	const count = map.meta.locationCount;
+	const count = getMapState().locationCount;
 	return {
 		...base,
 		details: `Editing ${map.meta.name}`,

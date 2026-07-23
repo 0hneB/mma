@@ -58,7 +58,7 @@ import {
 	resetSelections,
 	commitMap,
 	getCurrentMap,
-	getUndoRedoState,
+	getMapState,
 	deleteTags,
 	getSelections,
 	getAllSelections,
@@ -118,7 +118,7 @@ const COMMANDS = {
 		group: "Map",
 		defaultBinding: "Mod+z",
 		execute: undo,
-		enabled: () => getUndoRedoState().canUndo,
+		enabled: () => getMapState().canUndo,
 	},
 	redo: {
 		label: "Redo",
@@ -126,7 +126,7 @@ const COMMANDS = {
 		group: "Map",
 		defaultBinding: "Mod+y, Mod+Shift+z",
 		execute: redo,
-		enabled: () => getUndoRedoState().canRedo,
+		enabled: () => getMapState().canRedo,
 	},
 	export: {
 		label: "Export",
@@ -413,7 +413,7 @@ const COMMANDS = {
 			if (!map) return;
 			const counts = getTagCounts();
 			const rows = Object.entries(counts)
-				.map(([id, count]) => ({ name: map.meta.tags[id]?.name ?? id, count }))
+				.map(([id, count]) => ({ name: getMapState().tags[Number(id)]?.name ?? id, count }))
 				.sort((a, b) => b.count - a.count);
 			const csv =
 				"name,count\n" + rows.map((r) => `"${r.name.replace(/"/g, '""')}",${r.count}`).join("\n");

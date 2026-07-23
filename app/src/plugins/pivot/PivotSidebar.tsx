@@ -90,7 +90,7 @@ async function computePivot(
 	}
 
 	const isTags = fieldKey === TAGS_FIELD_KEY;
-	const tagMap = map.meta.tags;
+	const tagMap = MMA.getMapState().tags;
 	const isNumeric = !isTags && (fieldDef?.type === "number" || fieldDef?.type === "date");
 
 	// Numeric fields explode into one column per distinct value; bucket them into
@@ -186,7 +186,7 @@ async function computePivot(
 	const extraLabels = fieldDef?.labels ?? {};
 	const columnLabels = columns.map((c) => {
 		if (c === NA_KEY) return "N/A";
-		if (isTags) return tagMap[c]?.name ?? `Tag ${c}`;
+		if (isTags) return tagMap[Number(c)]?.name ?? `Tag ${c}`;
 		return extraLabels[c] ?? c;
 	});
 

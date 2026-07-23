@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { MapSettings } from "@/bindings.gen";
-import { useCurrentMap, getCurrentMap, updateMapMeta } from "@/store/useMapStore";
+import { useMapState, getCurrentMap, updateMapMeta } from "@/store/useMapStore";
 
 export function useMapSetting<K extends keyof MapSettings>(
 	key: K,
@@ -13,7 +13,7 @@ export function useMapSetting<K extends keyof MapSettings>(
 	key: K,
 	defaultValue?: NonNullable<MapSettings[K]>,
 ): [Exclude<MapSettings[K], undefined>, (v: MapSettings[K]) => void] {
-	const map = useCurrentMap();
+	const map = useMapState((s) => s.map);
 	const set = useCallback(
 		(v: MapSettings[K]) => {
 			const settings = getCurrentMap()?.meta.settings;

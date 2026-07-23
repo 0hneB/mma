@@ -74,7 +74,7 @@ describe("JSON import/export round-trip", () => {
 				exportExtras: true,
 				scope: null,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));
@@ -122,7 +122,7 @@ describe("JSON import/export round-trip", () => {
 				exportExtras: true,
 				scope: null,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));
@@ -150,7 +150,7 @@ describe("JSON import/export round-trip", () => {
 				exportExtras: true,
 				scope: null,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));
@@ -175,7 +175,7 @@ describe("JSON import/export round-trip", () => {
 				exportExtras: true,
 				scope: null,
 				mapName: map.meta.name,
-				tagsJson: JSON.stringify(map.meta.tags),
+				tagsJson: JSON.stringify(api.getMapState().tags),
 				extraFieldsJson: null,
 			});
 			const res = await fetch(api.mmaBufUrl(path));
@@ -279,8 +279,7 @@ describe("GeoJSON export", () => {
 
 	it("GeoJSON export produces valid FeatureCollection", async () => {
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
-			const path = await api.cmd.storeExportGeojson(null, JSON.stringify(map.meta.tags));
+			const path = await api.cmd.storeExportGeojson(null, JSON.stringify(api.getMapState().tags));
 			const res = await fetch(api.mmaBufUrl(path));
 			const geojson = await res.text();
 			const parsed = JSON.parse(geojson);

@@ -2,8 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import type { Location } from "@/bindings.gen";
 import {
-	useDuplicateLocations,
-	useCurrentMap,
+	useMapState,
 	openDuplicateLocation,
 	closeDuplicates,
 	removeDuplicate,
@@ -68,9 +67,8 @@ function DuplicateItem({
 }
 
 export default function SameLocation() {
-	const locations = useDuplicateLocations();
-	const map = useCurrentMap();
-	const tagMap = map?.meta.tags ?? {};
+	const locations = useMapState((s) => s.duplicateLocations);
+	const tagMap = useMapState((s) => s.tags);
 
 	const [selected, setSelected] = useState<Set<number>>(() => new Set());
 

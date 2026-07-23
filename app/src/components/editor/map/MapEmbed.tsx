@@ -19,7 +19,7 @@ import { getSettings, useSetting } from "@/store/settings";
 import { useMeasure } from "@/lib/sv/measure";
 import { MeasurementBar } from "@/components/primitives/MeasurementBar";
 import { MapContextMenuContent } from "@/components/editor/map/MapContextMenu";
-import { useCurrentMap, addSelections, mapOpen } from "@/store/useMapStore";
+import { useMapState, addSelections, mapOpen } from "@/store/useMapStore";
 import { loadOpenSV, google } from "@/lib/sv/opensv";
 import { BLOBBY_ZOOM_THRESHOLD } from "@/lib/sv/constants";
 import { setMapHost, tryInterceptDraw } from "@/lib/map/mapState";
@@ -57,7 +57,7 @@ export function MapEmbed({
 }: {
 	onAddLocation: (parsed: ParsedLocation) => void | Promise<void>;
 }) {
-	const map = useCurrentMap();
+	const map = useMapState((s) => s.map);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [host, setHost] = useState<MapHost | null>(null);
 	const hostRef = useRef<MapHost | null>(null);

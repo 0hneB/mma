@@ -14,7 +14,7 @@ import { getFieldDef, fieldLabel } from "@/lib/data/fieldDefRegistry";
 import {
 	setMapExtraFields,
 	getKnownFieldKeys,
-	getCurrentMap,
+	getMapState,
 	renameField,
 	deleteField,
 	fetchAllLocations,
@@ -183,7 +183,7 @@ function FieldsTable({
 	const skipBlurRef = useRef(false);
 
 	useEffect(() => {
-		const total = getCurrentMap()?.meta.locationCount ?? 0;
+		const total = getMapState().locationCount;
 		if (total === 0) return;
 		fetchAllLocations().then((locs) => {
 			const counts = new Map<string, number>();

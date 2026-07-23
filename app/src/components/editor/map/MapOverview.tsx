@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { NSelect } from "@/components/primitives/NSelect";
 import {
-	useCurrentMap,
-	useSelectedLocationIds,
-	useAllSelections,
+	useMapState,
 	removeSelections,
 	addTagToLocations,
 	createTags,
 	addSelections,
-	useVisibleTags,
-	useTagCounts,
+	getVisibleTags,
 	selectRandomFromSelection,
 	selectSpacedFromSelection,
 } from "@/store/useMapStore";
@@ -38,7 +35,7 @@ import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectio
 
 function RandomPickPanel() {
 	const [value, setValue] = useState("");
-	const total = useSelectedLocationIds().size;
+	const total = useMapState((s) => s.selectedLocationIds).size;
 	const parsed = Math.floor(Number(value));
 	const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
 	const count = valid ? Math.min(parsed, total) : 0;
@@ -72,7 +69,7 @@ function RandomPickPanel() {
 function SpacedPickPanel() {
 	const [mode, setMode] = useState<"count" | "distance">("count");
 	const [value, setValue] = useState("");
-	const total = useSelectedLocationIds().size;
+	const total = useMapState((s) => s.selectedLocationIds).size;
 	const parsed = Math.floor(Number(value));
 	const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
 
@@ -166,11 +163,11 @@ function TopKPanel({
 }
 
 export function MapOverview({ hidden }: { hidden?: boolean }) {
-	const map = useCurrentMap();
-	const selected = useSelectedLocationIds();
-	const selections = useAllSelections();
-	const visibleTags = useVisibleTags();
-	const tagCounts = useTagCounts();
+	const map = useMapState((s) => s.map);
+	const selected = useMapState((s) => s.selectedLocationIds);
+	const selections = useMapState((s) => s.selections);
+	const visibleTags = useMapState(getVisibleTags);
+	const tagCounts = useMapState((s) => s.tagCounts);
 	const [bulkTagInput, setBulkTagInput] = useState("");
 	const tagSortMode = useSetting("tagSortMode");
 	const [selectionsCollapsed, setSelectionsCollapsed] = useState(false);

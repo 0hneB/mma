@@ -9,8 +9,7 @@ import {
 	type ReactNode,
 } from "react";
 import {
-	useActiveLocation,
-	useCurrentMap,
+	useMapState,
 	getActiveLocation,
 	getCurrentMap,
 	updateLocations,
@@ -59,8 +58,8 @@ interface PanoViewerContextValue {
 const PanoViewerContext = createContext<PanoViewerContextValue | null>(null);
 
 export function PanoViewerProvider({ children }: { children: ReactNode }) {
-	const location = useActiveLocation();
-	const currentMap = useCurrentMap();
+	const location = useMapState((s) => s.activeLocation);
+	const currentMap = useMapState((s) => s.map);
 	const [currentPano, setCurrentPano] = useState<PanoViewerContextValue["currentPano"]>(null);
 	const [panoDates, setPanoDates] = useState<PanoReference[]>([]);
 	const [panoReady, setPanoReady] = useState(false);

@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-	useCurrentMap,
-	useGhostedSelections,
-	useSelectionCounts,
+	useMapState,
 	selectInverse,
 	setPolygonName,
 	setSelectionColors,
@@ -123,9 +121,10 @@ export function SelectionRow({
 	onRemove?: () => void;
 	inheritedGhost?: boolean;
 }) {
-	const map = useCurrentMap();
-	const ghostedKeys = useGhostedSelections();
-	const count = useSelectionCounts()[selection.key] ?? 0;
+	const map = useMapState((s) => s.map);
+	const tagMap = useMapState((s) => s.tags);
+	const ghostedKeys = useMapState((s) => s.ghostedSelections);
+	const count = useMapState((s) => s.selectionCounts[selection.key] ?? 0);
 	const isTopLevel = depth === 0;
 	const ghosted = inheritedGhost || (isTopLevel && ghostedKeys.has(selection.key));
 	const [view, setView] = useState<"contextmenu" | "color">("contextmenu");
@@ -176,7 +175,7 @@ export function SelectionRow({
 	const isPoly = selection.props.type === "Polygon";
 	const colorBlockCss =
 		inner.props.type === "Tag"
-			? (map.meta.tags[inner.props.tagId]?.color ?? rgbCss(selection.color))
+			? (tagMap[inner.props.tagId]?.color ?? rgbCss(selection.color))
 			: rgbCss(selection.color);
 
 	const handleRename = () => {

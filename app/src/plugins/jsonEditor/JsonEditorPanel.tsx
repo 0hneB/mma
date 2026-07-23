@@ -11,7 +11,7 @@ function serializeActive(active: Location): string {
 	const { id: _id, createdAt: _createdAt, modifiedAt: _modifiedAt, ...editable } = active;
 	const map = MMA.getCurrentMap();
 	const display = map
-		? { ...editable, tags: tagIdsToNames(editable.tags, map.meta.tags) }
+		? { ...editable, tags: tagIdsToNames(editable.tags, MMA.getMapState().tags) }
 		: editable;
 	return JSON.stringify(display, null, 2);
 }

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { MutationResult } from "@/bindings.gen";
 import {
-	useCurrentMap,
-	useWorkArea,
+	useMapState,
 	getActiveLocation,
 	getCurrentMap,
 	getCurrentMapId,
@@ -209,13 +208,14 @@ function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) 
 }
 
 export function MapEditor() {
-	const map = useCurrentMap();
+	const map = useMapState((s) => s.map);
+	const tags = useMapState((s) => s.tags);
 	// Warm the doclink HTML cache once per map open, so the panel is instant.
 	const prefetchDocs = useEffectEvent(() => {
-		if (map) prefetchDoclinks(map.meta.tags);
+		if (map) prefetchDoclinks(tags);
 	});
 	useEffect(() => prefetchDocs(), [map?.meta.id]);
-	const workArea = useWorkArea();
+	const workArea = useMapState((s) => s.workArea);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [split, setSplit] = useLocalStorage("editorSplit", 50);
 	const [docPanelOpen, setDocPanelOpen] = useLocalStorage("doclinkPanelOpen", false);
@@ -322,7 +322,7 @@ export function MapEditor() {
 	if (!map) return null;
 
 	const editorClasses = `page-map-editor${appSettings.fullscreenMap ? " fullscreen-map" : ""}`;
-	const hasDoclinks = doclinkedTags(map.meta.tags).length > 0;
+	const hasDoclinks = doclinkedTags(tags).length > 0;
 
 	return (
 		<PanoViewerProvider>

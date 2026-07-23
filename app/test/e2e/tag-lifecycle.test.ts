@@ -51,8 +51,7 @@ describe("Tag rename propagation", () => {
 		}, tagId);
 
 		const name = await withApi(async (api, tid) => {
-			const map = api.getCurrentMap();
-			return (map!.meta.tags as any)[String(tid)]?.name;
+			return (api.getMapState().tags as any)[String(tid)]?.name;
 		}, tagId);
 		expect(name).toBe("RenamedTag");
 	});
@@ -76,8 +75,7 @@ describe("Tag rename propagation", () => {
 		await openMap(mapId);
 
 		const name = await withApi(async (api, tid) => {
-			const map = api.getCurrentMap();
-			return (map!.meta.tags as any)[String(tid)]?.name;
+			return (api.getMapState().tags as any)[String(tid)]?.name;
 		}, tagId);
 		expect(name).toBe("RenamedTag");
 
@@ -159,8 +157,7 @@ describe("Tag delete cascade — no orphans", () => {
 	it("tagA is hidden in metadata (visible=false)", async () => {
 		// deleteTags keeps the tag entry but marks it invisible (for undo support)
 		const visible = await withApi(async (api, tid) => {
-			const map = api.getCurrentMap();
-			const tag = (map!.meta.tags as any)[String(tid)];
+			const tag = (api.getMapState().tags as any)[String(tid)];
 			return tag?.visible ?? true;
 		}, tagAId);
 		expect(visible).toBe(false);
@@ -213,8 +210,7 @@ describe("Tag delete + undo restores all references", () => {
 
 		// Tag stays in metadata but is invisible after delete
 		const afterDelete = await withApi(async (api, tid) => {
-			const map = api.getCurrentMap();
-			const tag = (map!.meta.tags as any)[String(tid)];
+			const tag = (api.getMapState().tags as any)[String(tid)];
 			return { visible: tag?.visible ?? true, name: tag?.name ?? null };
 		}, tagId);
 		expect(afterDelete.visible).toBe(false);
@@ -223,8 +219,7 @@ describe("Tag delete + undo restores all references", () => {
 
 		// After undo, tag should be visible again
 		const afterUndo = await withApi(async (api, tid) => {
-			const map = api.getCurrentMap();
-			const tag = (map!.meta.tags as any)[String(tid)];
+			const tag = (api.getMapState().tags as any)[String(tid)];
 			return { visible: tag?.visible ?? false, name: tag?.name ?? null };
 		}, tagId);
 		expect(afterUndo.visible).toBe(true);

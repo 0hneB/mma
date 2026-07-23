@@ -77,8 +77,7 @@ describe("Multi-map isolation", () => {
 
 		await openMap(mapBId);
 		const hasTags = await withApi(async (api) => {
-			const map = api.getCurrentMap();
-			const tagNames = Object.values(map!.meta.tags).map((t: any) => t.name);
+			const tagNames = Object.values(api.getMapState().tags).map((t: any) => t.name);
 			return tagNames.includes("MapA-Only");
 		});
 		expect(hasTags).toBe(false);
@@ -94,7 +93,10 @@ describe("Multi-map isolation", () => {
 
 		// Open map B, check undo state
 		await openMap(mapBId);
-		await withApi(async (api) => api.getUndoRedoState());
+		await withApi(async (api) => ({
+			canUndo: api.getMapState().canUndo,
+			canRedo: api.getMapState().canRedo,
+		}));
 		await closeMap();
 
 		// Open map A, undo

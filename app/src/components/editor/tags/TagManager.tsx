@@ -11,10 +11,9 @@ import { cmd } from "@/lib/commands";
 import { HslColorPicker } from "react-colorful";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import {
-	useCurrentMap,
+	useMapState,
 	getCurrentMap,
-	useSelectedTagIds,
-	useTagCounts,
+	getSelectedTagIds,
 	updateTags,
 	reorderTags,
 	deleteTags,
@@ -53,9 +52,9 @@ import {
 type OptimisticTagPatch = TagPatch & { order?: number };
 
 export function TagManager() {
-	const map = useCurrentMap();
-	const selectedTagIds = useSelectedTagIds();
-	const tagCounts = useTagCounts();
+	const map = useMapState((s) => s.map);
+	const selectedTagIds = useMapState(getSelectedTagIds);
+	const tagCounts = useMapState((s) => s.tagCounts);
 	const tagViewMode = useSetting("tagViewMode");
 	const [filterText, setFilterText] = useState("");
 	const sortMode = useSetting("tagSortMode");

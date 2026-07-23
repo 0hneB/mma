@@ -166,7 +166,7 @@ async function analyze(): Promise<Analysis> {
 
 		const fieldDefs: Record<string, ExtraFieldDef> = MMA.getAllFieldDefs();
 		const tagNames: Record<number, string> = {};
-		for (const [id, t] of Object.entries(map.meta.tags))
+		for (const [id, t] of Object.entries(MMA.getMapState().tags))
 			tagNames[Number(id)] = (t as { name: string }).name;
 
 		const result = computeDivergence(labeled, sels.length, fieldDefs, tagNames);

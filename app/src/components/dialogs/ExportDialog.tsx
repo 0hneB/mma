@@ -4,7 +4,7 @@ import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Radio } from "@/components/primitives/Radio";
 import { TextInput } from "@/components/primitives/TextInput";
-import { useCurrentMap, useSelectedLocationIds, getVisibleTags } from "@/store/useMapStore";
+import { useMapState, getVisibleTags } from "@/store/useMapStore";
 import type { Scope } from "@/bindings.gen";
 import { useMapSetting } from "@/store/useMapSetting";
 import { cmd } from "@/lib/commands";
@@ -19,8 +19,9 @@ interface Props {
 }
 
 export function ExportDialog({ onClose }: Props) {
-	const map = useCurrentMap();
-	const selectedIds = useSelectedLocationIds();
+	const map = useMapState((s) => s.map);
+	const selectedIds = useMapState((s) => s.selectedLocationIds);
+	const locationCount = useMapState((s) => s.locationCount);
 	const uid = useId();
 
 	const [scope, setScope] = useState<Scope>({ kind: "all" });
@@ -33,7 +34,6 @@ export function ExportDialog({ onClose }: Props) {
 	if (!map) return null;
 
 	const baseName = fileName || map.meta.name || "export";
-	const locationCount = map.meta.locationCount;
 	const scopeIds = scope.kind === "all" ? undefined : [...selectedIds];
 
 	const tagsJson = () => JSON.stringify(Object.fromEntries(getVisibleTags().map((t) => [t.id, t])));
