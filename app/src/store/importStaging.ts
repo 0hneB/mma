@@ -9,10 +9,7 @@ import { whenSceneSettled } from "@/lib/render/sceneStore";
 import { emit as emitEvent } from "@/lib/events";
 import {
 	mutate,
-	getCurrentMap,
-	getCurrentMapId,
-	getActiveLocation,
-	getWorkArea,
+	getMapState,
 	setWorkArea,
 	updateMapMeta,
 	waitForInflightPersist,
@@ -78,13 +75,13 @@ export async function confirmImport(droppedFields: string[], tagName?: string) {
 	cancelImport();
 	await mutate(() => Promise.resolve(r));
 
-	const map = getCurrentMap();
+	const map = getMapState().map;
 	if (map && r.settings && Object.keys(r.settings).length) {
 		await updateMapMeta({ settings: { ...map.meta.settings, ...r.settings } });
 	}
 
 	if (r.autoCommit) {
-		const mapId = getCurrentMapId();
+		const mapId = getMapState().mapId;
 		if (mapId) {
 			await whenSceneSettled();
 			cancelAutosave();
@@ -100,8 +97,8 @@ export function cancelImport() {
 	importStaging = null;
 	importPreviewPositions = new Float32Array(0);
 	emitEvent("import-markers:changed");
-	const active = getActiveLocation();
-	if ((active && isVirtualLocation(active)) || getWorkArea() === "import") {
+	const active = getMapState().activeLocation;
+	if ((active && isVirtualLocation(active)) || getMapState().workArea === "import") {
 		setWorkArea("overview");
 	} else {
 		emitEvent("store:changed");

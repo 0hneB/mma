@@ -53,12 +53,12 @@ describe("Selection isolation across maps", () => {
 	it("selecting Everything in A, switching to B: B has no selections", async () => {
 		await openMap(mapAId);
 		await withApi(async (api) => api.addSelections([{ type: "Everything" }]));
-		const selA = await withApi(async (api) => api.getSelections().length);
+		const selA = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selA).toBe(1);
 		await closeMap();
 
 		await openMap(mapBId);
-		const selB = await withApi(async (api) => api.getSelections().length);
+		const selB = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selB).toBe(0);
 		await closeMap();
 	});
@@ -67,12 +67,12 @@ describe("Selection isolation across maps", () => {
 		await openMap(mapAId);
 		const tag = await createTag("OnlyInA");
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag.id);
-		const selsA = await withApi(async (api) => api.getSelections().length);
+		const selsA = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selsA).toBeGreaterThan(0);
 		await closeMap();
 
 		await openMap(mapBId);
-		const selsB = await withApi(async (api) => api.getSelections().length);
+		const selsB = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selsB).toBe(0);
 		await closeMap();
 	});
@@ -211,7 +211,7 @@ describe("Per-map settings isolation", () => {
 		// Only patch individual settings via the existing defaults, not full replacement
 		mapAId = await createAndOpenMap("E2E SettingsIso A");
 		await withApi(async (api) => {
-			const current = api.getCurrentMap()!.meta.settings;
+			const current = api.getMapState().map!.meta.settings;
 			await api.updateMapMeta({
 				settings: {
 					...current,
@@ -225,7 +225,7 @@ describe("Per-map settings isolation", () => {
 
 		mapBId = await createAndOpenMap("E2E SettingsIso B");
 		await withApi(async (api) => {
-			const current = api.getCurrentMap()!.meta.settings;
+			const current = api.getMapState().map!.meta.settings;
 			await api.updateMapMeta({
 				settings: {
 					...current,
@@ -247,7 +247,7 @@ describe("Per-map settings isolation", () => {
 
 	it("map A has its own settings", async () => {
 		await openMap(mapAId);
-		const settings = await withApi(async (api) => api.getCurrentMap()!.meta.settings);
+		const settings = await withApi(async (api) => api.getMapState().map!.meta.settings);
 		expect(settings.exportZoom).toBe(true);
 		expect(settings.preferOfficial).toBe(true);
 		await closeMap();
@@ -255,7 +255,7 @@ describe("Per-map settings isolation", () => {
 
 	it("map B has its own settings (different from A)", async () => {
 		await openMap(mapBId);
-		const settings = await withApi(async (api) => api.getCurrentMap()!.meta.settings);
+		const settings = await withApi(async (api) => api.getMapState().map!.meta.settings);
 		expect(settings.exportZoom).toBe(false);
 		expect(settings.preferOfficial).toBe(false);
 		expect(settings.onlyOfficial).toBe(true);
@@ -265,7 +265,7 @@ describe("Per-map settings isolation", () => {
 	it("modifying A settings does not change B", async () => {
 		await openMap(mapAId);
 		await withApi(async (api) => {
-			const current = api.getCurrentMap()!.meta.settings;
+			const current = api.getMapState().map!.meta.settings;
 			await api.updateMapMeta({
 				settings: {
 					...current,
@@ -278,7 +278,7 @@ describe("Per-map settings isolation", () => {
 		await closeMap();
 
 		await openMap(mapBId);
-		const settingsB = await withApi(async (api) => api.getCurrentMap()!.meta.settings);
+		const settingsB = await withApi(async (api) => api.getMapState().map!.meta.settings);
 		expect(settingsB.onlyOfficial).toBe(true);
 		await closeMap();
 	});
@@ -313,10 +313,10 @@ describe("Active location isolation across maps", () => {
 
 	it("opening map B starts with no active location", async () => {
 		await openMap(mapBId);
-		const activeB = await withApi(async (api) => api.getActiveLocation()?.id ?? null);
+		const activeB = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
 		expect(activeB).toBeNull();
 
-		const area = await withApi(async (api) => api.getWorkArea());
+		const area = await withApi(async (api) => api.getMapState().workArea);
 		expect(area).toBe("overview");
 		await closeMap();
 	});

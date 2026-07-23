@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Tag } from "@/bindings.gen";
-import { getTagCounts } from "@/store/useMapStore";
+import { getMapState } from "@/store/useMapStore";
 import { sortTagsByMode, tagColorFor, appendTagName } from "@/lib/util/util";
 import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { useSetting } from "@/store/settings";
@@ -42,7 +42,7 @@ export function FullscreenTagBar({
 	};
 
 	const pendingLower = new Set(pendingTags.map((n) => n.toLowerCase()));
-	const sorted = sortTagsByMode(tags, tagSortMode, getTagCounts());
+	const sorted = sortTagsByMode(tags, tagSortMode, getMapState().tagCounts);
 	const available = sorted.filter((t) => !pendingLower.has(t.name.toLowerCase()));
 	const filtered = input.trim()
 		? available.filter((t) => t.name.toLowerCase().includes(input.toLowerCase()))

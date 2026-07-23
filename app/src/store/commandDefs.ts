@@ -57,14 +57,10 @@ import {
 	selectUnion,
 	resetSelections,
 	commitMap,
-	getCurrentMap,
 	getMapState,
 	deleteTags,
-	getSelections,
-	getAllSelections,
-	getSelectedLocationIds,
+	getActiveSelections,
 	removeLocations,
-	getTagCounts,
 	hasCommitDiff,
 	toggleGhostAllSelections,
 } from "./useMapStore";
@@ -74,9 +70,9 @@ import { toggleSeenOverlay } from "@/lib/seen/seenOverlay";
 import { selectReviewedHistory } from "@/lib/review/review";
 import { openDialog } from "./dialogBus";
 
-const requiresMap = () => getCurrentMap() !== null;
-const hasSelection = () => getSelectedLocationIds().size > 0;
-const hasAnySelections = () => getAllSelections().length > 0;
+const requiresMap = () => getMapState().map !== null;
+const hasSelection = () => getMapState().selectedLocationIds.size > 0;
+const hasAnySelections = () => getMapState().selections.length > 0;
 const openBulkOp = (op: string) => () => openDialog("bulk-op", op);
 const openInlinePanel = (id: string) => () => openDialog("inline-panel", id);
 
@@ -230,10 +226,10 @@ const COMMANDS = {
 		label: "Download polygon selections as GeoJSON",
 		icon: mdiVectorPolygon,
 		group: "Selections",
-		enabled: () => getSelections().some((s) => s.props.type === "Polygon"),
+		enabled: () => getActiveSelections().some((s) => s.props.type === "Polygon"),
 		execute: () => {
 			const features: unknown[] = [];
-			for (const sel of getSelections()) {
+			for (const sel of getActiveSelections()) {
 				if (sel.props.type !== "Polygon") continue;
 				features.push({
 					type: "Feature",
@@ -338,7 +334,7 @@ const COMMANDS = {
 		group: "Selections",
 		enabled: hasSelection,
 		execute: () => {
-			const ids = getSelectedLocationIds();
+			const ids = getMapState().selectedLocationIds;
 			if (ids.size > 0) removeLocations(ids);
 		},
 	},
@@ -397,21 +393,21 @@ const COMMANDS = {
 		group: "Tags",
 		execute: async () => {
 			await deleteTags(
-				getSelections()
+				getActiveSelections()
 					.filter((s) => s.props.type === "Tag")
 					.map((s) => (s.props as { type: "Tag"; tagId: number }).tagId),
 			);
 		},
-		enabled: () => getSelections().some((s) => s.props.type === "Tag"),
+		enabled: () => getActiveSelections().some((s) => s.props.type === "Tag"),
 	},
 	"tag-download-csv": {
 		label: "Download tag counts as CSV",
 		icon: mdiFileDelimitedOutline,
 		group: "Tags",
 		execute: () => {
-			const map = getCurrentMap();
+			const map = getMapState().map;
 			if (!map) return;
-			const counts = getTagCounts();
+			const counts = getMapState().tagCounts;
 			const rows = Object.entries(counts)
 				.map(([id, count]) => ({ name: getMapState().tags[Number(id)]?.name ?? id, count }))
 				.sort((a, b) => b.count - a.count);

@@ -2,10 +2,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import type { MutationResult } from "@/bindings.gen";
 import {
 	useMapState,
-	getActiveLocation,
-	getCurrentMap,
-	getCurrentMapId,
-	getSelectedLocationIds,
+	getMapState,
 	mutate,
 	removeLocations,
 	discardOpenMap,
@@ -238,7 +235,7 @@ export function MapEditor() {
 	// Another window mutated this map
 	useEffect(() => {
 		const unlisten = listen<MutationResult & { mapId: string }>("store-external-mutation", (e) => {
-			if (e.payload.mapId === getCurrentMapId()) void mutate(() => Promise.resolve(e.payload));
+			if (e.payload.mapId === getMapState().mapId) void mutate(() => Promise.resolve(e.payload));
 		});
 		return () => {
 			unlisten.then((f) => f());
@@ -249,7 +246,7 @@ export function MapEditor() {
 	// and back out to the list, which self-destructs the editor window on Tauri.
 	useEffect(() => {
 		const unlisten = listen<string>("map-deleted", (e) => {
-			if (e.payload === getCurrentMapId()) {
+			if (e.payload === getMapState().mapId) {
 				discardOpenMap();
 				goToList();
 			}
@@ -263,7 +260,7 @@ export function MapEditor() {
 	usePasteHandler();
 	const fileDragging = useFileDrop();
 	useCommandHotkeys();
-	useMapKeyBindings(() => getCurrentMap()?.meta.settings.keyBindings ?? []);
+	useMapKeyBindings(() => getMapState().map?.meta.settings.keyBindings ?? []);
 	useCountrySelect();
 	useDeletePolygon();
 	useHotkey(
@@ -277,7 +274,7 @@ export function MapEditor() {
 	useHotkey(
 		useBinding("locationDelete"),
 		() => {
-			const ids = getSelectedLocationIds();
+			const ids = getMapState().selectedLocationIds;
 			if (ids.size > 0) removeLocations(ids);
 		},
 		{ bubble: true },
@@ -290,7 +287,7 @@ export function MapEditor() {
 		function onKeyDown(e: KeyboardEvent) {
 			if (e.key !== "Enter" || e.repeat) return;
 			if (isEditableElement(e.target)) return;
-			if (getActiveLocation()) return;
+			if (getMapState().activeLocation) return;
 			showMapCursorRef.current = true;
 			setShowMapCursor(true);
 		}

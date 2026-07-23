@@ -6,14 +6,7 @@ import {
 	type SetStateAction,
 } from "react";
 import type { Location } from "@/bindings.gen";
-import {
-	getActiveLocation,
-	getCurrentMap,
-	getVisibleTags,
-	getTagCounts,
-	duplicateLocation,
-	addLocations,
-} from "@/store/useMapStore";
+import { getMapState, getVisibleTags, duplicateLocation, addLocations } from "@/store/useMapStore";
 import { sortTagsByMode } from "@/lib/util/util";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
@@ -221,8 +214,12 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 	});
 
 	const quicktagSlot = (idx: number) => {
-		if (!location || !getCurrentMap()) return;
-		const tags = sortTagsByMode(getVisibleTags(), getSettings().tagSortMode, getTagCounts());
+		if (!location || !getMapState().map) return;
+		const tags = sortTagsByMode(
+			getVisibleTags(),
+			getSettings().tagSortMode,
+			getMapState().tagCounts,
+		);
 		if (idx >= tags.length) return;
 		const tag = tags[idx];
 		const has = pendingTags.includes(tag.name);
@@ -230,7 +227,7 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 	};
 
 	const onApplyTag = useEffectEvent(({ tagId }: { tagId: number }) => {
-		const active = getActiveLocation();
+		const active = getMapState().activeLocation;
 		if (!active || isVirtualLocation(active)) return false;
 		const tag = getVisibleTags().find((t) => t.id === tagId);
 		if (!tag) return false;
@@ -244,7 +241,7 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 		if (!hasLocation) return;
 		const unregisterApply = registerMapKeyActionHandler("applyTag", (action) => onApplyTag(action));
 		const unregisterCopy = registerMapKeyActionHandler("copyToMap", ({ mapId }) => {
-			const loc = getActiveLocation();
+			const loc = getMapState().activeLocation;
 			if (!loc || isVirtualLocation(loc)) return false;
 			const container = fullscreenContainerRef.current ?? panoContainerRef.current?.parentElement;
 			const t0 = performance.now();

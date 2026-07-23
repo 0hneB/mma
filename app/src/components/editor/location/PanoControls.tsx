@@ -7,7 +7,7 @@ import { lookupStreetView } from "@/lib/sv/lookup";
 import { shortenMapsUrl } from "@/lib/sv/shortUrl";
 import { isOfficialPano } from "@/lib/sv/panoId";
 import { useSettings } from "@/store/settings";
-import { getMapState, getActiveLocation, useMapState } from "@/store/useMapStore";
+import { getMapState, useMapState } from "@/store/useMapStore";
 import { getPanoAltitude } from "./PanoViewerContext";
 import { subscribe as subscribeEvent } from "@/lib/events";
 import { useBinding } from "@/lib/util/hotkeys";
@@ -506,7 +506,7 @@ export const PanoControls = memo(function PanoControls({
 		async ({ long, noTags }: { long: boolean; noTags: boolean }) => {
 			const url = buildMapsUrl();
 			if (!url) return;
-			const location = getActiveLocation();
+			const location = getMapState().activeLocation;
 			if (!noTags && location) {
 				const tagsById = getMapState().tags;
 				for (const id of location.tags) {

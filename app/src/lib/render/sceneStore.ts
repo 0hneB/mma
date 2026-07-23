@@ -4,12 +4,7 @@ import { mmaBufUrl } from "@/lib/util/util";
 import type { RGB } from "@/lib/util/color";
 import { log } from "@/lib/util/log";
 import { trace } from "@/lib/util/debug";
-import {
-	getActiveLocation,
-	getSelectedLocationIds,
-	mapOpen,
-	setSelectedLocationIds,
-} from "@/store/useMapStore";
+import { getMapState, mapOpen, setSelectedLocationIds } from "@/store/useMapStore";
 import { emit as emitEvent, subscribe as subscribeEvent } from "@/lib/events";
 import type { MarkerStyle } from "@/types";
 
@@ -43,11 +38,11 @@ function patchMarker(id: number, rgba: [number, number, number, number]) {
 // Reflect the active location in the scene: hide its base marker (the active overlay draws
 // it) and restore the previously-active one — unless it's selected. Fast path: no refetch.
 function applyActive() {
-	const activeId = getActiveLocation()?.id ?? null;
+	const activeId = getMapState().activeLocation?.id ?? null;
 	if (
 		prevActiveId != null &&
 		prevActiveId !== activeId &&
-		!getSelectedLocationIds().has(prevActiveId)
+		!getMapState().selectedLocationIds.has(prevActiveId)
 	) {
 		patchMarker(prevActiveId, markerDefault);
 	}
@@ -160,7 +155,7 @@ export function startSceneEngine(): () => void {
 		}
 		const t = trace("delta", { summary: true });
 		const affected = scene.applyDelta(delta);
-		const aid = getActiveLocation()?.id ?? null;
+		const aid = getMapState().activeLocation?.id ?? null;
 		if (aid != null) patchMarker(aid, ACTIVE_HIDDEN);
 		if (delta.colorPatches.length > 0) {
 			const selPatches = delta.colorPatches.filter(
@@ -185,7 +180,7 @@ export function startSceneEngine(): () => void {
 	// Active-location switch fires a plain store mutation (store_set_active is fire-and-forget,
 	// no delta). Re-derive the scene's active highlight when the id changes.
 	const unsubStore = subscribeEvent("store:changed", () => {
-		const activeId = getActiveLocation()?.id ?? null;
+		const activeId = getMapState().activeLocation?.id ?? null;
 		if (activeId !== prevActiveId) {
 			applyActive();
 			emitEvent("scene:changed");

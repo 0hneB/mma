@@ -5,7 +5,7 @@ import { compareNatural } from "@/lib/util/util";
 import { compareMonthOrder } from "@/lib/util/date";
 import { resolveSavedSelectionIds } from "./savedSelections";
 
-import { useMapState, getSelectedLocationIds } from "./useMapStore";
+import { useMapState, getMapState } from "./useMapStore";
 
 /** The user-facing "which locations" concept: Rust's mechanical Scope widened with
  *  saved selections, which resolve to ids in JS (Rust never sees saved definitions). */
@@ -26,7 +26,7 @@ export interface ScopeController<S extends SourceScope = Scope> {
 /** Narrow a materialized pool of id-bearing records to the scope's subset (JS-side). */
 export function applyScope(scope: Scope, pool: Location[]): Location[] {
 	if (scope.kind === "all") return pool;
-	const ids = getSelectedLocationIds();
+	const ids = getMapState().selectedLocationIds;
 	return pool.filter((item) => ids.has(item.id));
 }
 
@@ -38,7 +38,7 @@ export async function resolveScopeIds(
 		case "all":
 			return null;
 		case "selected":
-			return getSelectedLocationIds();
+			return getMapState().selectedLocationIds;
 		case "saved":
 			return resolveSavedSelectionIds(scope.id);
 	}
@@ -61,7 +61,7 @@ export async function partition(
 }
 
 function defaultScope(): Scope {
-	return getSelectedLocationIds().size > 0 ? { kind: "selected" } : { kind: "all" };
+	return getMapState().selectedLocationIds.size > 0 ? { kind: "selected" } : { kind: "all" };
 }
 
 /** Reactive scope state + live counts, owned by the calling React component. Defaults to

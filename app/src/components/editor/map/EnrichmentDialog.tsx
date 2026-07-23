@@ -13,7 +13,6 @@ import { getEnrichFieldOptions, getDefaultEnrichKeys } from "@/lib/data/fieldDef
 import { getFieldDef, fieldLabel } from "@/lib/data/fieldDefRegistry";
 import {
 	setMapExtraFields,
-	getKnownFieldKeys,
 	getMapState,
 	renameField,
 	deleteField,
@@ -77,7 +76,7 @@ interface FieldRow {
 
 /** Union of fields present on the map and fields enrichment could add. */
 function buildRows(): FieldRow[] {
-	const known = new Set(getKnownFieldKeys());
+	const known = new Set(getMapState().knownFieldKeys);
 	const enrichable = new Map(getEnrichFieldOptions().map((f) => [f.key, f]));
 	const keys = [...new Set([...known, ...enrichable.keys()])].sort();
 	return keys.map((key) => {

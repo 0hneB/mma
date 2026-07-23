@@ -1506,9 +1506,7 @@ declare enum ValidationState {
 
 export interface MapState {
     mapId: string | null;
-    /** Persisted identity slice (metadata + settings). Changes rarely. Its
-     *  `meta.locationCount` and `meta.tags` are open-time snapshots — the live
-     *  values are the top-level `locationCount` and `tags`. */
+    /** Persisted identity slice (metadata + settings). Changes rarely. */
     map: MapData | null;
     locationCount: number;
     canUndo: boolean;
@@ -1543,8 +1541,6 @@ export interface MapState {
 declare function useMapState<T>(selector: (s: MapState) => T): T;
 /** Imperative snapshot of the map state. */
 declare function getMapState(): Readonly<MapState>;
-/** Per-tag location counts for the open map, keyed by tag id. */
-declare function getTagCounts(): Record<number, number>;
 /** Tags that exist from the user's point of view. Raw `tags` also holds soft-deleted ghosts (count=0, visible=false, kept for undo revival) — almost nothing outside the undo/revival machinery should enumerate those. */
 declare const getVisibleTags: () => Tag[];
 /** Raw by-id tag lookup — includes soft-deleted ghosts so stale references
@@ -1581,30 +1577,18 @@ declare function openMap(id: string): Promise<void>;
 declare function closeMap(): Promise<void>;
 /** Drop the open map without persisting anything */
 declare function discardOpenMap(): void;
-/** Id of the open map, or null. */
-declare function getCurrentMapId(): string | null;
-/** The open map (metadata + settings), or null. */
-declare function getCurrentMap(): MapData | null;
-/** Returns the set of extra-field keys known to exist on the current map. */
-declare function getKnownFieldKeys(): ReadonlySet<string>;
-/** The location currently open in the editor, or null. */
-declare function getActiveLocation(): Location | null;
 /** Fetch every location in the map. */
 declare function fetchAllLocations(): Promise<Location[]>;
 /** Fetch one location by id, or null if it doesn't exist. */
 declare function fetchLocation(id: number): Promise<Location | null>;
 /** Fetch locations by id (missing ids are skipped). Prefer this over per-id fetches. */
 declare function fetchLocationsByIds(ids: number[]): Promise<Location[]>;
-/** All selections including ghosted. Only for rendering/UI that needs the full list. */
-declare function getAllSelections(): Selection[];
 /** Active (non-ghosted) selections, the default for any operational logic. */
-declare const getSelections: () => Selection[];
-/** The set of all currently selected location ids (the union of all selections). */
-declare function getSelectedLocationIds(): SelectedIds;
+declare const getActiveSelections: () => Selection[];
 /** Overwrite the selected-id set directly, bypassing selection resolution. Rarely what you want -- prefer `addSelections`. */
 declare function setSelectedLocationIds(ids: SelectedIds): void;
 /** @internal Test-only. Forces a full selection re-resolve in Rust and returns
- *  the raw selected IDs. App code should use getSelectedLocationIds() instead —
+ *  the raw selected IDs. App code should use getMapState().selectedLocationIds instead —
  *  mutations already sync selections via MutationResult. */
 declare function syncSelections(): Promise<{
     ids: number[];
@@ -1638,8 +1622,6 @@ declare function updateLocations(updates: Update<LocationPatch_Deserialize>[], o
 declare function renameField(from: string, to: string, winner?: MergeWinner): Promise<void>;
 /** Delete extra-field `key` from every location, its definition, and references. */
 declare function deleteField(key: string): Promise<void>;
-/** The set of ghosted (temporarily excluded) selection keys. */
-declare const getGhostedSelections: () => ReadonlySet<string>;
 /** Toggle a selection's ghosted state and re-sync (excludes/includes it from the overlay). */
 declare function toggleGhostSelection(key: string): Promise<void>;
 /** "Solo" a selection: ghost every other top-level selection, keep this one visible.
@@ -1727,8 +1709,6 @@ declare function closeDuplicates(): void;
 /** Transition the editor pane, enforcing state invariants:
  *  leaving "location" clears the active location, leaving "plugin" clears the plugin id. */
 declare function setWorkArea(area: WorkArea): void;
-/** The current editor pane. */
-declare function getWorkArea(): WorkArea;
 /** Open a plugin's sidebar (switches the editor pane to "plugin"). */
 declare function setPluginMode(pluginId: string): void;
 /** Close the plugin sidebar and return to the overview. */
@@ -1783,21 +1763,12 @@ declare const store_fetchAllLocations: typeof fetchAllLocations;
 declare const store_fetchLocation: typeof fetchLocation;
 declare const store_fetchLocationsByIds: typeof fetchLocationsByIds;
 declare const store_flushSave: typeof flushSave;
-declare const store_getActiveLocation: typeof getActiveLocation;
-declare const store_getAllSelections: typeof getAllSelections;
-declare const store_getCurrentMap: typeof getCurrentMap;
-declare const store_getCurrentMapId: typeof getCurrentMapId;
+declare const store_getActiveSelections: typeof getActiveSelections;
 declare const store_getDirtyCount: typeof getDirtyCount;
-declare const store_getGhostedSelections: typeof getGhostedSelections;
-declare const store_getKnownFieldKeys: typeof getKnownFieldKeys;
 declare const store_getMapState: typeof getMapState;
-declare const store_getSelectedLocationIds: typeof getSelectedLocationIds;
 declare const store_getSelectedTagIds: typeof getSelectedTagIds;
-declare const store_getSelections: typeof getSelections;
 declare const store_getTag: typeof getTag;
-declare const store_getTagCounts: typeof getTagCounts;
 declare const store_getVisibleTags: typeof getVisibleTags;
-declare const store_getWorkArea: typeof getWorkArea;
 declare const store_hasCommitDiff: typeof hasCommitDiff;
 declare const store_initStore: typeof initStore;
 declare const store_isolateSelection: typeof isolateSelection;
@@ -1852,7 +1823,7 @@ declare const store_useCommitDiff: typeof useCommitDiff;
 declare const store_useMapState: typeof useMapState;
 declare const store_waitForInflightPersist: typeof waitForInflightPersist;
 declare namespace store {
-  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, store_closeMap as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveLocation as getActiveLocation, store_getAllSelections as getAllSelections, store_getCurrentMap as getCurrentMap, store_getCurrentMapId as getCurrentMapId, store_getDirtyCount as getDirtyCount, store_getGhostedSelections as getGhostedSelections, store_getKnownFieldKeys as getKnownFieldKeys, store_getMapState as getMapState, store_getSelectedLocationIds as getSelectedLocationIds, store_getSelectedTagIds as getSelectedTagIds, store_getSelections as getSelections, store_getTag as getTag, store_getTagCounts as getTagCounts, store_getVisibleTags as getVisibleTags, store_getWorkArea as getWorkArea, store_hasCommitDiff as hasCommitDiff, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, store_openMap as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_syncSelections as syncSelections, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useCommitDiff as useCommitDiff, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
+  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, store_closeMap as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveSelections as getActiveSelections, store_getDirtyCount as getDirtyCount, store_getMapState as getMapState, store_getSelectedTagIds as getSelectedTagIds, store_getTag as getTag, store_getVisibleTags as getVisibleTags, store_hasCommitDiff as hasCommitDiff, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, store_openMap as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_syncSelections as syncSelections, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useCommitDiff as useCommitDiff, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
   export type { store_MapState as MapState };
 }
 

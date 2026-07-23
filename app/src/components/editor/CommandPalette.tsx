@@ -10,7 +10,7 @@ import { getCommands, togglePinnedCommand, type CommandGroup } from "@/store/com
 import { useSetting } from "@/store/settings";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { getBinding, useBinding } from "@/lib/util/hotkeys";
-import { getCurrentMapId, closeMap } from "@/store/useMapStore";
+import { getMapState, closeMap } from "@/store/useMapStore";
 import { useMapList } from "@/store/mapList";
 import { goToMap } from "@/store/router";
 
@@ -146,7 +146,7 @@ function MainCommands() {
 function MapSwitcher() {
 	const ctx = useContext(Ctx);
 	const maps = useMapList();
-	const currentId = getCurrentMapId();
+	const currentId = getMapState().mapId;
 	const others = maps.filter((m) => m.id !== currentId);
 
 	return (

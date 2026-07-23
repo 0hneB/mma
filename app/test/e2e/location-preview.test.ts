@@ -144,7 +144,7 @@ describe("LocationPreview — basics", () => {
 
 	it("work area is 'location' when preview is open", async () => {
 		await openLocation(basicCoordId);
-		const area = await withApi(async (api) => api.getWorkArea());
+		const area = await withApi(async (api) => api.getMapState().workArea);
 		expect(area).toBe("location");
 	});
 
@@ -154,7 +154,7 @@ describe("LocationPreview — basics", () => {
 		await btn.waitForExist({ timeout: 5000 });
 		await btn.click();
 		await waitForWorkArea("overview");
-		const area = await withApi(async (api) => api.getWorkArea());
+		const area = await withApi(async (api) => api.getMapState().workArea);
 		expect(area).toBe("overview");
 	});
 
@@ -183,7 +183,7 @@ describe("LocationPreview — official pano", () => {
 		await waitForReady();
 		mapId = await createAndOpenMap("E2E LP Official");
 		await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			await api.updateMapMeta({ settings: { ...map.meta.settings, enrichMetadata: true } });
 			return "ok";
 		});
@@ -492,7 +492,7 @@ describe("LocationPreview — dead pano (fallback)", () => {
 		await waitForDates();
 		// The viewer should have resolved to a real pano via coord fallback
 		const resolvedPanoId = await withApi(async (api) => {
-			return api.getActiveLocation()?.panoId ?? null;
+			return api.getMapState().activeLocation?.panoId ?? null;
 		});
 		// The stored panoId is still the dead one (not saved yet), but the viewer resolved differently
 		expect(resolvedPanoId).toBe("DEAD_PANO_DOES_NOT_EXIST_12345");
@@ -629,10 +629,10 @@ describe("LocationPreview — switching between pano types", () => {
 		expect(await getDateCount()).toBeGreaterThan(0);
 
 		// Verify it's showing data for the coord location, not a stale one
-		const area = await withApi(async (api) => api.getWorkArea());
+		const area = await withApi(async (api) => api.getMapState().workArea);
 		expect(area).toBe("location");
 		const active = await withApi(async (api) => {
-			return api.getActiveLocation()?.id ?? null;
+			return api.getMapState().activeLocation?.id ?? null;
 		});
 		expect(active).toBe(swCoordId);
 	});
@@ -707,7 +707,7 @@ describe("LocationPreview — exact date resolution", () => {
 		await waitForReady();
 		mapId = await createAndOpenMap("E2E LP Exact Date");
 		await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			await api.updateMapMeta({
 				settings: {
 					...map.meta.settings,
@@ -1296,7 +1296,7 @@ const NO_EXACT_ENRICH_FIELDS = ["altitude", "countryCode", "cameraType", "panoTy
 // it by setting enrichFields rather than a global app setting.
 async function setMapEnrichFields(fields: string[]) {
 	await withApi(async (api, f) => {
-		const map = api.getCurrentMap()!;
+		const map = api.getMapState().map!;
 		await api.updateMapMeta({
 			settings: { ...map.meta.settings, enrichMetadata: true, enrichFields: f },
 		});
@@ -1501,7 +1501,7 @@ describe("LocationPreview — edge cases", () => {
 		await waitForReady();
 		mapId = await createAndOpenMap("E2E LP Edge Cases");
 		await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			await api.updateMapMeta({ settings: { ...map.meta.settings, enrichMetadata: true } });
 			return "ok";
 		});
@@ -1563,7 +1563,7 @@ describe("LocationPreview — edge cases", () => {
 
 		// Active location should be B
 		const activeId = await withApi(async (api) => {
-			return api.getActiveLocation()?.id ?? null;
+			return api.getMapState().activeLocation?.id ?? null;
 		});
 		expect(activeId).toBe(edgeBId);
 	});
@@ -1579,7 +1579,7 @@ describe("LocationPreview — edge cases", () => {
 		await waitForDates();
 
 		const activeId = await withApi(async (api) => {
-			return api.getActiveLocation()?.id ?? null;
+			return api.getMapState().activeLocation?.id ?? null;
 		});
 		expect(activeId).toBe(edgeAId);
 		expect(await getDateCount()).toBeGreaterThan(0);

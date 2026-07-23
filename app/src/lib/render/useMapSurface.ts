@@ -7,7 +7,7 @@ import type { MapHost, DeckOverlayHandle } from "@/lib/map/host";
 import { useSetting, getSettings } from "@/store/settings";
 import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
-import { getActiveLocation } from "@/store/useMapStore";
+import { getMapState } from "@/store/useMapStore";
 import { subscribe, subscribeMany } from "@/lib/events";
 import { getReviewSession } from "@/lib/review/review";
 import { useHotkey } from "@/lib/hooks/useHotkey";
@@ -157,14 +157,14 @@ export function useMapSurface(
 		if (!host || !opts.followActive) return;
 		return subscribe("active:change", (id) => {
 			if (id == null || !getReviewSession() || !getSettings().followActiveInReview) return;
-			const loc = getActiveLocation();
+			const loc = getMapState().activeLocation;
 			if (loc && loc.id === id) host.panTo({ lat: loc.lat, lng: loc.lng });
 		});
 	}, [host, opts.followActive]);
 
 	useHotkey(useBinding("panToLocation"), () => {
 		if (!host || !opts.panToActiveHotkey) return;
-		const loc = getActiveLocation();
+		const loc = getMapState().activeLocation;
 		if (loc) host.panTo({ lat: loc.lat, lng: loc.lng });
 	});
 

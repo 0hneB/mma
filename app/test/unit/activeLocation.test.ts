@@ -21,7 +21,7 @@ vi.mock("@/lib/commands", () => ({
 	},
 }));
 
-import { setActiveLocation, setWorkArea, getActiveLocation } from "@/store/useMapStore";
+import { setActiveLocation, setWorkArea, getMapState } from "@/store/useMapStore";
 import { subscribe } from "@/lib/events";
 
 beforeEach(() => {
@@ -34,18 +34,18 @@ describe("active location keeps Rust's active_id in step", () => {
 		h.nearby = [{ id: 7 }, { id: 8 }];
 		await setActiveLocation(7);
 
-		expect(getActiveLocation()).toBeNull();
+		expect(getMapState().activeLocation).toBeNull();
 		expect(h.setActiveCalls).toEqual([7, null]);
 	});
 
 	it("pushes null to Rust when leaving the location pane", async () => {
 		await setActiveLocation(7);
-		expect(getActiveLocation()?.id).toBe(7);
+		expect(getMapState().activeLocation?.id).toBe(7);
 
 		h.setActiveCalls = [];
 		setWorkArea("plugin");
 
-		expect(getActiveLocation()).toBeNull();
+		expect(getMapState().activeLocation).toBeNull();
 		expect(h.setActiveCalls).toEqual([null]);
 	});
 

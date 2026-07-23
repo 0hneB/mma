@@ -30,9 +30,12 @@ vi.mock("@/lib/events", () => ({
 }));
 
 vi.mock("@/store/useMapStore", () => ({
-	getActiveLocation: () => (h.activeId == null ? null : { id: h.activeId }),
-	getSelectedLocationIds: () => h.selected,
-	mapOpenMark: () => {},
+	getMapState: () => ({
+		activeLocation: h.activeId == null ? null : { id: h.activeId },
+		selectedLocationIds: h.selected,
+	}),
+	mapOpen: { mark: () => {} },
+	setSelectedLocationIds: () => {},
 }));
 
 import { getScene, startSceneEngine } from "@/lib/render/sceneStore";

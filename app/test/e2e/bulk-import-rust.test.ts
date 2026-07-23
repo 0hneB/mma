@@ -148,8 +148,7 @@ describe("Rust bulk import — confirm and verify", () => {
 
 	it("imported locations survive save/load cycle", async () => {
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
-			const id = map.meta.id;
+			const id = api.getMapState().mapId!;
 			const beforeCount = (await api.cmd.storeGetSummary()).locationCount;
 			const beforeLocs = await api.fetchAllLocations();
 			const beforeFirst = beforeLocs[0];
@@ -275,7 +274,7 @@ describe("Benchmarks — selection at scale", () => {
 			const t0 = performance.now();
 			await api.addSelections([{ type: "Tag", tagId: tagId }]);
 			const elapsed = performance.now() - t0;
-			const count = api.getSelectedLocationIds().size;
+			const count = api.getMapState().selectedLocationIds.size;
 			api.resetSelections();
 			return { ms: elapsed, count };
 		}, benchTagId);
@@ -288,7 +287,7 @@ describe("Benchmarks — selection at scale", () => {
 			const t0 = performance.now();
 			await api.addSelections([{ type: "Unpanned" }]);
 			const elapsed = performance.now() - t0;
-			const count = api.getSelectedLocationIds().size;
+			const count = api.getMapState().selectedLocationIds.size;
 			api.resetSelections();
 			return { ms: elapsed, count };
 		});
@@ -303,7 +302,7 @@ describe("Benchmarks — selection at scale", () => {
 			const t0 = performance.now();
 			await api.addSelections([{ type: "PanoIds" }]);
 			const elapsed = performance.now() - t0;
-			const count = api.getSelectedLocationIds().size;
+			const count = api.getMapState().selectedLocationIds.size;
 			api.resetSelections();
 			return { ms: elapsed, count };
 		});

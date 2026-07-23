@@ -141,7 +141,7 @@ describe("Tag visibility affecting selections", () => {
 
 		await withApi(async (api, tagId) => api.deleteTags([tagId]), visTagId);
 
-		const selCount = await withApi(async (api) => api.getSelections().length);
+		const selCount = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selCount).toBe(0);
 
 		// Undo the delete to restore for subsequent tests
@@ -180,8 +180,8 @@ describe("Bulk tag add", () => {
 	it("bulkAddTag adds tag to all selected locations", async () => {
 		const result = await withApi(async (api, tagId) => {
 			await api.addSelections([{ type: "Everything" }]);
-			await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
-			const counts = api.getTagCounts();
+			await api.addTagToLocations(tagId, [...api.getMapState().selectedLocationIds]);
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tagId)] ?? 0;
 		}, bulkTagId);
 		expect(result).toBe(20);
@@ -191,7 +191,7 @@ describe("Bulk tag add", () => {
 		const result = await withApi(
 			async (api, tagId, firstLocId) => {
 				await api.addSelections([{ type: "Everything" }]);
-				await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
+				await api.addTagToLocations(tagId, [...api.getMapState().selectedLocationIds]);
 				const loc = await api.fetchLocation(firstLocId);
 				return loc!.tags.filter((t: number) => t === tagId).length;
 			},
@@ -203,7 +203,7 @@ describe("Bulk tag add", () => {
 
 	it("tag count updates correctly after bulk add", async () => {
 		const count = await withApi(async (api, tagId) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tagId)] ?? 0;
 		}, bulkTagId);
 		expect(count).toBe(20);
@@ -214,11 +214,11 @@ describe("Bulk tag add", () => {
 		const newTag = await createTag("UndoBulk");
 		await withApi(async (api, tagId) => {
 			await api.addSelections([{ type: "Everything" }]);
-			await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
+			await api.addTagToLocations(tagId, [...api.getMapState().selectedLocationIds]);
 		}, newTag.id);
 
 		const beforeCount = await withApi(async (api, tagId) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tagId)] ?? 0;
 		}, newTag.id);
 		expect(beforeCount).toBe(20);
@@ -226,7 +226,7 @@ describe("Bulk tag add", () => {
 		await withApi(async (api) => api.undo());
 
 		const afterCount = await withApi(async (api, tagId) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tagId)] ?? 0;
 		}, newTag.id);
 		expect(afterCount).toBe(0);
@@ -281,7 +281,7 @@ describe("Tag deletion cascade", () => {
 
 	it("tag count is zero after deletion", async () => {
 		const count = await withApi(async (api, tagId) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tagId)] ?? 0;
 		}, delTagId);
 		expect(count).toBe(0);

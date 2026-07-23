@@ -10,7 +10,7 @@
 // synchronously from the hash at module load, so it's correct on the very first
 // render, before any async map load). The store (currentMap) is the data;
 // applyRoute reconciles the store to the URL.
-import { openMap, closeMap, getCurrentMapId, getCurrentMap } from "@/store/useMapStore";
+import { openMap, closeMap, getMapState } from "@/store/useMapStore";
 import { emit, useEventValue, subscribe as subscribeEvent } from "@/lib/events";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -59,7 +59,7 @@ function applyRoute() {
 	const changed = next.mapId !== route.mapId || next.manual !== route.manual;
 	route = next;
 	// Reconcile the store's open map to the URL.
-	if (next.mapId !== getCurrentMapId()) {
+	if (next.mapId !== getMapState().mapId) {
 		if (next.mapId) void openMap(next.mapId);
 		else void closeMap();
 	}
@@ -82,7 +82,7 @@ export const closeManual = () => navigate({ ...route, manual: null });
 // web-serve mirrors setTitle to the browser tab.
 let lastTitle = "";
 function syncTitle() {
-	const map = getCurrentMap();
+	const map = getMapState().map;
 	const title = map ? `${map.meta.name} · Map Making App` : "Map Making App";
 	if (title === lastTitle) return;
 	lastTitle = title;

@@ -67,7 +67,7 @@ describe("JSON import/export round-trip", () => {
 		locIds = await addLocs(locs);
 
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: true,
 				exportUnpanned: true,
@@ -115,7 +115,7 @@ describe("JSON import/export round-trip", () => {
 		);
 
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: true,
 				exportUnpanned: true,
@@ -143,7 +143,7 @@ describe("JSON import/export round-trip", () => {
 
 	it("export without zoom sets zoom to 0", async () => {
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: false,
 				exportUnpanned: true,
@@ -168,7 +168,7 @@ describe("JSON import/export round-trip", () => {
 		}, hLoc);
 
 		const result = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: true,
 				exportUnpanned: true,

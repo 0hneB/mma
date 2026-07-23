@@ -49,7 +49,7 @@ export function createSyncController(provider: SyncProvider, pluginId: string): 
 	const kv = (): KeyValueStore => window.MMA.storage(pluginId);
 	const storeFor = (mapId: string): SyncStore =>
 		createSyncStore(kv(), createMappingBackend(), provider.id, mapId);
-	const currentMapId = (): string | null => window.MMA.getCurrentMap()?.meta.id ?? null;
+	const currentMapId = (): string | null => window.MMA.getMapState().mapId;
 
 	const getLink = (): SyncLink | null => {
 		const id = currentMapId();

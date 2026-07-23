@@ -3,7 +3,7 @@ import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.g
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
 import { emit as emitEvent } from "@/lib/events";
-import { getCurrentMap, getWorkArea, setWorkArea } from "./useMapStore";
+import { getMapState, setWorkArea } from "./useMapStore";
 
 /** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
  *  interleaved `[lng, lat]` f32; `diff-markers:changed` fires to rebuild the layers. */
@@ -55,7 +55,7 @@ export function categorizeCommitDelta(delta: CommitDelta): {
 /** Fetch a commit's delta and overlay its added/removed/modified locations on the map,
  *  temporarily replacing the regular markers. */
 export async function beginCommitDiffPreview(commit: CommitInfo) {
-	if (!getCurrentMap()) return;
+	if (!getMapState().map) return;
 	const { added, removed, modified } = categorizeCommitDelta(
 		await cmd.storeGetCommitDelta(commit.mapId, commit.id),
 	);
@@ -89,6 +89,6 @@ export async function beginCommitDiffPreview(commit: CommitInfo) {
 export function endCommitDiffPreview() {
 	commitDiffPreview = null;
 	emitEvent("diff-markers:changed");
-	if (getWorkArea() === "diff") setWorkArea("overview");
+	if (getMapState().workArea === "diff") setWorkArea("overview");
 	else emitEvent("store:changed");
 }

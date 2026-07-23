@@ -110,12 +110,12 @@ describe("Multi-map isolation", () => {
 	it("selections are reset when switching maps", async () => {
 		await openMap(mapAId);
 		await withApi(async (api) => api.addSelections([{ type: "Everything" }]));
-		const selCountA = await withApi(async (api) => api.getSelections().length);
+		const selCountA = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selCountA).toBeGreaterThan(0);
 		await closeMap();
 
 		await openMap(mapBId);
-		const selCountB = await withApi(async (api) => api.getSelections().length);
+		const selCountB = await withApi(async (api) => api.getActiveSelections().length);
 		expect(selCountB).toBe(0);
 		await closeMap();
 	});
@@ -150,12 +150,12 @@ describe("Multi-map metadata isolation", () => {
 
 	it("each map retains its own description", async () => {
 		await openMap(map1Id);
-		const desc1 = await withApi(async (api) => api.getCurrentMap()!.meta.description);
+		const desc1 = await withApi(async (api) => api.getMapState().map!.meta.description);
 		expect(desc1).toBe("Description 1");
 		await closeMap();
 
 		await openMap(map2Id);
-		const desc2 = await withApi(async (api) => api.getCurrentMap()!.meta.description);
+		const desc2 = await withApi(async (api) => api.getMapState().map!.meta.description);
 		expect(desc2).toBe("Description 2");
 		await closeMap();
 	});

@@ -8,12 +8,7 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
-import {
-	useMapState,
-	getActiveLocation,
-	getCurrentMap,
-	updateLocations,
-} from "@/store/useMapStore";
+import { useMapState, getMapState, updateLocations } from "@/store/useMapStore";
 import { useSetting } from "@/store/settings";
 import { singletonPano } from "@/lib/sv/panoSingleton";
 import { emit as emitEvent } from "@/lib/events";
@@ -94,8 +89,8 @@ export function PanoViewerProvider({ children }: { children: ReactNode }) {
 	// Single writer: persist the resolved exact date back to the active location's extra.
 	useEffect(() => {
 		if (exactDate.ts == null) return;
-		if (!(getCurrentMap()?.meta.settings.enrichMetadata ?? true)) return;
-		const loc = getActiveLocation();
+		if (!(getMapState().map?.meta.settings.enrichMetadata ?? true)) return;
+		const loc = getMapState().activeLocation;
 		if (!loc || loc.extra?.datetime != null) return;
 		updateLocations(
 			[{ id: loc.id, patch: { extra: { datetime: exactDate.ts, timezone: resolvedTz } } }],

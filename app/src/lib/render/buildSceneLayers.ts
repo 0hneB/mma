@@ -14,12 +14,7 @@ import {
 	getSeenOnMapIds,
 	seenEntryColor,
 } from "@/lib/seen/seenOverlay";
-import {
-	getCurrentMap,
-	getWorkArea,
-	getActiveLocation,
-	getAllSelections,
-} from "@/store/useMapStore";
+import { getMapState } from "@/store/useMapStore";
 import { getCommitDiffPreview } from "@/store/commitDiff";
 import { getImportPreviewPositions } from "@/store/importStaging";
 import { getTrail } from "@/lib/sv/svTrail";
@@ -73,12 +68,12 @@ interface SceneContext {
 // call it to render identical visuals. The active-marker color patch lives in the scene store
 // (single owner of the shared CellManager), applied before consumers rebuild their layers.
 export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
-	if (!getCurrentMap()) return [];
+	if (!getMapState().map) return [];
 
 	const layers: Layer[] = [];
 
 	// Commit-diff overlay temporarily replaces the regular markers.
-	if (getWorkArea() === "diff") {
+	if (getMapState().workArea === "diff") {
 		const diff = getCommitDiffPreview();
 		if (diff) {
 			const diffLayer = (id: string, pos: Float32Array, color: [number, number, number, number]) =>
@@ -101,7 +96,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		return layers;
 	}
 
-	const allSelections = getAllSelections();
+	const allSelections = getMapState().selections;
 	const polygonSels = allSelections.flatMap((sel) =>
 		sel.props.type === "Intersection" ? sel.props.selections : [sel],
 	);
@@ -200,8 +195,11 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 
 	// Staged import preview markers; clicking one opens a read-only preview. Drawn *under* the
 	// active marker, which highlights whichever staged location is open — no per-index coloring.
-	const stagedActive = getActiveLocation();
-	if (getWorkArea() === "import" || (stagedActive != null && isImportPreview(stagedActive))) {
+	const stagedActive = getMapState().activeLocation;
+	if (
+		getMapState().workArea === "import" ||
+		(stagedActive != null && isImportPreview(stagedActive))
+	) {
 		const previewPos = getImportPreviewPositions();
 		const previewCount = previewPos.length / 2;
 		if (previewCount > 0) {
@@ -230,7 +228,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 
 	// Active marker renders even with no committed locations so virtual previews (staged/seen)
 	// on an empty map still show — and it draws on top of the preview dots, which is the highlight.
-	const activeLoc = getActiveLocation();
+	const activeLoc = getMapState().activeLocation;
 	if (activeLoc) {
 		const activeColor: [number, number, number, number] = [
 			ctx.activeLocationColor.r,

@@ -14,9 +14,7 @@ import { trace } from "@/lib/util/debug";
 import {
 	addLocations,
 	createTags,
-	getActiveLocation,
-	getCurrentMap,
-	getWorkArea,
+	getMapState,
 	openStagedLocation,
 	resolveLocation,
 	setActiveLocation,
@@ -92,13 +90,13 @@ export async function createLocationAtLatLng(
 	zoom: number,
 	opts?: { container?: HTMLElement | null },
 ): Promise<Location | null> {
-	const area = getWorkArea();
+	const area = getMapState().workArea;
 	if (area === "plugin" || area === "import" || area === "diff") return null;
-	const active = getActiveLocation();
+	const active = getMapState().activeLocation;
 	if (active != null && isImportPreview(active)) return null;
 
 	const t = trace("add");
-	const ms = getCurrentMap()?.meta.settings;
+	const ms = getMapState().map?.meta.settings;
 	const loc = await lookupStreetView(lat, lng, zoom, {
 		preferOfficial: ms?.preferOfficial,
 		onlyOfficial: ms?.onlyOfficial,

@@ -36,13 +36,13 @@ async function readLocation(id: number): Promise<any> {
 
 async function getMapMeta(): Promise<any> {
 	return withApi(async (api) => {
-		return api.getCurrentMap()?.meta ?? null;
+		return api.getMapState().map?.meta ?? null;
 	});
 }
 
 async function updateMapSettings(patch: Record<string, any>) {
 	await withApi(async (api, p) => {
-		const map = api.getCurrentMap()!;
+		const map = api.getMapState().map!;
 		await api.updateMapMeta({ settings: { ...map.meta.settings, ...p } });
 		return "ok";
 	}, patch);
@@ -326,7 +326,7 @@ describe("Enrichment — auto-registers field defs on map meta", () => {
 		await waitForPreview();
 		await waitForEnrichment(defsAutoId);
 
-		const keys = await withApi((api) => [...api.getKnownFieldKeys()]);
+		const keys = await withApi((api) => [...api.getMapState().knownFieldKeys]);
 		expect(keys).toContain("countryCode");
 		expect(keys).toContain("altitude");
 		expect(keys).toContain("imageDate");
@@ -344,10 +344,10 @@ describe("Enrichment — auto-registers field defs on map meta", () => {
 	it("does not clobber user-customized field defs", async () => {
 		// Manually set countryCode to a custom type
 		await withApi(async (api) => {
-			const cur = api.getCurrentMap()!.meta.extra?.fields ?? {};
+			const cur = api.getMapState().map!.meta.extra?.fields ?? {};
 			await api.updateMapMeta({
 				extra: {
-					...api.getCurrentMap()!.meta.extra,
+					...api.getMapState().map!.meta.extra,
 					fields: {
 						...cur,
 						countryCode: { type: "enum", label: "My Custom Country", values: ["US", "RU"] },
@@ -385,7 +385,7 @@ describe("Enrichment — auto-registers field defs on map meta", () => {
 		}, patchLoc);
 
 		await new Promise((r) => setTimeout(r, 500));
-		const keys = await withApi((api) => [...api.getKnownFieldKeys()]);
+		const keys = await withApi((api) => [...api.getMapState().knownFieldKeys]);
 		expect(keys).toContain("datetime");
 		const def = await withApi((api) => api.getFieldDef("datetime"));
 		expect(def?.type).toBe("date");
@@ -394,7 +394,7 @@ describe("Enrichment — auto-registers field defs on map meta", () => {
 	it("addLocations auto-registers known field keys", async () => {
 		await addLocs([loc({ lat: 10, lng: 20, extra: { altitude: 100, countryCode: "US" } })]);
 
-		const keys = await withApi((api) => [...api.getKnownFieldKeys()]);
+		const keys = await withApi((api) => [...api.getMapState().knownFieldKeys]);
 		expect(keys).toContain("altitude");
 		expect(keys).toContain("countryCode");
 		const defs = await withApi((api) => ({
@@ -414,7 +414,7 @@ describe("Enrichment — auto-registers field defs on map meta", () => {
 			return "ok";
 		}, customLoc);
 
-		const keys = await withApi((api) => [...api.getKnownFieldKeys()]);
+		const keys = await withApi((api) => [...api.getMapState().knownFieldKeys]);
 		expect(keys).toContain("randomCustomThing");
 	});
 });
@@ -490,7 +490,7 @@ describe("Enrichment — exact date via preview", () => {
 	});
 
 	it("datetime field def is available", async () => {
-		const keys = await withApi((api) => [...api.getKnownFieldKeys()]);
+		const keys = await withApi((api) => [...api.getMapState().knownFieldKeys]);
 		expect(keys).toContain("datetime");
 		const def = await withApi((api) => api.getFieldDef("datetime"));
 		expect(def?.type).toBe("date");
@@ -693,10 +693,10 @@ describe("Enrichment — metadata filter uses registered field types", () => {
 		filterCId = ids[2];
 		// Register field defs
 		await withApi(async (api) => {
-			const cur = api.getCurrentMap()!.meta.extra?.fields ?? {};
+			const cur = api.getMapState().map!.meta.extra?.fields ?? {};
 			await api.updateMapMeta({
 				extra: {
-					...api.getCurrentMap()!.meta.extra,
+					...api.getMapState().map!.meta.extra,
 					fields: {
 						...cur,
 						altitude: { type: "number", label: "Altitude" },

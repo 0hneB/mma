@@ -63,7 +63,7 @@ describe("Tag rename propagation", () => {
 
 	it("tag count unchanged after rename", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(10);
@@ -123,7 +123,7 @@ describe("Tag delete cascade — no orphans", () => {
 
 	it("before delete: all 10 locations have tagA", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagAId);
 		expect(count).toBe(10);
@@ -140,7 +140,7 @@ describe("Tag delete cascade — no orphans", () => {
 
 	it("tagA count is 0 after delete", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagAId);
 		expect(count).toBe(0);
@@ -148,7 +148,7 @@ describe("Tag delete cascade — no orphans", () => {
 
 	it("tagB still intact on the 5 locations that had it", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagBId);
 		expect(count).toBe(5);
@@ -174,7 +174,7 @@ describe("Tag delete cascade — no orphans", () => {
 		}
 
 		const tagBCount = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagBId);
 		expect(tagBCount).toBe(5);
@@ -235,7 +235,7 @@ describe("Tag delete + undo restores all references", () => {
 
 	it("tag count restored after undo", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(8);
@@ -294,7 +294,7 @@ describe("Multi-tag delete isolation", () => {
 	});
 
 	it("surviving tag counts are correct", async () => {
-		const counts = (await withApi((api) => api.getTagCounts())) as any;
+		const counts = (await withApi((api) => api.getMapState().tagCounts)) as any;
 		expect(counts[String(tag1Id)]).toBe(6);
 		expect(counts[String(tag3Id)]).toBe(6);
 		expect(counts[String(tag2Id)] ?? 0).toBe(0);

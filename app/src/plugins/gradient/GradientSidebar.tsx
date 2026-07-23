@@ -102,7 +102,7 @@ function defaultGradientField(fields: FieldEntry[]): string {
 
 export function GradientSidebar({ onClose }: { onClose: () => void }) {
 	const [fieldKeyRaw, setFieldKey] = usePluginState<string>("gradient", "fieldKey", () =>
-		defaultGradientField(buildGradientFields(MMA.getKnownFieldKeys())),
+		defaultGradientField(buildGradientFields(MMA.getMapState().knownFieldKeys)),
 	);
 	const [projectionIdRaw, setProjectionId] = usePluginState("gradient", "projectionId", RANGE_ID);
 	const [presetIdxRaw, setPresetIdx] = usePluginState("gradient", "presetIdx", 0);
@@ -113,9 +113,9 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 	const scopeCtl = useScope();
 	const dateTimezone = useSetting("dateTimezone");
 
-	const map = MMA.getCurrentMap();
+	const map = MMA.getMapState().map;
 
-	const knownKeys = MMA.getKnownFieldKeys();
+	const knownKeys = MMA.getMapState().knownFieldKeys;
 	const fields = useMemo(() => buildGradientFields(knownKeys), [knownKeys]);
 
 	// Persisted values are global; fall back when they don't resolve on this map.

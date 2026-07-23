@@ -10,7 +10,7 @@ import {
 	mdiBookOpenOutline,
 } from "@mdi/js";
 import type { Selection, Tag } from "@/bindings.gen";
-import { useMapState, getSelections } from "@/store/useMapStore";
+import { useMapState, getActiveSelections } from "@/store/useMapStore";
 import {
 	parseDoclink,
 	loadSection,
@@ -79,7 +79,7 @@ function collectSelectedTagIds(sels: Selection[], out: number[] = []): number[] 
 
 export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProps) {
 	const tagMap = useMapState((s) => s.tags);
-	const selections = useMapState(getSelections);
+	const selections = useMapState(getActiveSelections);
 	const tags: Tag[] = doclinkedTags(tagMap);
 	const [pinned, setPinned] = useState(false);
 	const [sel, setSel] = useState<{ tagId: number; idx: number } | null>(null);

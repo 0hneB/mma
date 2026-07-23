@@ -40,8 +40,11 @@ function makeMma() {
 
 	const api = {
 		storage: () => kv,
-		getCurrentMap: () => (mapId ? { meta: { id: mapId, locationCount: 0, tags: {} } } : null),
-		getMapState: () => ({ locationCount: 0 }),
+		getMapState: () => ({
+			mapId,
+			map: mapId ? { meta: { id: mapId, locationCount: 0, tags: {} } } : null,
+			locationCount: 0,
+		}),
 		createLocation: (p: unknown) => p,
 		addLocations: async () => {},
 		updateLocations: async () => {},

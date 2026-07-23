@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 // doesn't use so the pure patch logic is testable in a node environment. The real
 // filterEnrichPatch (from fieldDefs.add) is kept -- the bug lives in its interaction.
 vi.mock("@/store/useMapStore", () => ({
-	getCurrentMap: () => null,
+	getMapState: () => ({ map: null }),
 	fetchLocationsByIds: async () => [],
 	updateLocations: async () => {},
 }));

@@ -48,7 +48,7 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 
 	it("tagA count matches via getTagCounts", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagAId);
 		expect(count).toBe(20);
@@ -56,7 +56,7 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 
 	it("tagB count matches via getTagCounts", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagBId);
 		expect(count).toBe(15);
@@ -64,7 +64,7 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 
 	it("tagC count matches via getTagCounts", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagCId);
 		expect(count).toBe(15);
@@ -141,7 +141,7 @@ describe("Remove tagged locations shrinks tag selection", () => {
 
 	it("tag count agrees with selection after removal", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(15);
@@ -183,7 +183,7 @@ describe("Undo bulk remove restores tag membership", () => {
 		}, toRemove);
 
 		const afterRemove = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(afterRemove).toBe(6);
@@ -191,7 +191,7 @@ describe("Undo bulk remove restores tag membership", () => {
 		await withApi(async (api) => api.undo());
 
 		const afterUndo = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(afterUndo).toBe(12);
@@ -208,7 +208,7 @@ describe("Undo bulk remove restores tag membership", () => {
 		await withApi(async (api) => api.redo());
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(6);
@@ -249,7 +249,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 
 	it("initial batch: count is 10", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(10);
@@ -263,7 +263,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 		await addLocs(batch2);
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(25);
@@ -292,7 +292,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 		);
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(30);
@@ -380,7 +380,7 @@ describe("Multiple tags on same location", () => {
 		);
 
 		const tag2Count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tag2Id);
 		expect(tag2Count).toBe(0);
@@ -397,7 +397,7 @@ describe("Multiple tags on same location", () => {
 	});
 
 	it("counts agree with selections after cross-tag mutation", async () => {
-		const counts = (await withApi((api) => api.getTagCounts())) as any;
+		const counts = (await withApi((api) => api.getMapState().tagCounts)) as any;
 		expect(counts[String(tag1Id)]).toBe(15);
 		expect(counts[String(tag2Id)] ?? 0).toBe(0);
 		expect(counts[String(tag3Id)]).toBe(8);
@@ -447,7 +447,7 @@ describe("Full scene reset preserves selectedLocationIds", () => {
 		await withApi(async (api) => api.redo());
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(150);

@@ -4,7 +4,7 @@ import { log } from "@/lib/util/log";
 import type { MapMeta } from "@/bindings.gen";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { SuggestInput } from "@/components/primitives/SuggestInput";
-import { getCurrentMapId, getActiveLocation } from "@/store/useMapStore";
+import { getMapState } from "@/store/useMapStore";
 import { isVirtualLocation } from "@/types";
 import { toast } from "@/lib/util/toast";
 
@@ -25,7 +25,7 @@ export function QuickCopyToMapDialog({ onClose }: { onClose: () => void }) {
 		() =>
 			lower
 				? (maps ?? [])
-						.filter((m) => m.id !== getCurrentMapId() && m.name.toLowerCase().includes(lower))
+						.filter((m) => m.id !== getMapState().mapId && m.name.toLowerCase().includes(lower))
 						.sort((a, b) => a.name.localeCompare(b.name))
 						.slice(0, 8)
 				: [],
@@ -33,7 +33,7 @@ export function QuickCopyToMapDialog({ onClose }: { onClose: () => void }) {
 	);
 
 	const doCopy = (targetMapId: string) => {
-		const loc = getActiveLocation();
+		const loc = getMapState().activeLocation;
 		if (!loc || isVirtualLocation(loc)) {
 			onClose();
 			return;

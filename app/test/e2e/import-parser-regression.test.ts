@@ -443,7 +443,7 @@ describe("Import — export/reimport tag round-trip", () => {
 		await flushAndWait();
 
 		const exported = await withApi(async (api) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: true,
 				exportUnpanned: true,

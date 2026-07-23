@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/primitives/Checkbox";
 import { Radio } from "@/components/primitives/Radio";
 import { TextInput } from "@/components/primitives/TextInput";
 import {
-	getCurrentMap,
+	getMapState,
 	addSelections,
 	fetchAllLocations,
 	updateLocations,
@@ -132,7 +132,7 @@ function ValidateSetup({ scopeCtl, onReady }: SetupProps) {
 
 function EnrichSetup({ scopeCtl, locs, onReady }: SetupProps) {
 	const [force, setForce] = useState(false);
-	const map = getCurrentMap();
+	const map = getMapState().map;
 	if (!map) return null;
 
 	const scopedLocs = applyScope(scopeCtl.scope, locs);

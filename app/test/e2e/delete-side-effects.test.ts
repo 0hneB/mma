@@ -126,27 +126,27 @@ describe("Delete clears active location", () => {
 
 	it("active location cleared when it is deleted", async () => {
 		await openLocation(locIds[0]);
-		const activeBefore = await withApi(async (api) => api.getActiveLocation()?.id ?? null);
+		const activeBefore = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
 		expect(activeBefore).toBe(locIds[0]);
 
 		await withApi(async (api, id) => {
 			await api.removeLocations(new Set([id]));
 		}, locIds[0]);
 
-		const activeAfter = await withApi(async (api) => api.getActiveLocation()?.id ?? null);
+		const activeAfter = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
 		expect(activeAfter).toBeNull();
 	});
 
 	it("work area returns to overview when active is deleted", async () => {
 		await openLocation(locIds[1]);
-		const areaBefore = await withApi(async (api) => api.getWorkArea());
+		const areaBefore = await withApi(async (api) => api.getMapState().workArea);
 		expect(areaBefore).toBe("location");
 
 		await withApi(async (api, id) => {
 			await api.removeLocations(new Set([id]));
 		}, locIds[1]);
 
-		const areaAfter = await withApi(async (api) => api.getWorkArea());
+		const areaAfter = await withApi(async (api) => api.getMapState().workArea);
 		expect(areaAfter).toBe("overview");
 	});
 
@@ -157,7 +157,7 @@ describe("Delete clears active location", () => {
 			await api.removeLocations(new Set([id]));
 		}, locIds[3]);
 
-		const activeAfter = await withApi(async (api) => api.getActiveLocation()?.id ?? null);
+		const activeAfter = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
 		expect(activeAfter).toBe(locIds[2]);
 	});
 });
@@ -249,7 +249,7 @@ describe("Delete updates tag counts", () => {
 
 	it("tag count starts correct", async () => {
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(8);
@@ -261,7 +261,7 @@ describe("Delete updates tag counts", () => {
 		}, locIds[0]);
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(7);
@@ -274,7 +274,7 @@ describe("Delete updates tag counts", () => {
 		}, toDelete);
 
 		const count = await withApi(async (api, tid) => {
-			const counts = api.getTagCounts();
+			const counts = api.getMapState().tagCounts;
 			return (counts as any)[String(tid)] ?? 0;
 		}, tagId);
 		expect(count).toBe(4);

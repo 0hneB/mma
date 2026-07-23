@@ -380,7 +380,7 @@ describe("Tag count accuracy", () => {
 		for (let i = 0; i < 50; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		taggedIds = await addLocs(locs);
 
-		const counts = await withApi((api) => api.getTagCounts());
+		const counts = await withApi((api) => api.getMapState().tagCounts);
 		expect(counts[tagId]).toBe(50);
 	});
 
@@ -388,14 +388,14 @@ describe("Tag count accuracy", () => {
 		const toRemove = taggedIds.slice(0, 10);
 		await withApi((api, ids) => api.removeLocations(new Set(ids)), toRemove);
 
-		const counts = await withApi((api) => api.getTagCounts());
+		const counts = await withApi((api) => api.getMapState().tagCounts);
 		expect(counts[tagId]).toBe(40);
 	});
 
 	it("undo remove -> tagCount=50", async () => {
 		await withApi((api) => api.undo());
 
-		const counts = await withApi((api) => api.getTagCounts());
+		const counts = await withApi((api) => api.getMapState().tagCounts);
 		expect(counts[tagId]).toBe(50);
 	});
 
@@ -407,10 +407,10 @@ describe("Tag count accuracy", () => {
 
 		await withApi(async (api, tId) => {
 			await api.addSelections([{ type: "Everything" }]);
-			await api.addTagToLocations(tId, [...api.getSelectedLocationIds()]);
+			await api.addTagToLocations(tId, [...api.getMapState().selectedLocationIds]);
 		}, tagId);
 
-		const counts = await withApi((api) => api.getTagCounts());
+		const counts = await withApi((api) => api.getMapState().tagCounts);
 		expect(counts[tagId]).toBe(70);
 	});
 
@@ -418,7 +418,7 @@ describe("Tag count accuracy", () => {
 		await closeMap();
 		await openMap(mapId);
 
-		const counts = await withApi((api) => api.getTagCounts());
+		const counts = await withApi((api) => api.getMapState().tagCounts);
 		expect(counts[tagId]).toBe(70);
 	});
 });
@@ -687,12 +687,14 @@ describe("Export with scope", () => {
 		// Select by tag (first 5 have the tag)
 		await withApi((api, tId) => api.addSelections([{ type: "Tag", tagId: tId }]), tagId);
 
-		const selectedIds: number[] = await withApi((api) => [...api.getSelectedLocationIds()]);
+		const selectedIds: number[] = await withApi((api) => [
+			...api.getMapState().selectedLocationIds,
+		]);
 		expect(selectedIds.length).toBe(5);
 
 		// Export with scope = selectedIds
 		const result = await withApi(async (api, scope) => {
-			const map = api.getCurrentMap()!;
+			const map = api.getMapState().map!;
 			const path = await api.cmd.storeExportJson({
 				exportZoom: true,
 				exportUnpanned: true,
@@ -1198,7 +1200,7 @@ describe("Selection during mutation", () => {
 		// Select by tag -- should get 30
 		const count1 = await withApi(async (api, tid) => {
 			await api.addSelections([{ type: "Tag", tagId: tid }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		}, tag.id);
 		expect(count1).toBe(30);
 
@@ -1212,7 +1214,7 @@ describe("Selection during mutation", () => {
 		const count2 = await withApi(async (api, tid) => {
 			api.resetSelections();
 			await api.addSelections([{ type: "Tag", tagId: tid }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		}, tag.id);
 		expect(count2).toBe(40);
 	});
@@ -1221,13 +1223,13 @@ describe("Selection during mutation", () => {
 		const result = await withApi(async (api) => {
 			api.resetSelections();
 			await api.addSelections([{ type: "Everything" }]);
-			const beforeCount = api.getSelectedLocationIds().size;
-			const ids = [...api.getSelectedLocationIds()].slice(0, 5);
+			const beforeCount = api.getMapState().selectedLocationIds.size;
+			const ids = [...api.getMapState().selectedLocationIds].slice(0, 5);
 			api.removeLocations(new Set(ids));
 			// Give Rust a moment to refresh selections
 			await new Promise((r) => setTimeout(r, 100));
 			await api.addSelections([{ type: "Everything" }]);
-			return { before: beforeCount, after: api.getSelectedLocationIds().size };
+			return { before: beforeCount, after: api.getMapState().selectedLocationIds.size };
 		});
 		expect(result.after).toBe(result.before - 5);
 	});

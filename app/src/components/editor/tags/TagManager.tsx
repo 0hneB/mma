@@ -12,13 +12,12 @@ import { HslColorPicker } from "react-colorful";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import {
 	useMapState,
-	getCurrentMap,
+	getMapState,
 	getSelectedTagIds,
 	updateTags,
 	reorderTags,
 	deleteTags,
 	removeTagFromAllLocations,
-	getSelectedLocationIds,
 	getVisibleTags,
 	removeTagFromLocations,
 } from "@/store/useMapStore";
@@ -163,7 +162,7 @@ export function TagManager() {
 	}, []);
 	const removeAlias = useCallback(
 		(aliasPath: string) => {
-			const next = { ...(getCurrentMap()?.meta.settings.aliases ?? {}) };
+			const next = { ...(getMapState().map?.meta.settings.aliases ?? {}) };
 			delete next[aliasPath];
 			setAliases(next);
 		},
@@ -172,7 +171,7 @@ export function TagManager() {
 	// Deletes the declared subtree (only reachable when no tags live under `path`).
 	const deleteFolder = useCallback(
 		(path: string) => {
-			const vt = getCurrentMap()?.meta.settings.virtualTags ?? {};
+			const vt = getMapState().map?.meta.settings.virtualTags ?? {};
 			const next: Record<string, VirtualTag> = {};
 			for (const [k, v] of Object.entries(vt)) {
 				if (k !== path && !k.startsWith(`${path}/`)) next[k] = v;
@@ -386,7 +385,7 @@ export function TagContextMenuContent({
 	const [selCount, setSelCount] = useState<number | null>(null);
 
 	useEffect(() => {
-		const selIds = getSelectedLocationIds();
+		const selIds = getMapState().selectedLocationIds;
 		if (selIds.size === 0) {
 			setSelCount(0);
 			return;
@@ -411,7 +410,7 @@ export function TagContextMenuContent({
 			<ContextMenu.Item
 				className="context-menu__item"
 				disabled={inSel === 0}
-				onSelect={() => removeTagFromLocations(tagId, [...getSelectedLocationIds()])}
+				onSelect={() => removeTagFromLocations(tagId, [...getMapState().selectedLocationIds])}
 			>
 				Remove from selection ({fmt.format(inSel)} locations)
 			</ContextMenu.Item>

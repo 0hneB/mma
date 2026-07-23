@@ -134,7 +134,7 @@ describe("Tag operations on locations", () => {
 	it("bulkAddTag adds tag to all selected locations", async () => {
 		const result = await withApi(async (api, tagId) => {
 			await api.addSelections([{ type: "Everything" }]);
-			await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
+			await api.addTagToLocations(tagId, [...api.getMapState().selectedLocationIds]);
 			const locs = await api.fetchAllLocations();
 			const tagged = locs.filter((l: any) => l.tags.includes(tagId));
 			return tagged.length;
@@ -146,7 +146,7 @@ describe("Tag operations on locations", () => {
 		const result = await withApi(
 			async (api, tagId, locId) => {
 				await api.addSelections([{ type: "Everything" }]);
-				await api.addTagToLocations(tagId, [...api.getSelectedLocationIds()]);
+				await api.addTagToLocations(tagId, [...api.getMapState().selectedLocationIds]);
 				const loc = await api.fetchLocation(locId);
 				return loc!.tags.filter((t: number) => t === tagId).length;
 			},
@@ -702,7 +702,7 @@ describe("Tag merge advanced", () => {
 			async (api, aId, bId) => {
 				// A has 2 locs, B has 1 loc → merge A into B → B should have 3
 				await api.updateTags([{ id: aId, patch: { name: "MrgB" } }]);
-				const counts = api.getTagCounts();
+				const counts = api.getMapState().tagCounts;
 				return { bCount: counts[bId] ?? 0, aCount: counts[aId] ?? 0 };
 			},
 			tagAId,
@@ -717,7 +717,7 @@ describe("Tag merge advanced", () => {
 			async (api, cId, bId) => {
 				// C has 3 locs, B now has 3 → merge C into B → B should have 6
 				await api.updateTags([{ id: cId, patch: { name: "MrgB" } }]);
-				const counts = api.getTagCounts();
+				const counts = api.getMapState().tagCounts;
 				const locs = await api.fetchAllLocations();
 				const withB = locs.filter((l: any) => l.tags.includes(bId));
 				return { bCount: counts[bId] ?? 0, locsWithB: withB.length };
@@ -739,7 +739,7 @@ describe("Tag merge advanced", () => {
 		const afterUndo = await withApi(
 			async (api, cId, bId) => {
 				const tags = api.getMapState().tags;
-				const counts = api.getTagCounts();
+				const counts = api.getMapState().tagCounts;
 				return {
 					cVisible: tags[String(cId)]?.visible,
 					bCount: counts[bId] ?? 0,
@@ -761,7 +761,7 @@ describe("Tag merge advanced", () => {
 		const afterRedo = await withApi(
 			async (api, cId, bId) => {
 				const tags = api.getMapState().tags;
-				const counts = api.getTagCounts();
+				const counts = api.getMapState().tagCounts;
 				return {
 					cVisible: tags[String(cId)]?.visible,
 					bCount: counts[bId] ?? 0,

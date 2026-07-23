@@ -25,7 +25,6 @@ import type { Tag } from "@/bindings.gen";
 import {
 	useMapState,
 	updateLocations,
-	getActiveLocation,
 	getMapState,
 	removeLocations,
 	addLocations,
@@ -324,7 +323,7 @@ export function LocationPreview() {
 				});
 				if (pos) {
 					pushTrail(pos.lng(), pos.lat());
-					const activeForSeen = getActiveLocation();
+					const activeForSeen = getMapState().activeLocation;
 					const geo = getGeoResult();
 					seenPanoChanged(
 						{
@@ -444,7 +443,7 @@ export function LocationPreview() {
 				address: data.location.description || "",
 				countryCode: data.extra?.countryCode?.toUpperCase() ?? null,
 			});
-			const loc = getActiveLocation();
+			const loc = getMapState().activeLocation;
 			if (loc) enrich(loc, data);
 		});
 
@@ -456,7 +455,7 @@ export function LocationPreview() {
 	// Reads the active location at call time to stay referentially stable
 	// (it is a memo'd PanoDatePicker prop).
 	const handleDateChange = useCallback((panoId: string | null) => {
-		const loc = getActiveLocation();
+		const loc = getMapState().activeLocation;
 		if (!singletonPano || !loc) return;
 		// updateLocation no-ops for staged (virtual) locations at the store level.
 		if (panoId == null) {
@@ -541,7 +540,7 @@ export function LocationPreview() {
 	// Reads the active location at call time so the callback stays referentially
 	// stable (it is a memo'd PanoControls prop).
 	const handleReturnToSpawn = useCallback(async () => {
-		const loc = getActiveLocation();
+		const loc = getMapState().activeLocation;
 		if (!loc || !singletonPano) return;
 		if (!google) return;
 		const result = await resolvePano(loc);

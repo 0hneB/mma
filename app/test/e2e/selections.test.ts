@@ -58,7 +58,7 @@ describe("Selections - basic types", () => {
 	it("selectEverything selects all locations", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Everything" }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(200);
 	});
@@ -68,8 +68,8 @@ describe("Selections - basic types", () => {
 	it("selectPanoIds selects locations with LoadAsPanoId flag", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "PanoIds" }]);
-			const sels = api.getSelections();
-			return { count: api.getSelectedLocationIds().size, selCount: sels.length };
+			const sels = api.getActiveSelections();
+			return { count: api.getMapState().selectedLocationIds.size, selCount: sels.length };
 		});
 		expect(result.count).toBe(50);
 		expect(result.selCount).toBe(1);
@@ -78,7 +78,7 @@ describe("Selections - basic types", () => {
 	it("selectNotPanoIds selects locations without LoadAsPanoId flag", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "NotPanoIds" }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(150);
 	});
@@ -87,7 +87,7 @@ describe("Selections - basic types", () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "PanoIds" }]);
 			await api.addSelections([{ type: "NotPanoIds" }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(200);
 	});
@@ -97,7 +97,7 @@ describe("Selections - basic types", () => {
 	it("selectUntagged selects locations with no tags", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Untagged" }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(80); // indices 120-199 have no tags
 	});
@@ -107,7 +107,7 @@ describe("Selections - basic types", () => {
 	it("selectUnpanned selects locations with heading=0", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Unpanned" }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		// All 200 seeded locations have heading=0
 		expect(result).toBe(200);
@@ -118,7 +118,7 @@ describe("Selections - basic types", () => {
 	it("selectTag selects locations with specific tag", async () => {
 		const result = await withApi(async (api, tagId: number) => {
 			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		}, tagRedId);
 		expect(result).toBe(60);
 	});
@@ -126,7 +126,7 @@ describe("Selections - basic types", () => {
 	it("selectTag for nonexistent tag selects none", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Tag", tagId: 999999 }]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(0);
 	});
@@ -181,7 +181,7 @@ describe("Selections - basic types", () => {
 					includeInformational: false,
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBeGreaterThan(0);
 	});
@@ -196,7 +196,7 @@ describe("Selections - basic types", () => {
 
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Duplicates", distance: 1 }]);
-			const ids = api.getSelectedLocationIds();
+			const ids = api.getMapState().selectedLocationIds;
 			return { count: ids.size };
 		});
 		expect(result.count).toBeGreaterThanOrEqual(1);
@@ -244,8 +244,8 @@ describe("Selection operations", () => {
 			await api.addSelections([{ type: "Tag", tagId: tagId }]); // 50 (indices 0-49)
 			// PanoIds (0-29) intersect Tag-a (0-49) = 30
 			await api.selectIntersection();
-			const sels = api.getSelections();
-			return { count: api.getSelectedLocationIds().size, selCount: sels.length };
+			const sels = api.getActiveSelections();
+			return { count: api.getMapState().selectedLocationIds.size, selCount: sels.length };
 		}, tagAId);
 		expect(result.count).toBe(30);
 	});
@@ -256,7 +256,7 @@ describe("Selection operations", () => {
 			await api.addSelections([{ type: "Tag", tagId: tagId }]); // 50
 			// Union: 0-29 + 0-49 = 0-49 = 50
 			await api.selectUnion();
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		}, tagAId);
 		expect(result).toBe(50);
 	});
@@ -265,7 +265,7 @@ describe("Selection operations", () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "PanoIds" }]); // 30
 			await api.selectInverse(); // 100 - 30 = 70
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(70);
 	});
@@ -274,10 +274,10 @@ describe("Selection operations", () => {
 		const result = await withApi(async (api, tagId: number) => {
 			await api.addSelections([{ type: "PanoIds" }]);
 			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			const before = api.getSelections().length;
-			const key = api.getSelections()[0].key;
+			const before = api.getActiveSelections().length;
+			const key = api.getActiveSelections()[0].key;
 			api.removeSelections([key]);
-			const after = api.getSelections().length;
+			const after = api.getActiveSelections().length;
 			return { before, after };
 		}, tagAId);
 		expect(result.before).toBe(2);
@@ -292,9 +292,9 @@ describe("Selection operations", () => {
 		}, tagAId);
 
 		const result = await withApi(async (api) => {
-			const before = api.getSelections().length;
+			const before = api.getActiveSelections().length;
 			api.resetSelections();
-			const after = api.getSelections().length;
+			const after = api.getActiveSelections().length;
 			return { before, after };
 		});
 		expect(result.before).toBe(3);
@@ -304,7 +304,7 @@ describe("Selection operations", () => {
 	it("addSelection with custom props", async () => {
 		const result = await withApi(async (api) => {
 			await api.addSelections([{ type: "Everything" }]);
-			const sels = api.getSelections();
+			const sels = api.getActiveSelections();
 			return {
 				count: sels.length,
 				type: sels[0]?.props?.type,
@@ -349,14 +349,14 @@ describe("Selection correctness after mutations", () => {
 		for (let i = 0; i < 5; i++) locsToFlag.push(await getLoc(locIds[i]));
 		const result = await withApi(async (api, locs) => {
 			await api.addSelections([{ type: "PanoIds" }]);
-			const before = api.getSelectedLocationIds().size;
+			const before = api.getMapState().selectedLocationIds.size;
 			for (const l of locs) {
 				await api.updateLocations([{ id: l.id, patch: { flags: 1 } }]);
 			}
 			await new Promise((r) => setTimeout(r, 500));
 			api.resetSelections();
 			await api.addSelections([{ type: "PanoIds" }]);
-			const after = api.getSelectedLocationIds().size;
+			const after = api.getMapState().selectedLocationIds.size;
 			return { before, after };
 		}, locsToFlag);
 		expect(result.before).toBe(0);
@@ -473,7 +473,7 @@ describe("Selection with Filter", () => {
 					value: "US",
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(25);
 	});
@@ -488,7 +488,7 @@ describe("Selection with Filter", () => {
 					value: "US",
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(25);
 	});
@@ -503,7 +503,7 @@ describe("Selection with Filter", () => {
 					value: 200,
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(29);
 	});
@@ -518,7 +518,7 @@ describe("Selection with Filter", () => {
 					value: 100,
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(10);
 	});
@@ -534,7 +534,7 @@ describe("Selection with Filter", () => {
 					value2: 200,
 				},
 			]);
-			return api.getSelectedLocationIds().size;
+			return api.getMapState().selectedLocationIds.size;
 		});
 		expect(result).toBe(11);
 	});

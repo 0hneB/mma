@@ -144,11 +144,6 @@ export function getMapState(): Readonly<MapState> {
 	return state;
 }
 
-/** Per-tag location counts for the open map, keyed by tag id. */
-export function getTagCounts() {
-	return state.tagCounts;
-}
-
 async function computeCommitDiff(): Promise<CommitDiff> {
 	const [added, removed, modified] = await cmd.storeCommitDiff();
 	return { added, removed, modified };
@@ -377,26 +372,6 @@ export function discardOpenMap() {
 	resetMapState();
 }
 
-/** Id of the open map, or null. */
-export function getCurrentMapId() {
-	return state.mapId;
-}
-
-/** The open map (metadata + settings), or null. */
-export function getCurrentMap() {
-	return state.map;
-}
-
-/** Returns the set of extra-field keys known to exist on the current map. */
-export function getKnownFieldKeys(): ReadonlySet<string> {
-	return state.knownFieldKeys;
-}
-
-/** The location currently open in the editor, or null. */
-export function getActiveLocation(): Location | null {
-	return state.activeLocation;
-}
-
 /** Fetch every location in the map. */
 export async function fetchAllLocations(): Promise<Location[]> {
 	const path = await cmd.storeGetAllLocations();
@@ -414,21 +389,11 @@ export async function fetchLocationsByIds(ids: number[]): Promise<Location[]> {
 	return cmd.storeGetLocationsByIds(ids);
 }
 
-/** All selections including ghosted. Only for rendering/UI that needs the full list. */
-export function getAllSelections() {
-	return state.selections;
-}
-
 /** Active (non-ghosted) selections, the default for any operational logic. */
-export const getSelections: () => Selection[] = memoOnRefs(
+export const getActiveSelections: () => Selection[] = memoOnRefs(
 	() => [state.selections, state.ghostedSelections] as const,
 	(sels, ghosts) => (ghosts.size === 0 ? sels : sels.filter((s) => !ghosts.has(s.key))),
 );
-
-/** The set of all currently selected location ids (the union of all selections). */
-export function getSelectedLocationIds() {
-	return state.selectedLocationIds;
-}
 
 /** Overwrite the selected-id set directly, bypassing selection resolution. Rarely what you want -- prefer `addSelections`. */
 export function setSelectedLocationIds(ids: SelectedIds) {
@@ -436,7 +401,7 @@ export function setSelectedLocationIds(ids: SelectedIds) {
 }
 
 /** @internal Test-only. Forces a full selection re-resolve in Rust and returns
- *  the raw selected IDs. App code should use getSelectedLocationIds() instead —
+ *  the raw selected IDs. App code should use getMapState().selectedLocationIds instead —
  *  mutations already sync selections via MutationResult. */
 export async function syncSelections(): Promise<{ ids: number[] }> {
 	const sels = buildSyncInputs();
@@ -718,9 +683,6 @@ function pruneGhosted(selections: Selection[], ghosted: ReadonlySet<string>): Re
 	return pruned.size !== ghosted.size ? pruned : ghosted;
 }
 
-/** The set of ghosted (temporarily excluded) selection keys. */
-export const getGhostedSelections = () => state.ghostedSelections;
-
 /** Toggle a selection's ghosted state and re-sync (excludes/includes it from the overlay). */
 export function toggleGhostSelection(key: string) {
 	const next = new Set(state.ghostedSelections);
@@ -803,7 +765,7 @@ export function toggleManualSelection(locationId: number) {
  *  at random from whatever is currently selected. `count` is clamped to the selection size.
  *  No-op when nothing is selected. Returns the number of ids actually picked. */
 export function selectRandomFromSelection(count: number): number {
-	const ids = Array.from(getSelectedLocationIds());
+	const ids = Array.from(state.selectedLocationIds);
 	const picked = sampleIds(ids, count);
 	if (picked.length === 0) return 0;
 	void applySelectionUpdate(() => addSel([], { type: "Manual", locations: picked }));
@@ -1078,11 +1040,6 @@ export function setWorkArea(area: WorkArea) {
 }
 
 // --- Plugin mode ---
-
-/** The current editor pane. */
-export function getWorkArea() {
-	return state.workArea;
-}
 
 /** Open a plugin's sidebar (switches the editor pane to "plugin"). */
 export function setPluginMode(pluginId: string) {

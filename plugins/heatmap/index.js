@@ -923,7 +923,7 @@ var LAYER_DEFAULTS = {
 };
 var store = MMA.storage("heatmap");
 function defaultSource() {
-  return MMA.getSelectedLocationIds().size > 0 ? { kind: "selected" } : { kind: "all" };
+  return MMA.getMapState().selectedLocationIds.size > 0 ? { kind: "selected" } : { kind: "all" };
 }
 function newLayer() {
   return { id: crypto.randomUUID(), source: defaultSource(), ...LAYER_DEFAULTS };

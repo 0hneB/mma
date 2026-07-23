@@ -1,7 +1,7 @@
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { resolveExactTimestamp } from "@/lib/sv/exactDate";
 import { resolveTimezone } from "@/lib/util/timezone";
-import { getCurrentMap, updateLocations, fetchLocationsByIds } from "@/store/useMapStore";
+import { getMapState, updateLocations, fetchLocationsByIds } from "@/store/useMapStore";
 import {
 	filterEnrichPatch,
 	isFieldEnabled,
@@ -64,7 +64,7 @@ export async function enrich(
 		[data] = await fetchSvMetadata([loc.panoId]);
 		if (!data) return false;
 	}
-	const map = getCurrentMap();
+	const map = getMapState().map;
 	if (!map || !(map.meta.settings.enrichMetadata ?? true)) return false;
 	const enrichFields = map.meta.settings.enrichFields ?? getDefaultEnrichKeys();
 	const write = (extra: Record<string, unknown>) =>
@@ -96,7 +96,7 @@ export const enrichMetaResolver: SvResolver = {
 	label: "Enrich metadata",
 	pending: (loc, force) => {
 		if (force) return true;
-		const map = getCurrentMap();
+		const map = getMapState().map;
 		const fields = map?.meta.settings.enrichFields ?? getDefaultEnrichKeys();
 		return needsEnrichment(loc, fields);
 	},
@@ -230,7 +230,7 @@ export async function enrichAll(
 		onProgress?: (done: number, total: number, label?: string) => void;
 	} = {},
 ): Promise<EnrichResult> {
-	const map = getCurrentMap();
+	const map = getMapState().map;
 	if (!map) return [];
 	const enrichFields = map.meta.settings.enrichFields ?? getDefaultEnrichKeys();
 

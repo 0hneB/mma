@@ -9,9 +9,7 @@ import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
 import { emit, useEventValue, subscribe as onEvent } from "@/lib/events";
 import {
-	getCurrentMapId,
-	getCurrentMap,
-	getActiveLocation,
+	getMapState,
 	setActiveLocation,
 	addSelections,
 	removeSelections,
@@ -143,8 +141,8 @@ async function gotoCursor(s: ReviewSession): Promise<void> {
 /** Start (or resume) a review over `ids`. When `source` is a real selection, the session
  *  is keyed by it so re-reviewing that selection resumes the in-progress session. */
 export async function beginReview(ids: number[], source?: Selection): Promise<void> {
-	const mapId = getCurrentMapId();
-	const map = getCurrentMap();
+	const mapId = getMapState().mapId;
+	const map = getMapState().map;
 	if (!mapId || !map || ids.length === 0) return;
 
 	const sourceKey = source?.key ?? "manual";
@@ -297,7 +295,7 @@ export async function deleteSession(id: string): Promise<void> {
 
 /** Review sessions for the open map, optionally filtered by status. */
 export function listSessions(status?: "active" | "done"): Promise<ReviewSession[]> {
-	const mapId = getCurrentMapId();
+	const mapId = getMapState().mapId;
 	if (!mapId) return Promise.resolve([]);
 	return cmd.storeReviewList(mapId, status ?? null);
 }
@@ -409,7 +407,7 @@ function reconcile(removed: number[]): void {
 	}
 	scheduleSave();
 	scheduleProjection();
-	if (cursorMoved && getActiveLocation()?.id !== next.cursorId) {
+	if (cursorMoved && getMapState().activeLocation?.id !== next.cursorId) {
 		void gotoCursor(next);
 	}
 }
