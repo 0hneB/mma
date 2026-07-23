@@ -16,7 +16,7 @@ import {
 	needsUpdate,
 	isPluginCompatible,
 } from "@/plugins/registry";
-import type { Plugin, PluginManifest, PluginSidecarRef } from "@/plugins/registry";
+import type { PluginManifest, PluginSidecarRef } from "@/plugins/registry";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
 import { cmd } from "@/lib/commands";
 import { listen } from "@tauri-apps/api/event";
@@ -110,89 +110,49 @@ import { mdiDownload, mdiRefresh, mdiTrashCanOutline } from "@mdi/js";
 import { Switch } from "@/components/primitives/Switch";
 import { SwitchRow } from "@/components/primitives/SwitchRow";
 
-function CoreCard({ plugin }: { plugin: Plugin }) {
-	const [enabled, setEnabled] = useState(() => isPluginEnabled(plugin.id));
-
-	const toggle = () => {
-		if (plugin.comingSoon) return;
-		const next = !enabled;
-		setPluginEnabled(plugin.id, next);
-		if (next) activatePlugin(plugin.id);
-		else deactivatePlugin(plugin.id);
-		setEnabled(next);
-	};
-
-	return (
-		<div
-			className={`plugin-card ${enabled ? "plugin-card--enabled" : ""} ${plugin.comingSoon ? "plugin-card--coming-soon" : ""}`}
-		>
-			<div className="plugin-card__icon">
-				<Icon path={plugin.icon} size={32} />
-			</div>
-			<div className="plugin-card__info">
-				<div className="plugin-card__name">{plugin.name}</div>
-				{plugin.description && <div className="plugin-card__desc">{plugin.description}</div>}
-			</div>
-			{!plugin.comingSoon && (
-				<div className="plugin-card__actions">
-					<Switch checked={enabled} onChange={toggle} label={enabled ? "Disable" : "Enable"} />
-				</div>
-			)}
-			{enabled && <PluginSettings pluginId={plugin.id} />}
-		</div>
-	);
-}
-
-function AdditionalCard({
-	id,
-	name,
-	description,
-	icon,
-	installed,
-	enabled,
-	updatable,
-	latestVersion,
-	comingSoon,
-	requiresApp,
-	installProgress,
-	onInstall,
-	onEnable,
-	onDisable,
-	onUninstall,
-	onUpdate,
-}: {
+/** One card's worth of state. Core plugins are just entries that ship installed and
+ *  can't be uninstalled or updated independently of the app. */
+interface PluginEntry {
 	id: string;
 	name: string;
 	description: string;
 	icon: string;
+	/** Built in — no install/uninstall/update affordances. */
+	core?: boolean;
 	installed: boolean;
 	enabled: boolean;
-	updatable: boolean;
+	updatable?: boolean;
 	latestVersion?: string;
 	comingSoon?: boolean;
 	requiresApp?: string;
+}
+
+interface PluginCardProps {
+	entry: PluginEntry;
 	installProgress?: number;
 	onInstall: (id: string) => void;
 	onEnable: (id: string) => void;
 	onDisable: (id: string) => void;
 	onUninstall: (id: string) => void;
 	onUpdate: (id: string) => void;
-}) {
+}
+
+function PluginCard({
+	entry,
+	installProgress,
+	onInstall,
+	onEnable,
+	onDisable,
+	onUninstall,
+	onUpdate,
+}: PluginCardProps) {
+	const { id, name, description, icon, core, installed, enabled, comingSoon, requiresApp } = entry;
 	const [busy, setBusy] = useState(false);
 
-	const handleInstall = async () => {
+	const run = (fn: (id: string) => void | Promise<void>) => async () => {
 		setBusy(true);
 		try {
-			await onInstall(id);
-		} finally {
-			setBusy(false);
-		}
-	};
-
-	const handleUpdate = async () => {
-		setBusy(true);
-		try {
-			await onUpdate(id);
+			await fn(id);
 		} finally {
 			setBusy(false);
 		}
@@ -215,7 +175,7 @@ function AdditionalCard({
 					{!installed ? (
 						<button
 							className="plugin-card__action-btn plugin-card__action-btn--install"
-							onClick={handleInstall}
+							onClick={run(onInstall)}
 							disabled={busy || !!requiresApp}
 							title={requiresApp ? `Requires app v${requiresApp} or newer` : "Install"}
 							aria-label="Install"
@@ -230,16 +190,16 @@ function AdditionalCard({
 							label={enabled ? "Disable" : "Enable"}
 						/>
 					)}
-					{installed && updatable && (
+					{installed && !core && entry.updatable && (
 						<button
 							className="plugin-card__action-btn plugin-card__action-btn--update"
-							onClick={handleUpdate}
+							onClick={run(onUpdate)}
 							disabled={busy || !!requiresApp}
 							title={
 								requiresApp
 									? `Update requires app v${requiresApp} or newer`
-									: latestVersion
-										? `Update to v${latestVersion}`
+									: entry.latestVersion
+										? `Update to v${entry.latestVersion}`
 										: "Update"
 							}
 							aria-label="Update"
@@ -247,7 +207,7 @@ function AdditionalCard({
 							<Icon path={mdiRefresh} size={16} />
 						</button>
 					)}
-					{installed && (
+					{installed && !core && (
 						<button
 							className="plugin-card__action-btn plugin-card__action-btn--uninstall"
 							onClick={() => onUninstall(id)}
@@ -265,19 +225,6 @@ function AdditionalCard({
 	);
 }
 
-interface AdditionalEntry {
-	id: string;
-	name: string;
-	description: string;
-	icon: string;
-	installed: boolean;
-	enabled: boolean;
-	updatable: boolean;
-	latestVersion?: string;
-	comingSoon?: boolean;
-	requiresApp?: string;
-}
-
 export function PluginMarketplace({
 	open,
 	onOpenChange,
@@ -293,7 +240,18 @@ export function PluginMarketplace({
 	const [sidecarProgress, setSidecarProgress] = useState<Record<string, number>>({});
 	const [, rerender] = useState(0);
 
-	const corePlugins = getPlugins().filter((p) => p.core);
+	const coreEntries: PluginEntry[] = getPlugins()
+		.filter((p) => p.core)
+		.map((p) => ({
+			id: p.id,
+			name: p.name,
+			description: p.description || "",
+			icon: p.icon,
+			core: true,
+			installed: true,
+			enabled: isPluginEnabled(p.id),
+			comingSoon: p.comingSoon,
+		}));
 
 	const refreshInstalled = useCallback(async () => {
 		const manifests = await cmd.listUserPlugins();
@@ -333,8 +291,8 @@ export function PluginMarketplace({
 
 	const { installedEntries, registryEntries } = (() => {
 		const installedById = new Map(installedManifests.map((m) => [m.id, m]));
-		const installed: AdditionalEntry[] = [];
-		const fromRegistry: AdditionalEntry[] = [];
+		const installed: PluginEntry[] = [];
+		const fromRegistry: PluginEntry[] = [];
 
 		if (registry) {
 			for (const r of registry) {
@@ -343,7 +301,7 @@ export function PluginMarketplace({
 				const updatable =
 					isInstalled &&
 					needsUpdate(manifest.version, r.version, sidecarVersions[r.id], r.sidecar?.version);
-				const entry: AdditionalEntry = {
+				const entry: PluginEntry = {
 					id: r.id,
 					name: r.name,
 					description: r.description,
@@ -462,6 +420,14 @@ export function PluginMarketplace({
 		[refreshInstalled, setProgress],
 	);
 
+	const cardHandlers = {
+		onInstall: handleInstall,
+		onEnable: handleEnable,
+		onDisable: handleDisable,
+		onUninstall: handleUninstall,
+		onUpdate: handleUpdate,
+	};
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent title="Plugins" className="plugin-marketplace">
@@ -482,8 +448,8 @@ export function PluginMarketplace({
 
 				{tab === "core" && (
 					<div className="plugin-marketplace__grid">
-						{corePlugins.map((p) => (
-							<CoreCard key={p.id} plugin={p} />
+						{coreEntries.map((e) => (
+							<PluginCard key={e.id} entry={e} {...cardHandlers} />
 						))}
 					</div>
 				)}
@@ -491,15 +457,11 @@ export function PluginMarketplace({
 				{tab === "additional" && (
 					<div className="plugin-marketplace__grid">
 						{installedEntries.map((e) => (
-							<AdditionalCard
+							<PluginCard
 								key={e.id}
-								{...e}
+								entry={e}
 								installProgress={sidecarProgress[e.id]}
-								onInstall={handleInstall}
-								onEnable={handleEnable}
-								onDisable={handleDisable}
-								onUninstall={handleUninstall}
-								onUpdate={handleUpdate}
+								{...cardHandlers}
 							/>
 						))}
 						{!registry &&
@@ -524,15 +486,11 @@ export function PluginMarketplace({
 							</div>
 						)}
 						{registryEntries.map((e) => (
-							<AdditionalCard
+							<PluginCard
 								key={e.id}
-								{...e}
+								entry={e}
 								installProgress={sidecarProgress[e.id]}
-								onInstall={handleInstall}
-								onEnable={handleEnable}
-								onDisable={handleDisable}
-								onUninstall={handleUninstall}
-								onUpdate={handleUpdate}
+								{...cardHandlers}
 							/>
 						))}
 						{registry && installedEntries.length === 0 && registryEntries.length === 0 && (
