@@ -94,7 +94,7 @@ describe("Live selection correctness after add/remove", () => {
 				await api.addSelections([{ type: "Tag", tagId: tagId }]);
 				const before = api.getMapState().selectedLocationIds.size;
 				await api.removeLocations(new Set([removeId0, removeId1]));
-				const result = await api.syncSelections();
+				const result = await api._test.syncSelections();
 				const after = result.ids;
 				return { before, after: after.length };
 			},
@@ -136,7 +136,7 @@ describe("Live selection correctness after add/remove", () => {
 				api.createLocation({ lat: 72, lng: 72, tags: [tagId] }),
 			];
 			await api.addLocations(newLocs);
-			const result = await api.syncSelections();
+			const result = await api._test.syncSelections();
 			const ids: number[] = result.ids;
 			// Store second loc id for removal
 			return { ids, removeId: newLocs[1].id };
@@ -200,7 +200,7 @@ describe("Live selection correctness after update", () => {
 				await api.addSelections([{ type: "Tag", tagId: tagId }]);
 				const before = api.getMapState().selectedLocationIds.size;
 				await api.updateLocations([{ id: loc.id, patch: { tags: [tagId] } }]);
-				const result = await api.syncSelections();
+				const result = await api._test.syncSelections();
 				const after = result.ids;
 				return { before, after: after.length, has: after.includes(loc.id) };
 			},
@@ -332,7 +332,7 @@ describe("Review mode delete with active selections", () => {
 				const before = api.getMapState().selectedLocationIds.size;
 				await api.beginReview(reviewIds);
 				await api.reviewDelete();
-				const result = await api.syncSelections();
+				const result = await api._test.syncSelections();
 				const after = result.ids;
 				api.cancelReview();
 				return { before, after: after.length };
@@ -353,7 +353,7 @@ describe("Review mode delete with active selections", () => {
 				await api.beginReview(rvIds);
 				await api.reviewDelete();
 				api.cancelReview();
-				const result = await api.syncSelections();
+				const result = await api._test.syncSelections();
 				const after = result.ids;
 				return { before, after: after.length };
 			},
@@ -378,7 +378,7 @@ describe("Review mode delete with active selections", () => {
 			const ids = allLocs.slice(0, 3).map((l) => l.id);
 			await api.beginReview(ids);
 			await api.reviewDelete();
-			const result = await api.syncSelections();
+			const result = await api._test.syncSelections();
 			const after = result.ids;
 			api.cancelReview();
 			return { before, after: after.length };
@@ -720,7 +720,7 @@ describe("Bulk operations with active selections", () => {
 				const before = api.getMapState().selectedLocationIds.size;
 				const updates = ids.map((id: number) => ({ id, patch: { tags: [tagId] } }));
 				await api.updateLocations(updates);
-				const result = await api.syncSelections();
+				const result = await api._test.syncSelections();
 				const after = result.ids;
 				return { before, after: after.length };
 			},
@@ -768,13 +768,13 @@ describe("Bulk operations with active selections", () => {
 				);
 			}
 			await api.addLocations(newLocs);
-			const afterAddResult = await api.syncSelections();
+			const afterAddResult = await api._test.syncSelections();
 			const afterAdd = afterAddResult.ids.length;
 
 			// Remove first 10 of the newly added
 			const toRemove = newLocs.slice(0, 10).map((l) => l.id);
 			api.removeLocations(new Set(toRemove));
-			const afterRemoveResult = await api.syncSelections();
+			const afterRemoveResult = await api._test.syncSelections();
 			const afterRemove = afterRemoveResult.ids.length;
 
 			return { baseline, afterAdd, afterRemove };
@@ -949,7 +949,7 @@ describe("Slot reuse correctness", () => {
 			// Remove first 10 (the tagged ones)
 			const toRemove = initial.slice(0, 10).map((l) => l.id);
 			await api.removeLocations(new Set(toRemove));
-			const afterRemoveResult = await api.syncSelections();
+			const afterRemoveResult = await api._test.syncSelections();
 			const afterRemoveIds: number[] = afterRemoveResult.ids;
 			const afterRemove = afterRemoveIds.length;
 
@@ -959,7 +959,7 @@ describe("Slot reuse correctness", () => {
 				reuse.push(api.createLocation({ lat: 50 + i, lng: 50 + i }));
 			}
 			await api.addLocations(reuse);
-			const afterReuseResult = await api.syncSelections();
+			const afterReuseResult = await api._test.syncSelections();
 			const afterReuseIds: number[] = afterReuseResult.ids;
 			const afterReuse = afterReuseIds.length;
 
@@ -992,7 +992,7 @@ describe("Slot reuse correctness", () => {
 
 			// Remove all 10 — tag count drops to 0, selection is cleared
 			api.removeLocations(new Set(batch1.map((l) => l.id)));
-			const afterRemoveResult = await api.syncSelections();
+			const afterRemoveResult = await api._test.syncSelections();
 			const afterRemoveIds: number[] = afterRemoveResult.ids;
 			const afterRemoveAll = afterRemoveIds.length;
 
@@ -1010,7 +1010,7 @@ describe("Slot reuse correctness", () => {
 			await api.addLocations(batch2);
 			// Re-select tag (selection was cleared when count hit 0)
 			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			const afterRefillResult = await api.syncSelections();
+			const afterRefillResult = await api._test.syncSelections();
 			const afterRefillIds: number[] = afterRefillResult.ids;
 			const afterRefill = afterRefillIds.length;
 
@@ -1063,7 +1063,7 @@ describe("Slot reuse correctness", () => {
 			// Remove indices 0-4 (tagged AND flagged)
 			const toRemove = locs.slice(0, 5).map((l) => l.id);
 			api.removeLocations(new Set(toRemove));
-			await api.syncSelections();
+			await api._test.syncSelections();
 
 			const tagAfterRemove = tagKey ? api.getMapState().selectionCounts[tagKey] : undefined;
 			const panoAfterRemove = panoKey ? api.getMapState().selectionCounts[panoKey] : undefined;
@@ -1081,7 +1081,7 @@ describe("Slot reuse correctness", () => {
 				);
 			}
 			await api.addLocations(refill);
-			await api.syncSelections();
+			await api._test.syncSelections();
 
 			const tagAfterRefill = tagKey ? api.getMapState().selectionCounts[tagKey] : undefined;
 			const panoAfterRefill = panoKey ? api.getMapState().selectionCounts[panoKey] : undefined;

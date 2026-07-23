@@ -1572,9 +1572,9 @@ declare const mapOpen: {
     mark(phase: string): void;
 };
 /** Open a map in this window, closing any currently open map first. */
-declare function openMap(id: string): Promise<void>;
+declare function openMap$1(id: string): Promise<void>;
 /** Close the open map, saving unsaved changes first. */
-declare function closeMap(): Promise<void>;
+declare function closeMap$1(): Promise<void>;
 /** Drop the open map without persisting anything */
 declare function discardOpenMap(): void;
 /** Fetch every location in the map. */
@@ -1587,12 +1587,6 @@ declare function fetchLocationsByIds(ids: number[]): Promise<Location[]>;
 declare const getActiveSelections: () => Selection[];
 /** Overwrite the selected-id set directly, bypassing selection resolution. Rarely what you want -- prefer `addSelections`. */
 declare function setSelectedLocationIds(ids: SelectedIds): void;
-/** @internal Test-only. Forces a full selection re-resolve in Rust and returns
- *  the raw selected IDs. App code should use getMapState().selectedLocationIds instead —
- *  mutations already sync selections via MutationResult. */
-declare function syncSelections(): Promise<{
-    ids: number[];
-}>;
 declare function renameMap(id: string, name: string): Promise<void>;
 declare function updateMapLabels(id: string, labels: string[]): Promise<void>;
 declare function updateMapMeta(patch: MapMetaPatch_Deserialize): Promise<void> | undefined;
@@ -1748,7 +1742,6 @@ declare const store_addTagToLocations: typeof addTagToLocations;
 declare const store_cancelAutosave: typeof cancelAutosave;
 declare const store_checkoutCommit: typeof checkoutCommit;
 declare const store_closeDuplicates: typeof closeDuplicates;
-declare const store_closeMap: typeof closeMap;
 declare const store_commitMap: typeof commitMap;
 declare const store_composeSelections: typeof composeSelections;
 declare const store_createTags: typeof createTags;
@@ -1776,7 +1769,6 @@ declare const store_mapOpen: typeof mapOpen;
 declare const store_mergeDuplicates: typeof mergeDuplicates;
 declare const store_mutate: typeof mutate;
 declare const store_openDuplicateLocation: typeof openDuplicateLocation;
-declare const store_openMap: typeof openMap;
 declare const store_openStagedLocation: typeof openStagedLocation;
 declare const store_previewDuplicateGroups: typeof previewDuplicateGroups;
 declare const store_previewVirtualLocation: typeof previewVirtualLocation;
@@ -1808,7 +1800,6 @@ declare const store_setPolygonName: typeof setPolygonName;
 declare const store_setSelectedLocationIds: typeof setSelectedLocationIds;
 declare const store_setSelectionColors: typeof setSelectionColors;
 declare const store_setWorkArea: typeof setWorkArea;
-declare const store_syncSelections: typeof syncSelections;
 declare const store_toggleGhostAllSelections: typeof toggleGhostAllSelections;
 declare const store_toggleGhostSelection: typeof toggleGhostSelection;
 declare const store_toggleManualSelection: typeof toggleManualSelection;
@@ -1823,7 +1814,7 @@ declare const store_useCommitDiff: typeof useCommitDiff;
 declare const store_useMapState: typeof useMapState;
 declare const store_waitForInflightPersist: typeof waitForInflightPersist;
 declare namespace store {
-  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, store_closeMap as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveSelections as getActiveSelections, store_getDirtyCount as getDirtyCount, store_getMapState as getMapState, store_getSelectedTagIds as getSelectedTagIds, store_getTag as getTag, store_getVisibleTags as getVisibleTags, store_hasCommitDiff as hasCommitDiff, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, store_openMap as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_syncSelections as syncSelections, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useCommitDiff as useCommitDiff, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
+  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, closeMap$1 as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveSelections as getActiveSelections, store_getDirtyCount as getDirtyCount, store_getMapState as getMapState, store_getSelectedTagIds as getSelectedTagIds, store_getTag as getTag, store_getVisibleTags as getVisibleTags, store_hasCommitDiff as hasCommitDiff, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, openMap$1 as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useCommitDiff as useCommitDiff, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
   export type { store_MapState as MapState };
 }
 
@@ -2529,14 +2520,13 @@ declare function setCachedMapList(list: MapMeta[]): void;
 /** Create a new empty map and return its metadata. */
 declare function createMap(name: string, folder?: string | null): Promise<MapMeta>;
 /** Permanently delete a map and all its data. Not undoable. */
-declare function deleteMap(id: string): Promise<void>;
+declare function deleteMap$1(id: string): Promise<void>;
 declare function renameFolder(from: string, to: string): Promise<void>;
 declare function moveMapToFolder(mapId: string, folder: string | null): Promise<void>;
 declare function deleteFolder(name: string): Promise<void>;
 
 declare const mapList_createMap: typeof createMap;
 declare const mapList_deleteFolder: typeof deleteFolder;
-declare const mapList_deleteMap: typeof deleteMap;
 declare const mapList_getMapList: typeof getMapList;
 declare const mapList_invalidateMapList: typeof invalidateMapList;
 declare const mapList_moveMapToFolder: typeof moveMapToFolder;
@@ -2548,7 +2538,7 @@ declare namespace mapList {
   export {
     mapList_createMap as createMap,
     mapList_deleteFolder as deleteFolder,
-    mapList_deleteMap as deleteMap,
+    deleteMap$1 as deleteMap,
     mapList_getMapList as getMapList,
     mapList_invalidateMapList as invalidateMapList,
     mapList_moveMapToFolder as moveMapToFolder,
@@ -2949,15 +2939,86 @@ declare function getMapHost(): MapHost | null;
  */
 declare function waitForMapHost(): Promise<MapHost>;
 
+/** @deprecated v0.8.1. Use `MMA.getMapHost()` and narrow via `hostInstance`. */
 declare function getGoogleMap(): google.maps.Map | null;
+/** @deprecated v0.8.1. Use `MMA.waitForMapHost()`. */
 declare function waitForGoogleMap(): Promise<google.maps.Map | null>;
+/** @deprecated v0.8.2. Read `MMA.getMapState().map`. */
+declare function getCurrentMap(): MapData | null;
+/** @deprecated v0.8.2. Read `MMA.getMapState().mapId`. */
+declare function getCurrentMapId(): string | null;
+/** @deprecated v0.8.2. Read `MMA.getMapState().activeLocation`. */
+declare function getActiveLocation(): Location | null;
+/** @deprecated v0.8.2. Read `MMA.getMapState().selectedLocationIds`. */
+declare function getSelectedLocationIds(): SelectedIds;
+/** @deprecated v0.8.2. Read `MMA.getMapState().workArea`. */
+declare function getWorkArea(): WorkArea;
+/** @deprecated v0.8.2. Read `MMA.getMapState().tagCounts`. */
+declare function getTagCounts(): Record<number, number>;
+/** @deprecated v0.8.2. Read `MMA.getMapState().knownFieldKeys`. */
+declare function getKnownFieldKeys(): ReadonlySet<string>;
+/** @deprecated v0.8.2. Read `MMA.getMapState().selections`. */
+declare function getAllSelections(): Selection[];
+/** @deprecated v0.8.2. Read `MMA.getMapState().ghostedSelections`. */
+declare function getGhostedSelections(): ReadonlySet<string>;
+/** @deprecated v0.8.2. Use `MMA.getActiveSelections()`. */
+declare function getSelections(): Selection[];
 
+declare const legacy_getActiveLocation: typeof getActiveLocation;
+declare const legacy_getAllSelections: typeof getAllSelections;
+declare const legacy_getCurrentMap: typeof getCurrentMap;
+declare const legacy_getCurrentMapId: typeof getCurrentMapId;
+declare const legacy_getGhostedSelections: typeof getGhostedSelections;
 declare const legacy_getGoogleMap: typeof getGoogleMap;
+declare const legacy_getKnownFieldKeys: typeof getKnownFieldKeys;
+declare const legacy_getSelectedLocationIds: typeof getSelectedLocationIds;
+declare const legacy_getSelections: typeof getSelections;
+declare const legacy_getTagCounts: typeof getTagCounts;
+declare const legacy_getWorkArea: typeof getWorkArea;
 declare const legacy_waitForGoogleMap: typeof waitForGoogleMap;
 declare namespace legacy {
   export {
+    legacy_getActiveLocation as getActiveLocation,
+    legacy_getAllSelections as getAllSelections,
+    legacy_getCurrentMap as getCurrentMap,
+    legacy_getCurrentMapId as getCurrentMapId,
+    legacy_getGhostedSelections as getGhostedSelections,
     legacy_getGoogleMap as getGoogleMap,
+    legacy_getKnownFieldKeys as getKnownFieldKeys,
+    legacy_getSelectedLocationIds as getSelectedLocationIds,
+    legacy_getSelections as getSelections,
+    legacy_getTagCounts as getTagCounts,
+    legacy_getWorkArea as getWorkArea,
     legacy_waitForGoogleMap as waitForGoogleMap,
+  };
+}
+
+/** Forces a full selection re-resolve in Rust and returns the raw selected IDs.
+ *  App code reads `getMapState().selectedLocationIds` — mutations already sync
+ *  selections via MutationResult. */
+declare function syncSelections(): Promise<{
+    ids: number[];
+}>;
+declare function openMap(id: string): Promise<void>;
+declare function closeMap(): Promise<void>;
+declare function deleteMap(id: string): Promise<void>;
+declare function importPaste(text: string): Promise<EditorImportResult[]>;
+declare function importFile(droppedFields: string[], tagName?: string): Promise<EditorImportResult>;
+
+declare const testApi_closeMap: typeof closeMap;
+declare const testApi_deleteMap: typeof deleteMap;
+declare const testApi_importFile: typeof importFile;
+declare const testApi_importPaste: typeof importPaste;
+declare const testApi_openMap: typeof openMap;
+declare const testApi_syncSelections: typeof syncSelections;
+declare namespace testApi {
+  export {
+    testApi_closeMap as closeMap,
+    testApi_deleteMap as deleteMap,
+    testApi_importFile as importFile,
+    testApi_importPaste as importPaste,
+    testApi_openMap as openMap,
+    testApi_syncSelections as syncSelections,
   };
 }
 
@@ -3106,13 +3167,7 @@ declare const surface: {
     needsEnrichment: typeof needsEnrichment;
     fetchSvMetadata: typeof fetchSvMetadata;
     mmaBufUrl: typeof mmaBufUrl;
-    _test: {
-        openMap: (id: string) => Promise<void>;
-        closeMap: () => Promise<void>;
-        deleteMap: (id: string) => Promise<void>;
-        importPaste: (text: string) => Promise<EditorImportResult[]>;
-        importFile: (droppedFields: string[], tagName?: string) => Promise<EditorImportResult>;
-    };
+    _test: typeof testApi;
 };
 export type StoreApi = typeof store;
 export type ImportStagingApi = typeof importStaging;

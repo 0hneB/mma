@@ -400,17 +400,6 @@ export function setSelectedLocationIds(ids: SelectedIds) {
 	setState({ selectedLocationIds: ids });
 }
 
-/** @internal Test-only. Forces a full selection re-resolve in Rust and returns
- *  the raw selected IDs. App code should use getMapState().selectedLocationIds instead —
- *  mutations already sync selections via MutationResult. */
-export async function syncSelections(): Promise<{ ids: number[] }> {
-	const sels = buildSyncInputs();
-	if (sels.length === 0) return { ids: [] };
-	await cmd.storeSyncSelections(sels);
-	const ids = await cmd.storeGetSelectedIdsList();
-	return { ids };
-}
-
 /** Optimistically patch map meta, persist, and refresh the map list. */
 async function patchMapMeta(id: string, patch: MapMetaPatch) {
 	if (state.map && state.mapId === id) {

@@ -367,13 +367,13 @@ describe("Selection correctness after mutations", () => {
 		const result = await withApi(async (api) => {
 			await api.resetSelections();
 			await api.addSelections([{ type: "Everything" }]);
-			const before = (await api.syncSelections()).ids.length;
+			const before = (await api._test.syncSelections()).ids.length;
 
 			await api.addLocations([api.createLocation({ lat: 50, lng: 50 })]);
 
 			await api.resetSelections();
 			await api.addSelections([{ type: "Everything" }]);
-			const after = (await api.syncSelections()).ids.length;
+			const after = (await api._test.syncSelections()).ids.length;
 			return { before, after };
 		});
 		expect(result.after).toBe(result.before + 1);
@@ -383,11 +383,11 @@ describe("Selection correctness after mutations", () => {
 		const result = await withApi(async (api) => {
 			await api.resetSelections();
 			await api.addSelections([{ type: "Everything" }]);
-			const before = (await api.syncSelections()).ids;
+			const before = (await api._test.syncSelections()).ids;
 			const toRemove = before[before.length - 1];
 			api.removeLocations(new Set([toRemove]));
 			await new Promise((r) => setTimeout(r, 300));
-			const after = (await api.syncSelections()).ids;
+			const after = (await api._test.syncSelections()).ids;
 			return { before: before.length, after: after.length };
 		});
 		expect(result.after).toBe(result.before - 1);

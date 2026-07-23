@@ -14,7 +14,6 @@ import * as mapList from "@/store/mapList";
 import * as review from "@/lib/review/review";
 import type { Scope, Location } from "@/bindings.gen";
 import { cmd as commands, type Cmd } from "@/lib/commands";
-import { goToMap, goToList } from "@/store/router";
 import { createLocation, applyLocationPatch } from "@/types";
 import { registerPlugin, createPluginStorage, usePluginState } from "@/plugins/registry";
 import { trackDisposable } from "@/plugins/scope";
@@ -46,6 +45,7 @@ import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { mmaBufUrl } from "@/lib/util/util";
 import { getMapHost, waitForMapHost } from "@/lib/map/mapState";
 import * as legacy from "@/legacy";
+import * as testApi from "@/testApi";
 
 export interface LocationStore {
 	locations: Map<number, Location>;
@@ -240,31 +240,7 @@ const surface = {
 	mmaBufUrl,
 
 	// --- Test-only convenience ---
-	_test: {
-		openMap: async (id: string) => {
-			// Await the real store op for a deterministic completion signal, THEN sync the
-			// URL — by which point the router's reconcile is a no-op (state already matches),
-			// so no second fire-and-forget openMap can interleave with the next test step.
-			await store.openMap(id);
-			goToMap(id);
-		},
-		closeMap: async () => {
-			await store.closeMap();
-			goToList();
-		},
-		deleteMap: (id: string) => mapList.deleteMap(id),
-		importPaste: async (text: string) => {
-			await commands.storeImportPastePreview(text);
-			const r = await commands.storeImportFile([], null);
-			await store.mutate(() => Promise.resolve(r));
-			return [r];
-		},
-		importFile: async (droppedFields: string[], tagName?: string) => {
-			const r = await commands.storeImportFile(droppedFields, tagName ?? null);
-			await store.mutate(() => Promise.resolve(r));
-			return r;
-		},
-	},
+	_test: testApi,
 };
 
 type StoreApi = typeof store;
