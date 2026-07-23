@@ -888,6 +888,7 @@ export type PluginManifest_Deserialize = {
 	icon: string,
 	main: string,
 	version: string,
+	experimental: boolean,
 	sidecar: PluginSidecar_Deserialize | null,
 };
 
@@ -899,6 +900,7 @@ export type PluginManifest = {
 	icon: string,
 	main: string,
 	version: string,
+	experimental?: boolean,
 	sidecar?: PluginSidecar | null,
 };
 

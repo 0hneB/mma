@@ -15,6 +15,7 @@ import {
 	deactivatePlugins,
 	setPendingManifest,
 	isPluginCompatible,
+	isBackgroundPlugin,
 } from "@/plugins/registry";
 import { subscribe } from "@/lib/events";
 import {
@@ -297,5 +298,20 @@ describe("plugin deactivation tears down enrichment registrations", () => {
 		expect(getEnrichmentProviders().some((p) => p.id === provId)).toBe(false);
 		expect(getEnrichFieldOptions().some((o) => o.key === fieldKey)).toBe(false);
 		expect(getFieldDef(fieldKey)).toBeUndefined();
+	});
+});
+
+describe("isBackgroundPlugin", () => {
+	it("is true only for a loaded plugin with no UI surface", () => {
+		registerPlugin(makePlugin("bg", "Background"));
+		registerPlugin({ ...makePlugin("side", "Sidebar"), sidebar: () => null });
+		registerPlugin({ ...makePlugin("modal", "Modal"), modal: () => null });
+		registerPlugin({ ...makePlugin("panel", "Panel"), locationPanel: () => null });
+
+		expect(isBackgroundPlugin("bg")).toBe(true);
+		expect(isBackgroundPlugin("side")).toBe(false);
+		expect(isBackgroundPlugin("modal")).toBe(false);
+		expect(isBackgroundPlugin("panel")).toBe(false);
+		expect(isBackgroundPlugin("not-loaded")).toBe(false);
 	});
 });

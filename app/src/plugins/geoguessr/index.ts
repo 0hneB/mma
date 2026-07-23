@@ -8,6 +8,7 @@ registerPlugin({
 	name: "GeoGuessr",
 	description: "Push and pull locations to/from a linked GeoGuessr map",
 	icon: mdiMapMarker,
+	experimental: true,
 	sidebar: GeoGuessrSidebar,
 	activate() {
 		const M = window.MMA;

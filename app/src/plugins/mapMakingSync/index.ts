@@ -8,6 +8,7 @@ registerPlugin({
 	name: "map-making.app sync",
 	description: "Bidirectional sync with map-making.app maps",
 	icon: mapMakingApp,
+	experimental: true,
 	sidebar: SyncSidebar,
 	activate() {
 		const M = window.MMA;

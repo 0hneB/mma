@@ -22,6 +22,7 @@ export interface Plugin {
     icon: string;
     comingSoon?: boolean;
     core?: boolean;
+    experimental?: boolean;
     settings?: PluginSettingDef[];
     /** Keep the sidebar mounted (hidden) when the user leaves plugin mode.
      *  Only for plugins whose state can't be serialized (e.g. an iframe). */
@@ -510,11 +511,11 @@ type Conflict = {
     local: NormalizedSyncLocation | null;
     remote: NormalizedSyncLocation | null;
 };
-type ConflictKind = 
+type ConflictKind =
 /**  Both sides modified the same location differently. */
-"update-update" | 
+"update-update" |
 /**  One side deleted while the other modified. */
-"delete-update" | 
+"delete-update" |
 /**  Both sides added the same identity with different content (hash collision only). */
 "add-add";
 /**  Result of a cross-map location copy. `target_name` feeds the toast. */
@@ -677,16 +678,16 @@ type ImportedMapInfo = {
     tagCount: number;
 };
 /**  How a field value becomes a group key. Wire-mirrors the JS `KeySpec`. */
-type KeySpec = 
+type KeySpec =
 /**  String value of the field (enum/string/month "YYYY-MM"/number). */
 {
     kind: "value";
-} | 
+} |
 /**  Equal-width numeric bins. */
 {
     kind: "numericBin";
     binning: NumericBinning;
-} | 
+} |
 /**  Calendar component of a date (epoch seconds) or month ("YYYY-MM") field. */
 {
     kind: "datePart";
@@ -1470,7 +1471,7 @@ declare class SelectedIds {
     readonly size: number;
     /** Shared empty selection (no map open / cleared). */
     static readonly EMPTY: SelectedIds;
-    constructor(bits: Uint8Array, 
+    constructor(bits: Uint8Array,
     /** Count of distinct selected ids (not overlay entries — an id selected by N
      *  overlapping selections still counts once). */
     size: number);

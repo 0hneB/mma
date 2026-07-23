@@ -203,6 +203,8 @@ struct PluginManifest {
     icon: String,
     main: String,
     version: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    experimental: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     sidecar: Option<PluginSidecar>,
 }
@@ -289,6 +291,10 @@ fn list_user_plugins() -> Vec<PluginManifest> {
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
+                let experimental = val
+                    .get("experimental")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
                 let sidecar = parse_sidecar(&val);
                 plugins.push(PluginManifest {
                     id,
@@ -297,6 +303,7 @@ fn list_user_plugins() -> Vec<PluginManifest> {
                     icon,
                     main,
                     version,
+                    experimental,
                     sidecar,
                 });
             }
@@ -376,6 +383,10 @@ fn install_plugin(id: String) -> AppResult<PluginManifest> {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+    let experimental = val
+        .get("experimental")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let sidecar = parse_sidecar(&val);
 
     Ok(PluginManifest {
@@ -385,6 +396,7 @@ fn install_plugin(id: String) -> AppResult<PluginManifest> {
         icon,
         main: main.to_string(),
         version,
+        experimental,
         sidecar,
     })
 }

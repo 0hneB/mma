@@ -5311,9 +5311,20 @@ body {
 	min-width: 0;
 }
 .plugin-card__name {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
 	font-weight: 600;
 	font-size: 0.9rem;
 	color: var(--text-1);
+}
+.plugin-card__label {
+	display: inline-flex;
+	color: var(--text-2);
+	opacity: 0.7;
+}
+.plugin-card__label:hover {
+	opacity: 1;
 }
 .plugin-card__desc {
 	font-size: 0.8rem;

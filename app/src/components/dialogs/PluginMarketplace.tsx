@@ -15,6 +15,7 @@ import {
 	unregisterPlugin,
 	needsUpdate,
 	isPluginCompatible,
+	isBackgroundPlugin,
 } from "@/plugins/registry";
 import type { PluginManifest, PluginSidecarRef } from "@/plugins/registry";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
@@ -34,6 +35,7 @@ interface RegistryEntry {
 	version: string;
 	main: string;
 	comingSoon?: boolean;
+	experimental?: boolean;
 	minAppVersion?: string;
 	sidecar?: PluginSidecarRef | null;
 }
@@ -106,7 +108,8 @@ function PluginSettings({ pluginId }: { pluginId: string }) {
 	);
 }
 
-import { mdiDownload, mdiRefresh, mdiTrashCanOutline } from "@mdi/js";
+import { mdiAutoFix, mdiDownload, mdiFlaskOutline, mdiRefresh, mdiTrashCanOutline } from "@mdi/js";
+import { Tooltip } from "@/components/primitives/Tooltip";
 import { Switch } from "@/components/primitives/Switch";
 import { SwitchRow } from "@/components/primitives/SwitchRow";
 
@@ -124,8 +127,31 @@ interface PluginEntry {
 	updatable?: boolean;
 	latestVersion?: string;
 	comingSoon?: boolean;
+	experimental?: boolean;
 	requiresApp?: string;
 }
+
+/** Small hover-explained markers on a card. Each either derives from the loaded
+ *  plugin's shape or from what the plugin declares about itself. */
+const CARD_LABELS: {
+	key: string;
+	icon: string;
+	tooltip: string;
+	applies: (entry: PluginEntry) => boolean;
+}[] = [
+	{
+		key: "experimental",
+		icon: mdiFlaskOutline,
+		tooltip: "Experimental",
+		applies: (e) => !!e.experimental,
+	},
+	{
+		key: "enrichment",
+		icon: mdiAutoFix,
+		tooltip: "Enrichment only: adds data fields, no panel of its own",
+		applies: (e) => e.installed && isBackgroundPlugin(e.id),
+	},
+];
 
 interface PluginCardProps {
 	entry: PluginEntry;
@@ -164,7 +190,16 @@ function PluginCard({
 		>
 			<div className="plugin-card__icon">{icon ? <Icon path={icon} size={32} /> : null}</div>
 			<div className="plugin-card__info">
-				<div className="plugin-card__name">{name}</div>
+				<div className="plugin-card__name">
+					{name}
+					{CARD_LABELS.filter((l) => l.applies(entry)).map((l) => (
+						<Tooltip key={l.key} content={l.tooltip}>
+							<span className="plugin-card__label" aria-label={l.tooltip}>
+								<Icon path={l.icon} size={14} />
+							</span>
+						</Tooltip>
+					))}
+				</div>
 				{description && <div className="plugin-card__desc">{description}</div>}
 			</div>
 			{!comingSoon && (
@@ -251,6 +286,7 @@ export function PluginMarketplace({
 			installed: true,
 			enabled: isPluginEnabled(p.id),
 			comingSoon: p.comingSoon,
+			experimental: p.experimental,
 		}));
 
 	const refreshInstalled = useCallback(async () => {
@@ -311,6 +347,7 @@ export function PluginMarketplace({
 					updatable,
 					latestVersion: r.version,
 					comingSoon: r.comingSoon,
+					experimental: r.experimental ?? manifest?.experimental,
 					requiresApp: isPluginCompatible(r.minAppVersion, __APP_VERSION__)
 						? undefined
 						: r.minAppVersion,
@@ -330,6 +367,7 @@ export function PluginMarketplace({
 				installed: true,
 				enabled: isPluginEnabled(m.id),
 				updatable: false,
+				experimental: m.experimental,
 			});
 		}
 

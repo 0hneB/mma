@@ -17,6 +17,7 @@ export interface Plugin {
 	icon: string;
 	comingSoon?: boolean;
 	core?: boolean;
+	experimental?: boolean;
 	settings?: PluginSettingDef[];
 	/** Keep the sidebar mounted (hidden) when the user leaves plugin mode.
 	 *  Only for plugins whose state can't be serialized (e.g. an iframe). */
@@ -41,6 +42,7 @@ export interface PluginManifest {
 	main: string;
 	version: string;
 	minAppVersion?: string;
+	experimental?: boolean;
 	sidecar?: PluginSidecarRef | null;
 }
 
@@ -111,6 +113,7 @@ export function registerPlugin(plugin: Plugin | PluginBehavior) {
 			name: pendingManifest.name,
 			description: pendingManifest.description || undefined,
 			icon: pendingManifest.icon,
+			experimental: pendingManifest.experimental,
 			...plugin,
 		};
 		plugins.set(merged.id, merged);
@@ -127,6 +130,14 @@ export function getPlugins(): Plugin[] {
 
 export function getPlugin(id: string): Plugin | undefined {
 	return plugins.get(id);
+}
+
+/** A plugin with no sidebar, modal, or location panel — it only contributes data
+ *  (enrichment fields) and never shows UI of its own. Unknown for plugins that
+ *  aren't loaded, so uninstalled registry entries report false. */
+export function isBackgroundPlugin(id: string): boolean {
+	const plugin = plugins.get(id);
+	return !!plugin && !plugin.sidebar && !plugin.modal && !plugin.locationPanel;
 }
 
 export function unregisterPlugin(id: string) {
