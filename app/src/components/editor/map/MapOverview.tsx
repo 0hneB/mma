@@ -2,7 +2,6 @@ import { useState } from "react";
 import { NSelect } from "@/components/primitives/NSelect";
 import {
 	useMapState,
-	removeSelections,
 	addTagToLocations,
 	createTags,
 	addSelections,
@@ -250,11 +249,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 				{hasSelections && (
 					<div className="selection-manager__selections">
 						{selections.map((sel) => (
-							<SelectionRow
-								key={sel.key}
-								selection={sel}
-								onRemove={() => removeSelections([sel.key])}
-							/>
+							<SelectionRow key={sel.key} selection={sel} />
 						))}
 					</div>
 				)}
@@ -341,22 +336,24 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 				/>
 			</ToolBlock>
 
-			<TagFindReplaceDialog open={showTagFindReplace} onOpenChange={setShowTagFindReplace} />
-			<ApplyFieldAsTagsDialog open={showApplyFieldAsTags} onOpenChange={setShowApplyFieldAsTags} />
-			<MergeDuplicatesModal
-				open={showMergeDuplicates}
-				onOpenChange={setShowMergeDuplicates}
-				distance={dupDistance}
-			/>
-			<ReviewSessionsModal open={showReviews} onOpenChange={setShowReviews} />
+			{showTagFindReplace && <TagFindReplaceDialog open onOpenChange={setShowTagFindReplace} />}
+			{showApplyFieldAsTags && (
+				<ApplyFieldAsTagsDialog open onOpenChange={setShowApplyFieldAsTags} />
+			)}
+			{showMergeDuplicates && (
+				<MergeDuplicatesModal open onOpenChange={setShowMergeDuplicates} distance={dupDistance} />
+			)}
+			{showReviews && <ReviewSessionsModal open onOpenChange={setShowReviews} />}
 
-			<SaveSelectionsDialog
-				open={showSaveSelections}
-				onOpenChange={setShowSaveSelections}
-				name={saveSelName}
-				onNameChange={setSaveSelName}
-			/>
-			<ApplySavedSelectionDialog open={showApplySaved} onOpenChange={setShowApplySaved} />
+			{showSaveSelections && (
+				<SaveSelectionsDialog
+					open
+					onOpenChange={setShowSaveSelections}
+					name={saveSelName}
+					onNameChange={setSaveSelName}
+				/>
+			)}
+			{showApplySaved && <ApplySavedSelectionDialog open onOpenChange={setShowApplySaved} />}
 		</section>
 	);
 }

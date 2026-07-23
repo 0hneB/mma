@@ -50,6 +50,11 @@ import {
 /** `order` rides the optimistic overlay only; persisted order goes through `reorderTags`. */
 type OptimisticTagPatch = TagPatch & { order?: number };
 
+// Stable identities: an inline default would be a new object each render, which
+// invalidates the tag tree's useMemo and re-renders every row.
+const NO_VIRTUAL_TAGS = {};
+const NO_ALIASES = {};
+
 export function TagManager() {
 	const map = useMapState((s) => s.map);
 	const selectedTagIds = useMapState(getSelectedTagIds);
@@ -57,8 +62,8 @@ export function TagManager() {
 	const tagViewMode = useSetting("tagViewMode");
 	const [filterText, setFilterText] = useState("");
 	const sortMode = useSetting("tagSortMode");
-	const [virtualTags, setVirtualTags] = useMapSetting("virtualTags", {});
-	const [aliases, setAliases] = useMapSetting("aliases", {});
+	const [virtualTags, setVirtualTags] = useMapSetting("virtualTags", NO_VIRTUAL_TAGS);
+	const [aliases, setAliases] = useMapSetting("aliases", NO_ALIASES);
 	const [addingAliasFor, setAddingAliasFor] = useState<{ id: number; name: string } | null>(null);
 	// The edited node carries descendant context so the dialog can offer a cascade rename
 	// (descendantCount is 0 for every leaf, including all of flat mode).

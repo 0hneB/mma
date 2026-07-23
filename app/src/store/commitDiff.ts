@@ -3,12 +3,13 @@ import type { LatLng } from "@/types";
 import type { CommitDelta, CommitDiff, CommitInfo, Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { fitMapToBounds } from "@/lib/map/mapState";
-import { emit as emitEvent, useEvent } from "@/lib/events";
+import { emit as emitEvent, subscribe, useEventValue } from "@/lib/events";
 import { getMapState, setWorkArea } from "./useMapStore";
 
 // --- Uncommitted-diff counts (drives the Commit button + palette enablement) ---
 
-let cachedCommitDiff: CommitDiff = { added: 0, removed: 0, modified: 0 };
+const ZERO_DIFF: CommitDiff = { added: 0, removed: 0, modified: 0 };
+let cachedCommitDiff = ZERO_DIFF;
 
 export function hasCommitDiff(): boolean {
 	return (
@@ -16,26 +17,36 @@ export function hasCommitDiff(): boolean {
 	);
 }
 
+function publishCommitDiff(next: CommitDiff) {
+	if (
+		next.added === cachedCommitDiff.added &&
+		next.removed === cachedCommitDiff.removed &&
+		next.modified === cachedCommitDiff.modified
+	) {
+		return;
+	}
+	cachedCommitDiff = next;
+	emitEvent("commit-diff:changed");
+}
+
 /** Zero the cached counts (a commit just cleared the overlay). */
 export function resetCommitDiffCounts() {
-	cachedCommitDiff = { added: 0, removed: 0, modified: 0 };
+	publishCommitDiff(ZERO_DIFF);
+}
+
+async function refreshCommitDiff() {
+	if (!getMapState().map) return;
+	const [added, removed, modified] = await cmd.storeCommitDiff();
+	publishCommitDiff({ added, removed, modified });
 }
 
 export function useCommitDiff() {
-	const version = useEvent("store:changed");
+	const diff = useEventValue("commit-diff:changed", () => cachedCommitDiff);
 	useEffect(() => {
-		cmd.storeCommitDiff().then(([added, removed, modified]) => {
-			if (
-				added !== cachedCommitDiff.added ||
-				removed !== cachedCommitDiff.removed ||
-				modified !== cachedCommitDiff.modified
-			) {
-				cachedCommitDiff = { added, removed, modified };
-				emitEvent("store:changed");
-			}
-		});
-	}, [version]);
-	return cachedCommitDiff;
+		void refreshCommitDiff();
+		return subscribe("store:changed", () => void refreshCommitDiff());
+	}, []);
+	return diff;
 }
 
 // --- Commit-diff preview overlay ---

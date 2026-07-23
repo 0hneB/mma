@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useRef } from "react";
 import {
 	useMapState,
 	selectInverse,
@@ -11,6 +11,7 @@ import {
 	composeSelections,
 	decomposeChild,
 	removeChildFromSelection,
+	removeSelections,
 	toggleGhostSelection,
 	isolateSelection,
 	updateFilterSelection,
@@ -108,25 +109,35 @@ function useDragState() {
 	return activeDrag;
 }
 
-export function SelectionRow({
+/** An Invert wraps exactly one selection; its row renders the wrapped one. */
+function innerOf(selection: Selection): Selection {
+	return selection.props.type === "Invert" ? selection.props.selections[0] : selection;
+}
+
+export const SelectionRow = memo(function SelectionRow({
 	selection,
 	depth = 0,
 	parentKey,
-	onRemove,
 	inheritedGhost = false,
 }: {
 	selection: Selection;
 	depth?: number;
 	parentKey?: string | null;
-	onRemove?: () => void;
 	inheritedGhost?: boolean;
 }) {
 	const map = useMapState((s) => s.map);
-	const tagMap = useMapState((s) => s.tags);
-	const ghostedKeys = useMapState((s) => s.ghostedSelections);
+	const tagColor = useMapState((s) => {
+		const i = innerOf(selection);
+		return i.props.type === "Tag" ? s.tags[i.props.tagId]?.color : undefined;
+	});
 	const count = useMapState((s) => s.selectionCounts[selection.key] ?? 0);
 	const isTopLevel = depth === 0;
-	const ghosted = inheritedGhost || (isTopLevel && ghostedKeys.has(selection.key));
+	const ghosted = useMapState(
+		(s) => inheritedGhost || (depth === 0 && s.ghostedSelections.has(selection.key)),
+	);
+	const onRemove = parentKey
+		? () => removeChildFromSelection(parentKey, selection.key)
+		: () => removeSelections([selection.key]);
 	const [view, setView] = useState<"contextmenu" | "color">("contextmenu");
 	const [dropZone, setDropZone] = useState<"before" | "on" | "after" | null>(null);
 	const [editingFilter, setEditingFilter] = useState(false);
@@ -150,7 +161,7 @@ export function SelectionRow({
 	const fieldEntries = useExtraFieldKeys();
 
 	if (!map) return null;
-	const inner = selection.props.type === "Invert" ? selection.props.selections[0] : selection;
+	const inner = innerOf(selection);
 	const stepFilter = (() => {
 		const p = selection.props;
 		if (p.type !== "Filter") return null;
@@ -174,9 +185,7 @@ export function SelectionRow({
 	const showChildren = inner.props.type === "Intersection" || inner.props.type === "Union";
 	const isPoly = selection.props.type === "Polygon";
 	const colorBlockCss =
-		inner.props.type === "Tag"
-			? (tagMap[inner.props.tagId]?.color ?? rgbCss(selection.color))
-			: rgbCss(selection.color);
+		inner.props.type === "Tag" ? (tagColor ?? rgbCss(selection.color)) : rgbCss(selection.color);
 
 	const handleRename = () => {
 		if (selection.props.type !== "Polygon") return;
@@ -447,14 +456,10 @@ export function SelectionRow({
 												</DropdownMenu.Item>
 											</>
 										)}
-										{onRemove && (
-											<>
-												<DropdownMenu.Separator className="context-menu__separator" />
-												<DropdownMenu.Item className="context-menu__item" onSelect={onRemove}>
-													Deselect
-												</DropdownMenu.Item>
-											</>
-										)}
+										<DropdownMenu.Separator className="context-menu__separator" />
+										<DropdownMenu.Item className="context-menu__item" onSelect={onRemove}>
+											Deselect
+										</DropdownMenu.Item>
 									</>
 								)}
 							</DropdownMenu.Content>
@@ -473,11 +478,9 @@ export function SelectionRow({
 							<Icon path={ghosted ? mdiGhost : mdiGhostOutline} />
 						</button>
 					)}
-					{onRemove && (
-						<button className="icon-button" type="button" onClick={onRemove} aria-label="Deselect">
-							<Icon path={mdiClose} />
-						</button>
-					)}
+					<button className="icon-button" type="button" onClick={onRemove} aria-label="Deselect">
+						<Icon path={mdiClose} />
+					</button>
 				</span>
 			</div>
 			{editingFilter && selection.props.type === "Filter" && (
@@ -545,9 +548,8 @@ export function SelectionRow({
 						depth={depth + 1}
 						parentKey={selection.key}
 						inheritedGhost={ghosted}
-						onRemove={() => removeChildFromSelection(selection.key, child.key)}
 					/>
 				))}
 		</>
 	);
-}
+});

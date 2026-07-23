@@ -2769,6 +2769,7 @@ declare const EVENT_DEFS: {
     "route:changed": void;
     "import-markers:changed": void;
     "diff-markers:changed": void;
+    "commit-diff:changed": void;
 };
 export type EditorEventMap = typeof EVENT_DEFS;
 export type EditorEvent = keyof EditorEventMap;

@@ -53,6 +53,7 @@ const EVENT_DEFS = {
 	"route:changed": event<void>(),
 	"import-markers:changed": event<void>(),
 	"diff-markers:changed": event<void>(),
+	"commit-diff:changed": event<void>(),
 };
 
 export type EditorEventMap = typeof EVENT_DEFS;

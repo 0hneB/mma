@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import clsx from "clsx";
-import { useEvent } from "@/lib/events";
+import { useEventValue } from "@/lib/events";
 import { useSetting } from "@/store/settings";
 import {
 	getCommand,
@@ -30,7 +30,9 @@ export function PinnedToolbar({
 	const [openPanels, setOpenPanels] = useState<Set<string>>(new Set());
 	const [dragIdx, setDragIdx] = useState<number | null>(null);
 	const [dropIdx, setDropIdx] = useState<number | null>(null);
-	useEvent("store:changed");
+	useEventValue("store:changed", () =>
+		pinned.map((id) => (getCommand(id)?.enabled?.() === false ? "0" : "1")).join(""),
+	);
 
 	useDialog("inline-panel", (id) => {
 		if (panels[id])

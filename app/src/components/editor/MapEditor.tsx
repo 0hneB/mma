@@ -206,10 +206,10 @@ function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) 
 
 export function MapEditor() {
 	const map = useMapState((s) => s.map);
-	const tags = useMapState((s) => s.tags);
+	const hasDoclinks = useMapState((s) => doclinkedTags(s.tags).length > 0);
 	// Warm the doclink HTML cache once per map open, so the panel is instant.
 	const prefetchDocs = useEffectEvent(() => {
-		if (map) prefetchDoclinks(tags);
+		if (map) prefetchDoclinks(getMapState().tags);
 	});
 	useEffect(() => prefetchDocs(), [map?.meta.id]);
 	const workArea = useMapState((s) => s.workArea);
@@ -319,7 +319,6 @@ export function MapEditor() {
 	if (!map) return null;
 
 	const editorClasses = `page-map-editor${appSettings.fullscreenMap ? " fullscreen-map" : ""}`;
-	const hasDoclinks = doclinkedTags(tags).length > 0;
 
 	return (
 		<PanoViewerProvider>
