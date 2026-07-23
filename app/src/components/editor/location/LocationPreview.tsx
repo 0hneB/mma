@@ -19,7 +19,7 @@ import {
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
-import { mdiChevronLeft, mdiChevronRight, mdiClose, mdiPlus } from "@mdi/js";
+import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
 import { SV_SEARCH_RADIUS } from "@/lib/sv/constants";
 import type { Tag } from "@/bindings.gen";
 import {
@@ -36,7 +36,8 @@ import {
 	useVisibleTags,
 	useTagCounts,
 } from "@/store/useMapStore";
-import { sortTagsByMode, tagChipStyle, appendTagName } from "@/lib/util/util";
+import { sortTagsByMode, tagColorFor, appendTagName } from "@/lib/util/util";
+import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { displayTagName } from "@/store/selections";
 import { ReviewBar } from "@/components/editor/location/ReviewBar";
 import {
@@ -60,7 +61,6 @@ import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { PluginLocationPanels } from "@/plugins/PluginPanels";
 import { relativeTime } from "@/lib/util/format";
-import { textColorFor } from "@/lib/util/color";
 import { type PanoReference, resolvePano, fetchPanoData } from "@/lib/sv/lookup";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { toast } from "@/lib/util/toast";
@@ -158,16 +158,14 @@ const TagEditor = memo(function TagEditor({
 		<>
 			<ul className="tag-list">
 				{pendingTags.map((name) => (
-					<li key={name} className="tag is-small has-button" style={tagChipStyle(name, allTags)}>
-						<button
-							className="button tag__button tag__button--delete"
-							onClick={() => handleRemoveTag(name)}
-							type="button"
-						>
-							<Icon path={mdiClose} size={16} />
-						</button>
-						<span className="tag__text">{displayTagName(name)}</span>
-					</li>
+					<TagPill
+						as="li"
+						key={name}
+						small
+						color={tagColorFor(name, allTags)}
+						label={displayTagName(name)}
+						button={<TagPillButton variant="delete" onClick={() => handleRemoveTag(name)} />}
+					/>
 				))}
 				<li>
 					<form className="form-add-tag" onSubmit={handleAddTag}>
@@ -195,23 +193,14 @@ const TagEditor = memo(function TagEditor({
 				>
 					<ol className="tag-list">
 						{suggestions.map((t) => (
-							<li
+							<TagPill
+								as="li"
 								key={t.id}
-								className="tag is-small has-button"
-								style={{
-									backgroundColor: t.color,
-									color: textColorFor(t.color),
-								}}
-							>
-								<button
-									className="button tag__button tag__button--add"
-									onClick={() => handleSuggestionClick(t)}
-									type="button"
-								>
-									<Icon path={mdiPlus} size={16} />
-								</button>
-								<span className="tag__text">{displayTagName(t.name)}</span>
-							</li>
+								small
+								color={t.color}
+								label={displayTagName(t.name)}
+								button={<TagPillButton variant="add" onClick={() => handleSuggestionClick(t)} />}
+							/>
 						))}
 					</ol>
 				</div>

@@ -10,7 +10,7 @@ import {
 	removeLocations,
 } from "@/store/useMapStore";
 import { svThumbnailUrl } from "@/lib/sv/lookup";
-import { textColorFor } from "@/lib/util/color";
+import { TagPill } from "@/components/primitives/TagPill";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 
@@ -50,18 +50,7 @@ function DuplicateItem({
 						{location.tags.map((tid) => {
 							const tag = tagMap[tid];
 							if (!tag) return null;
-							return (
-								<span
-									key={tid}
-									className="tag is-small"
-									style={{
-										backgroundColor: tag.color,
-										color: textColorFor(tag.color),
-									}}
-								>
-									<span className="tag__text">{tag.name}</span>
-								</span>
-							);
+							return <TagPill key={tid} small color={tag.color} label={tag.name} />;
 						})}
 					</>
 				) : (

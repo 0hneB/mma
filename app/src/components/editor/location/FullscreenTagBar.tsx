@@ -1,10 +1,8 @@
 import { useState } from "react";
 import type { Tag } from "@/bindings.gen";
-import { Icon } from "@/components/primitives/Icon";
-import { mdiClose } from "@mdi/js";
 import { getTagCounts } from "@/store/useMapStore";
-import { sortTagsByMode, tagChipStyle, appendTagName } from "@/lib/util/util";
-import { textColorFor } from "@/lib/util/color";
+import { sortTagsByMode, tagColorFor, appendTagName } from "@/lib/util/util";
+import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { useSetting } from "@/store/settings";
 import { displayTagName } from "@/store/selections";
 
@@ -58,16 +56,19 @@ export function FullscreenTagBar({
 		>
 			<ul className="tag-list">
 				{pendingTags.map((name) => (
-					<li key={name} className="tag is-small has-button" style={tagChipStyle(name, tags)}>
-						<button
-							className="button tag__button tag__button--delete"
-							onClick={() => onChangeTags(pendingTags.filter((n) => n !== name))}
-							type="button"
-						>
-							<Icon path={mdiClose} size={16} />
-						</button>
-						<span className="tag__text">{label(name)}</span>
-					</li>
+					<TagPill
+						as="li"
+						key={name}
+						small
+						color={tagColorFor(name, tags)}
+						label={label(name)}
+						button={
+							<TagPillButton
+								variant="delete"
+								onClick={() => onChangeTags(pendingTags.filter((n) => n !== name))}
+							/>
+						}
+					/>
 				))}
 			</ul>
 			<form className="form-add-tag" onSubmit={handleAdd}>
@@ -88,18 +89,19 @@ export function FullscreenTagBar({
 			{(focused || hovered) && filtered.length > 0 && (
 				<div className="fullscreen-tagbar__palette">
 					{filtered.map((t) => (
-						<button
+						<TagPill
+							as="button"
 							key={t.id}
-							className="tag is-small fullscreen-tagbar__palette-tag"
-							style={{ backgroundColor: t.color, color: textColorFor(t.color) }}
-							onMouseDown={(e) => {
+							small
+							color={t.color}
+							label={label(t.name)}
+							className="fullscreen-tagbar__palette-tag"
+							type="button"
+							onMouseDown={(e: React.MouseEvent) => {
 								e.preventDefault(); // don't move focus: palette stays open, hotkeys keep working
 								toggleTag(t);
 							}}
-							type="button"
-						>
-							<span className="tag__text">{label(t.name)}</span>
-						</button>
+						/>
 					))}
 				</div>
 			)}

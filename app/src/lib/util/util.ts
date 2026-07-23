@@ -2,7 +2,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import type { Tag } from "@/bindings.gen";
 import type { TagSortMode } from "@/types";
 import { cmd } from "@/lib/commands";
-import { colorForName, textColorFor } from "@/lib/util/color";
+import { colorForName } from "@/lib/util/color";
 
 /** Base URL for a Tauri custom URI scheme. Windows WebView2 uses http://<scheme>.localhost/. */
 export function schemeBase(scheme: string): string {
@@ -185,14 +185,10 @@ export function sortTagsByMode(
 	);
 }
 
-/** Style for a staged tag chip. An existing tag uses its stored color. */
-export function tagChipStyle(
-	name: string,
-	tags: Tag[],
-): { backgroundColor: string; color: string } {
+/** Color for a tag named `name`. An existing tag uses its stored color. */
+export function tagColorFor(name: string, tags: Tag[]): string {
 	const existing = tags.find((t) => t.name.toLowerCase() === name.toLowerCase());
-	const color = existing?.color ?? colorForName(name);
-	return { backgroundColor: color, color: textColorFor(color) };
+	return existing?.color ?? colorForName(name);
 }
 
 /** Add a name to a staged list: dedup case-insensitively, normalizing to an existing tag's

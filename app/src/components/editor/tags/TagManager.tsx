@@ -32,7 +32,8 @@ import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { fmt } from "@/lib/util/format";
-import { textColorFor, hexToHsl, hslToHex } from "@/lib/util/color";
+import { hexToHsl, hslToHex } from "@/lib/util/color";
+import { TagPill } from "@/components/primitives/TagPill";
 import { useSetting, setSetting } from "@/store/settings";
 import { sortTagsByMode } from "@/lib/util/util";
 import { useMapSetting } from "@/store/useMapSetting";
@@ -204,13 +205,13 @@ export function TagManager() {
 				collapsedAddons={
 					<ul className="tag-list is-collapsed">
 						{sortedTags.slice(0, 20).map((tag) => (
-							<li
+							<TagPill
+								as="li"
 								key={tag.id}
-								className="tag"
-								style={{ backgroundColor: tag.color, color: textColorFor(tag.color) }}
-							>
-								{tag.name} ({fmt.format(tagCounts[tag.id] ?? 0)})
-							</li>
+								small
+								color={tag.color}
+								label={`${tag.name} (${fmt.format(tagCounts[tag.id] ?? 0)})`}
+							/>
 						))}
 					</ul>
 				}

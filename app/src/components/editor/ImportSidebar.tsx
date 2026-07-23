@@ -5,12 +5,10 @@ import { useEventValue } from "@/lib/events";
 import { fmt } from "@/lib/util/format";
 import { log } from "@/lib/util/log";
 import { trace } from "@/lib/util/debug";
-import { textColorFor } from "@/lib/util/color";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
-import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
-import { mdiClose } from "@mdi/js";
+import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 
 const FIELD_PREFS_KEY = "import-field-prefs";
 const AUTOCOMMIT_ACK_KEY = "import-autocommit-ack";
@@ -121,13 +119,7 @@ export function ImportSidebar() {
 					<span className="import-sidebar__label">Tags in file</span>
 					<ul className="tag-list">
 						{preview.tags.map((t) => (
-							<li
-								key={t.id}
-								className="tag is-small"
-								style={{ backgroundColor: t.color, color: textColorFor(t.color) }}
-							>
-								<span className="tag__text">{t.name}</span>
-							</li>
+							<TagPill as="li" key={t.id} small color={t.color} label={t.name} />
 						))}
 					</ul>
 				</div>
@@ -152,19 +144,13 @@ export function ImportSidebar() {
 				<span className="import-sidebar__label">Tag all imported locations</span>
 				<ul className="tag-list">
 					{bulkTag ? (
-						<li
-							className="tag is-small has-button"
-							style={{ backgroundColor: bulkColor, color: textColorFor(bulkColor) }}
-						>
-							<button
-								className="button tag__button tag__button--delete"
-								onClick={() => setBulkTag(null)}
-								type="button"
-							>
-								<Icon path={mdiClose} size={16} />
-							</button>
-							<span className="tag__text">{bulkTag}</span>
-						</li>
+						<TagPill
+							as="li"
+							small
+							color={bulkColor}
+							label={bulkTag}
+							button={<TagPillButton variant="delete" onClick={() => setBulkTag(null)} />}
+						/>
 					) : (
 						<li>
 							<form className="form-add-tag" onSubmit={commitBulkTag}>

@@ -10,7 +10,9 @@ import {
 	useContext,
 } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import * as ContextMenu from "@radix-ui/react-context-menu";
+import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";
 import { textColorFor, rgbToHex } from "@/lib/util/color";
@@ -498,26 +500,17 @@ export function TagTreeView({
 						ref={previewRef}
 						style={{ left: dragPosRef.current.x - 4, top: dragPosRef.current.y - 4 }}
 					>
-						<li
-							className="tag has-button"
-							style={{ backgroundColor: dragLeaf.color, color: textColorFor(dragLeaf.color) }}
+						<TagPill
+							as="li"
+							color={dragLeaf.color}
+							label={dragLeaf.label}
+							count={dragLeaf.count}
+							button={<TagPillButton variant="edit" tabIndex={-1} />}
 						>
-							<button className="button tag__button tag__button--edit" type="button" tabIndex={-1}>
-								<Icon path={mdiPencil} />
-							</button>
-							<label className="tag__text">
-								{dragLeaf.label}
-								<small
-									className="mono"
-									style={{ marginLeft: ".375rem", fontWeight: 600, verticalAlign: "middle" }}
-								>
-									{fmt.format(dragLeaf.count)}
-								</small>
-							</label>
 							{dragLeaf.extra > 0 && (
 								<span className="tag-drag-preview__count">+{dragLeaf.extra}</span>
 							)}
-						</li>
+						</TagPill>
 					</ul>,
 					document.body,
 				)}
@@ -809,44 +802,37 @@ const TagTreeLeaf = memo(function TagTreeLeaf({
 	const { onEditTag, onRenameTag, onAddAlias, onRemoveAlias, onRowClick, drag } =
 		useContext(TagTreeCtx);
 	const tag = node.tag!;
-	const bg = tag.color;
-	const fg = textColorFor(bg);
 
 	return (
 		<ContextMenu.Root modal={false}>
 			<ContextMenu.Trigger asChild>
-				<li
-					className={`tag has-button${isSelected ? " is-selected" : ""}${node.isAlias ? " is-alias" : ""}${isDragging ? " is-dragging" : ""}`}
-					style={{
-						backgroundColor: bg,
-						color: fg,
-						cursor: "pointer",
-					}}
+				<TagPill
+					as="li"
+					color={tag.color}
+					label={node.segment}
+					count={count}
+					className={clsx(
+						isSelected && "is-selected",
+						node.isAlias && "is-alias",
+						isDragging && "is-dragging",
+					)}
+					style={{ cursor: "pointer" }}
 					data-tag-id={tag.id}
-					onClick={(e) => onRowClick(node, e.shiftKey, e.altKey)}
-					onMouseDown={(e) => drag.onMouseDown(e, node)}
-					onMouseMove={(e) => drag.onMouseMove(e, node, e.currentTarget, true)}
-				>
-					<button
-						className="button tag__button tag__button--edit"
-						onClick={(e) => {
-							e.stopPropagation();
-							onEditTag(node);
-						}}
-						type="button"
-					>
-						<Icon path={mdiPencil} />
-					</button>
-					<label className="tag__text">
-						{node.segment}
-						<small
-							className="mono"
-							style={{ marginLeft: ".375rem", fontWeight: 600, verticalAlign: "middle" }}
-						>
-							{fmt.format(count)}
-						</small>
-					</label>
-				</li>
+					onClick={(e: React.MouseEvent) => onRowClick(node, e.shiftKey, e.altKey)}
+					onMouseDown={(e: React.MouseEvent) => drag.onMouseDown(e, node)}
+					onMouseMove={(e: React.MouseEvent<HTMLElement>) =>
+						drag.onMouseMove(e, node, e.currentTarget, true)
+					}
+					button={
+						<TagPillButton
+							variant="edit"
+							onClick={(e) => {
+								e.stopPropagation();
+								onEditTag(node);
+							}}
+						/>
+					}
+				/>
 			</ContextMenu.Trigger>
 			<ContextMenu.Portal>
 				<TagContextMenuContent
