@@ -23,20 +23,20 @@ export interface ImportStaging {
 	source: "file" | "paste";
 }
 
-let importStaging: ImportStaging | null = null;
-let importPreviewPositions = new Float32Array(0);
+const EMPTY_IMPORT = { staging: null, positions: new Float32Array(0) };
+let importState: { staging: ImportStaging | null; positions: Float32Array } = EMPTY_IMPORT;
+
 export function getImportPreviewPositions() {
-	return importPreviewPositions;
+	return importState.positions;
 }
 
 export function getImportStaging() {
-	return importStaging;
+	return importState.staging;
 }
 
 /** Reset import state (called when map edit state is cleared). */
 export function resetImportState() {
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
+	importState = EMPTY_IMPORT;
 }
 
 async function setImportStaging(preview: EditorImportPreview, source: "file" | "paste") {
@@ -48,8 +48,7 @@ async function setImportStaging(preview: EditorImportPreview, source: "file" | "
 	} catch (e) {
 		log.error("[import] preview positions fetch failed:", e);
 	}
-	importStaging = { preview, source };
-	importPreviewPositions = positions;
+	importState = { staging: { preview, source }, positions };
 	emitEvent("import-markers:changed");
 	setWorkArea("import");
 	if (getSettings().panToImported)
@@ -68,7 +67,7 @@ export async function beginImportPaste(text: string) {
 
 /** Commit the staged import, optionally dropping fields and applying a bulk tag. */
 export async function confirmImport(droppedFields: string[], tagName?: string) {
-	if (!importStaging) return null;
+	if (!importState.staging) return null;
 	await waitForInflightPersist();
 
 	const r = await cmd.storeImportFile(droppedFields, tagName?.trim() || null);
@@ -94,8 +93,7 @@ export async function confirmImport(droppedFields: string[], tagName?: string) {
 
 /** Discard the staged import without committing. */
 export function cancelImport() {
-	importStaging = null;
-	importPreviewPositions = new Float32Array(0);
+	importState = EMPTY_IMPORT;
 	emitEvent("import-markers:changed");
 	const active = getMapState().activeLocation;
 	if ((active && isVirtualLocation(active)) || getMapState().workArea === "import") {
