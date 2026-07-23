@@ -1,14 +1,12 @@
 ## v0.8.1 - 2026-07-22
-- **Sync maps with map-making.app and GeoGuessr** - link a map, then sync manually or live while you edit; conflicting edits are held for review in the sidebar
+- **Sync maps with map-making.app and GeoGuessr**
 - First sync offers merge or mirror when both sides already have locations
-- GeoGuessr sync signs in with your account and edits the map's draft; publishing to players stays a manual step on geoguessr.com
 - Sync connections show provider icons, your account avatar, and a link to open the remote map in the browser
-- New subdivision enrichment field (state/province), computed offline
+- New subdivision enrichment field
 - Review bar and geocoding info in fullscreen
 - Fullscreen tag palette opens on hover
 - Plugin installs and updates that require a newer app version are blocked instead of breaking
-- Plugins can access the Google map again (getGoogleMap)
-- Movement mode now applies to keyboard controls: NMPZ blocks pan and zoom keys, moving is required to step
+- Movement mode now applies to keyboard controls
 - Fixed tooltips overlapping during handoff and arrow color seams
 - Fixed a clipped tag delete outline and a stray scrollbar in the location preview
 
