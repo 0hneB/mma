@@ -1546,14 +1546,6 @@ declare const getVisibleTags: () => Tag[];
 /** Raw by-id tag lookup — includes soft-deleted ghosts so stale references
  *  (e.g. a selection whose tag just died) still resolve to a name. */
 declare function getTag(id: number): Tag | undefined;
-declare function hasCommitDiff(): boolean;
-declare function useCommitDiff(): {
-    added: number;
-    removed: number;
-    modified: number;
-};
-/** Number of uncommitted changes (the overlay size). */
-declare function getDirtyCount(): Promise<number>;
 /** Schedule an autosave shortly. Mutations call this automatically; debounced. */
 declare function scheduleSave(): void;
 declare function cancelAutosave(): void;
@@ -1757,12 +1749,10 @@ declare const store_fetchLocation: typeof fetchLocation;
 declare const store_fetchLocationsByIds: typeof fetchLocationsByIds;
 declare const store_flushSave: typeof flushSave;
 declare const store_getActiveSelections: typeof getActiveSelections;
-declare const store_getDirtyCount: typeof getDirtyCount;
 declare const store_getMapState: typeof getMapState;
 declare const store_getSelectedTagIds: typeof getSelectedTagIds;
 declare const store_getTag: typeof getTag;
 declare const store_getVisibleTags: typeof getVisibleTags;
-declare const store_hasCommitDiff: typeof hasCommitDiff;
 declare const store_initStore: typeof initStore;
 declare const store_isolateSelection: typeof isolateSelection;
 declare const store_mapOpen: typeof mapOpen;
@@ -1810,11 +1800,10 @@ declare const store_updateLocations: typeof updateLocations;
 declare const store_updateMapLabels: typeof updateMapLabels;
 declare const store_updateMapMeta: typeof updateMapMeta;
 declare const store_updateTags: typeof updateTags;
-declare const store_useCommitDiff: typeof useCommitDiff;
 declare const store_useMapState: typeof useMapState;
 declare const store_waitForInflightPersist: typeof waitForInflightPersist;
 declare namespace store {
-  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, closeMap$1 as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveSelections as getActiveSelections, store_getDirtyCount as getDirtyCount, store_getMapState as getMapState, store_getSelectedTagIds as getSelectedTagIds, store_getTag as getTag, store_getVisibleTags as getVisibleTags, store_hasCommitDiff as hasCommitDiff, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, openMap$1 as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useCommitDiff as useCommitDiff, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
+  export { store_addLocations as addLocations, store_addSelections as addSelections, store_addTagToLocations as addTagToLocations, store_cancelAutosave as cancelAutosave, store_checkoutCommit as checkoutCommit, store_closeDuplicates as closeDuplicates, closeMap$1 as closeMap, store_commitMap as commitMap, store_composeSelections as composeSelections, store_createTags as createTags, store_decomposeChild as decomposeChild, store_deleteField as deleteField, store_deleteTags as deleteTags, store_discardOpenMap as discardOpenMap, store_duplicateLocation as duplicateLocation, store_emitBitmask as emitBitmask, store_exitPluginMode as exitPluginMode, store_fetchAllLocations as fetchAllLocations, store_fetchLocation as fetchLocation, store_fetchLocationsByIds as fetchLocationsByIds, store_flushSave as flushSave, store_getActiveSelections as getActiveSelections, store_getMapState as getMapState, store_getSelectedTagIds as getSelectedTagIds, store_getTag as getTag, store_getVisibleTags as getVisibleTags, store_initStore as initStore, store_isolateSelection as isolateSelection, store_mapOpen as mapOpen, store_mergeDuplicates as mergeDuplicates, store_mutate as mutate, store_openDuplicateLocation as openDuplicateLocation, openMap$1 as openMap, store_openStagedLocation as openStagedLocation, store_previewDuplicateGroups as previewDuplicateGroups, store_previewVirtualLocation as previewVirtualLocation, store_pruneDuplicates as pruneDuplicates, store_redo as redo, store_removeChildFromSelection as removeChildFromSelection, store_removeDuplicate as removeDuplicate, store_removeLocations as removeLocations, store_removeSelections as removeSelections, store_removeTagFromAllLocations as removeTagFromAllLocations, store_removeTagFromLocations as removeTagFromLocations, store_renameField as renameField, store_renameMap as renameMap, store_reorderSelection as reorderSelection, store_reorderTags as reorderTags, store_resetSelections as resetSelections, store_resolveLocation as resolveLocation, store_scheduleAutoCommit as scheduleAutoCommit, store_scheduleSave as scheduleSave, store_selectIntersection as selectIntersection, store_selectInverse as selectInverse, store_selectRandomFromSelection as selectRandomFromSelection, store_selectSpacedFromSelection as selectSpacedFromSelection, store_selectUnion as selectUnion, store_setActiveLocation as setActiveLocation, store_setMapExtraFields as setMapExtraFields, store_setPluginMode as setPluginMode, store_setPolygonName as setPolygonName, store_setSelectedLocationIds as setSelectedLocationIds, store_setSelectionColors as setSelectionColors, store_setWorkArea as setWorkArea, store_toggleGhostAllSelections as toggleGhostAllSelections, store_toggleGhostSelection as toggleGhostSelection, store_toggleManualSelection as toggleManualSelection, store_toggleTagSelections as toggleTagSelections, store_undo as undo, store_updateFilterSelection as updateFilterSelection, store_updateLocations as updateLocations, store_updateMapLabels as updateMapLabels, store_updateMapMeta as updateMapMeta, store_updateTags as updateTags, store_useMapState as useMapState, store_waitForInflightPersist as waitForInflightPersist };
   export type { store_MapState as MapState };
 }
 
@@ -2385,7 +2374,7 @@ export interface ImportStaging {
     preview: EditorImportPreview;
     source: "file" | "paste";
 }
-declare function getImportPreviewPositions(): Float32Array<ArrayBuffer>;
+declare function getImportPreviewPositions(): Float32Array<ArrayBufferLike>;
 declare function getImportStaging(): ImportStaging | null;
 /** Reset import state (called when map edit state is cleared). */
 declare function resetImportState(): void;
@@ -2411,6 +2400,10 @@ declare namespace importStaging {
   export type { importStaging_ImportStaging as ImportStaging };
 }
 
+declare function hasCommitDiff(): boolean;
+/** Zero the cached counts (a commit just cleared the overlay). */
+declare function resetCommitDiffCounts(): void;
+declare function useCommitDiff(): CommitDiff;
 /** Ephemeral commit-diff overlay shown while `workArea === "diff"`. Position arrays are
  *  interleaved `[lng, lat]` f32; `diff-markers:changed` fires to rebuild the layers. */
 export interface CommitDiffPreview {
@@ -2445,9 +2438,12 @@ declare const commitDiff_categorizeCommitDelta: typeof categorizeCommitDelta;
 declare const commitDiff_diffPositions: typeof diffPositions;
 declare const commitDiff_endCommitDiffPreview: typeof endCommitDiffPreview;
 declare const commitDiff_getCommitDiffPreview: typeof getCommitDiffPreview;
+declare const commitDiff_hasCommitDiff: typeof hasCommitDiff;
+declare const commitDiff_resetCommitDiffCounts: typeof resetCommitDiffCounts;
 declare const commitDiff_resetCommitDiffState: typeof resetCommitDiffState;
+declare const commitDiff_useCommitDiff: typeof useCommitDiff;
 declare namespace commitDiff {
-  export { commitDiff_beginCommitDiffPreview as beginCommitDiffPreview, commitDiff_categorizeCommitDelta as categorizeCommitDelta, commitDiff_diffPositions as diffPositions, commitDiff_endCommitDiffPreview as endCommitDiffPreview, commitDiff_getCommitDiffPreview as getCommitDiffPreview, commitDiff_resetCommitDiffState as resetCommitDiffState };
+  export { commitDiff_beginCommitDiffPreview as beginCommitDiffPreview, commitDiff_categorizeCommitDelta as categorizeCommitDelta, commitDiff_diffPositions as diffPositions, commitDiff_endCommitDiffPreview as endCommitDiffPreview, commitDiff_getCommitDiffPreview as getCommitDiffPreview, commitDiff_hasCommitDiff as hasCommitDiff, commitDiff_resetCommitDiffCounts as resetCommitDiffCounts, commitDiff_resetCommitDiffState as resetCommitDiffState, commitDiff_useCommitDiff as useCommitDiff };
   export type { commitDiff_CommitDiffPreview as CommitDiffPreview };
 }
 
@@ -2963,11 +2959,14 @@ declare function getAllSelections(): Selection[];
 declare function getGhostedSelections(): ReadonlySet<string>;
 /** @deprecated v0.8.2. Use `MMA.getActiveSelections()`. */
 declare function getSelections(): Selection[];
+/** @deprecated v0.8.2. Read `(await MMA.cmd.storeGetSummary()).dirtyCount`. */
+declare function getDirtyCount(): Promise<number>;
 
 declare const legacy_getActiveLocation: typeof getActiveLocation;
 declare const legacy_getAllSelections: typeof getAllSelections;
 declare const legacy_getCurrentMap: typeof getCurrentMap;
 declare const legacy_getCurrentMapId: typeof getCurrentMapId;
+declare const legacy_getDirtyCount: typeof getDirtyCount;
 declare const legacy_getGhostedSelections: typeof getGhostedSelections;
 declare const legacy_getGoogleMap: typeof getGoogleMap;
 declare const legacy_getKnownFieldKeys: typeof getKnownFieldKeys;
@@ -2982,6 +2981,7 @@ declare namespace legacy {
     legacy_getAllSelections as getAllSelections,
     legacy_getCurrentMap as getCurrentMap,
     legacy_getCurrentMapId as getCurrentMapId,
+    legacy_getDirtyCount as getDirtyCount,
     legacy_getGhostedSelections as getGhostedSelections,
     legacy_getGoogleMap as getGoogleMap,
     legacy_getKnownFieldKeys as getKnownFieldKeys,
