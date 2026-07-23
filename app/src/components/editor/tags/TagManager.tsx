@@ -73,10 +73,9 @@ export function TagManager() {
 	const [renamingTag, setRenamingTag] = useState<{ id: number; name: string } | null>(null);
 	const [collapsed, setCollapsed] = useState(false);
 
-	// New array identity only when the map object changes (mutations), NOT on selection
-	// toggles -- keeps sortedTags stable so memoized rows can skip re-rendering.
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const storeTags = useMemo(() => getVisibleTags(), [map]);
+	// memoOnRefs keys this on `state.tags`, so the array identity is stable across
+	// selection toggles (which never touch tags) and fresh on any tag mutation.
+	const storeTags = useMapState(getVisibleTags);
 
 	// Optimistic overlay: `commitTags`/`commitReorder` apply pending name/color/order patches
 	// over the store tags for the lifetime of the mutation; React drops them once the transition
