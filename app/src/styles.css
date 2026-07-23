@@ -168,15 +168,6 @@
 	position: absolute;
 }
 /* Radix Tooltip */
-[data-radix-popper-content-wrapper]:has(> .tooltip) {
-	pointer-events: none !important;
-}
-/* if two tooltips coexist for a frame during handoff, only the newest shows */
-[data-radix-popper-content-wrapper]:has(> .tooltip):has(
-		~ [data-radix-popper-content-wrapper] > .tooltip
-	) {
-	visibility: hidden;
-}
 .tooltip {
 	color: var(--text-1);
 	font-size: 13px;

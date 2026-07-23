@@ -13,7 +13,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import * as ContextMenu from "@radix-ui/react-context-menu";
+import { ContextMenu } from "@/components/primitives/Menu";
 
 export interface PanelDef {
 	render: (onClose: () => void) => ReactNode;

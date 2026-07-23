@@ -11,7 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
-import * as ContextMenu from "@radix-ui/react-context-menu";
+import { ContextMenu } from "@/components/primitives/Menu";
 import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";

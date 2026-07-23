@@ -9,7 +9,7 @@ import {
 } from "react";
 import { cmd } from "@/lib/commands";
 import { HslColorPicker } from "react-colorful";
-import * as ContextMenu from "@radix-ui/react-context-menu";
+import { ContextMenu } from "@/components/primitives/Menu";
 import {
 	useMapState,
 	getMapState,

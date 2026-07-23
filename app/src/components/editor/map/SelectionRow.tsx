@@ -44,7 +44,7 @@ import {
 	mdiGhost,
 	mdiGhostOutline,
 } from "@mdi/js";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu } from "@/components/primitives/Menu";
 import { fmt } from "@/lib/util/format";
 import { rgbCss } from "@/lib/util/color";
 import { getMapHost } from "@/lib/map/mapState";

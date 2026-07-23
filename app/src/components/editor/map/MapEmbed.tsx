@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import * as ContextMenu from "@radix-ui/react-context-menu";
+import { ContextMenu } from "@/components/primitives/Menu";
 import {
 	mdiGoogleStreetView,
 	mdiMapMarker,
