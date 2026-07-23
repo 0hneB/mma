@@ -105,6 +105,12 @@ declare const commands: {
     downloadBorderFile: (level: string) => Promise<null>;
     borderLookup: (lat: number, lng: number, level: string) => Promise<PolygonGeometry | null>;
     /**
+     *  Classify each `(lat, lng)` to the name of its containing feature at `level`
+     *  (subdivision names for "adm1"). `None` for points outside every feature.
+     *  Same bbox-prefiltered parallel scan as `tally_countries`, but per-point names.
+     */
+    borderClassify: (level: string, points: ([number, number])[]) => Promise<(string | null)[]>;
+    /**
      *  Finds the nearest city/country for a coordinate. O(log n) k-d tree lookup.
      *  Always returns `Some` -- the GeoNames dataset covers every landmass.
      */
@@ -2356,6 +2362,8 @@ declare const DEFAULTS: {
     fullscreenMinimapScale: number;
     showFullscreenTagbar: boolean;
     showFullscreenDatePicker: boolean;
+    showFullscreenReviewBar: boolean;
+    showFullscreenGeocode: boolean;
     customCss: string;
     enableSeen: boolean;
     enableSeenThumbnails: boolean;
@@ -3070,6 +3078,8 @@ declare const surface: {
         fullscreenMinimapScale: number;
         showFullscreenTagbar: boolean;
         showFullscreenDatePicker: boolean;
+        showFullscreenReviewBar: boolean;
+        showFullscreenGeocode: boolean;
         customCss: string;
         enableSeen: boolean;
         enableSeenThumbnails: boolean;
