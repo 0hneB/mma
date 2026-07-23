@@ -13,6 +13,7 @@ import {
 } from "@/store/mapList";
 import { openMapWindow } from "@/lib/window";
 import { log, fireAndForget } from "@/lib/util/log";
+import { cmpVersion } from "@/lib/util/util";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { cmd } from "@/lib/commands";
 import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
@@ -72,17 +73,6 @@ function parseChangelog(md: string): ChangelogSection[] {
 }
 
 declare const __APP_VERSION__: string;
-
-// Compare two version strings (e.g. "0.6.1"). Returns >0 if a > b.
-function cmpVersion(a: string, b: string): number {
-	const pa = a.split(".").map(Number);
-	const pb = b.split(".").map(Number);
-	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-		const d = (pa[i] ?? 0) - (pb[i] ?? 0);
-		if (d) return d;
-	}
-	return 0;
-}
 
 // Inline markdown: **bold**, *italic*, `code`, [text](url).
 function renderInline(text: string, kb: string): React.ReactNode[] {

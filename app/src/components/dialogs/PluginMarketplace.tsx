@@ -14,6 +14,7 @@ import {
 	deactivatePlugin,
 	unregisterPlugin,
 	needsUpdate,
+	isPluginCompatible,
 } from "@/plugins/registry";
 import type { Plugin, PluginManifest, PluginSidecarRef } from "@/plugins/registry";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
@@ -23,6 +24,8 @@ import { log } from "@/lib/util/log";
 
 const REGISTRY_URL = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins/registry.json";
 
+declare const __APP_VERSION__: string;
+
 interface RegistryEntry {
 	id: string;
 	name: string;
@@ -31,6 +34,7 @@ interface RegistryEntry {
 	version: string;
 	main: string;
 	comingSoon?: boolean;
+	minAppVersion?: string;
 	sidecar?: PluginSidecarRef | null;
 }
 
@@ -149,6 +153,7 @@ function AdditionalCard({
 	updatable,
 	latestVersion,
 	comingSoon,
+	requiresApp,
 	installProgress,
 	onInstall,
 	onEnable,
@@ -165,6 +170,7 @@ function AdditionalCard({
 	updatable: boolean;
 	latestVersion?: string;
 	comingSoon?: boolean;
+	requiresApp?: string;
 	installProgress?: number;
 	onInstall: (id: string) => void;
 	onEnable: (id: string) => void;
@@ -210,8 +216,8 @@ function AdditionalCard({
 						<button
 							className="plugin-card__action-btn plugin-card__action-btn--install"
 							onClick={handleInstall}
-							disabled={busy}
-							title="Install"
+							disabled={busy || !!requiresApp}
+							title={requiresApp ? `Requires app v${requiresApp} or newer` : "Install"}
 							aria-label="Install"
 						>
 							<Icon path={mdiDownload} size={16} />
@@ -228,8 +234,14 @@ function AdditionalCard({
 						<button
 							className="plugin-card__action-btn plugin-card__action-btn--update"
 							onClick={handleUpdate}
-							disabled={busy}
-							title={latestVersion ? `Update to v${latestVersion}` : "Update"}
+							disabled={busy || !!requiresApp}
+							title={
+								requiresApp
+									? `Update requires app v${requiresApp} or newer`
+									: latestVersion
+										? `Update to v${latestVersion}`
+										: "Update"
+							}
 							aria-label="Update"
 						>
 							<Icon path={mdiRefresh} size={16} />
@@ -263,6 +275,7 @@ interface AdditionalEntry {
 	updatable: boolean;
 	latestVersion?: string;
 	comingSoon?: boolean;
+	requiresApp?: string;
 }
 
 export function PluginMarketplace({
@@ -340,6 +353,9 @@ export function PluginMarketplace({
 					updatable,
 					latestVersion: r.version,
 					comingSoon: r.comingSoon,
+					requiresApp: isPluginCompatible(r.minAppVersion, __APP_VERSION__)
+						? undefined
+						: r.minAppVersion,
 				};
 				if (isInstalled) installed.push(entry);
 				else fromRegistry.push(entry);

@@ -14,6 +14,7 @@ import {
 	deactivatePlugin,
 	deactivatePlugins,
 	setPendingManifest,
+	isPluginCompatible,
 } from "@/plugins/registry";
 import { subscribe } from "@/lib/events";
 import {
@@ -241,6 +242,28 @@ describe("plugins:changed event", () => {
 		expect(count).toBe(5);
 
 		unsub();
+	});
+});
+
+describe("isPluginCompatible", () => {
+	it("no declared minimum is always compatible", () => {
+		expect(isPluginCompatible(undefined, "0.8.1")).toBe(true);
+	});
+
+	it("app at or above the minimum is compatible", () => {
+		expect(isPluginCompatible("0.8.1", "0.8.1")).toBe(true);
+		expect(isPluginCompatible("0.8.1", "0.9.0")).toBe(true);
+		expect(isPluginCompatible("0.8.1", "1.0.0")).toBe(true);
+	});
+
+	it("app below the minimum is incompatible", () => {
+		expect(isPluginCompatible("0.8.1", "0.8.0")).toBe(false);
+		expect(isPluginCompatible("1.0.0", "0.9.9")).toBe(false);
+	});
+
+	it("missing components compare as zero", () => {
+		expect(isPluginCompatible("0.8", "0.8.0")).toBe(true);
+		expect(isPluginCompatible("0.8.0.1", "0.8.0")).toBe(false);
 	});
 });
 

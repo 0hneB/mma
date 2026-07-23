@@ -16,6 +16,17 @@ export function mmaBufUrl(path: string): string {
 	return schemeBase("mma-buf") + path.replace(/\\/g, "/");
 }
 
+/** Compare two dotted version strings (e.g. "0.6.1"). Returns >0 if a > b. */
+export function cmpVersion(a: string, b: string): number {
+	const pa = a.split(".").map(Number);
+	const pb = b.split(".").map(Number);
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+		if (d) return d;
+	}
+	return 0;
+}
+
 /** True when running under the web-serve bridge (a plain browser, no native shell). */
 export function isWeb(): boolean {
 	return Boolean(

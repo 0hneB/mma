@@ -1,6 +1,7 @@
 import { useState, useCallback, type ComponentType, type SetStateAction } from "react";
 import { emit as emitEvent } from "@/lib/events";
 import { runAsPlugin, disposePlugin } from "@/plugins/scope";
+import { cmpVersion } from "@/lib/util/util";
 
 export interface PluginSettingDef {
 	key: string;
@@ -39,12 +40,20 @@ export interface PluginManifest {
 	icon: string;
 	main: string;
 	version: string;
+	minAppVersion?: string;
 	sidecar?: PluginSidecarRef | null;
 }
 
 export type PluginBehavior = Partial<Plugin> & {
 	activate(): void | (() => void);
 };
+
+// The registry serves only the latest build of each plugin, so a stale app offered a
+// fresh plugin has exactly two options: take it or keep what it has. `minAppVersion`
+// lets the plugin declare when "take it" would break.
+export function isPluginCompatible(minAppVersion: string | undefined, appVersion: string): boolean {
+	return !minAppVersion || cmpVersion(appVersion, minAppVersion) >= 0;
+}
 
 // An installed plugin is updatable when both its installed version and the registry's
 // version are known and differ. The registry only moves forward, so any mismatch means
