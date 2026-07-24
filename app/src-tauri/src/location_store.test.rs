@@ -1966,20 +1966,31 @@ fn active_id_should_be_clearable_when_location_removed() {
 // Render buffer binary format
 // -----------------------------------------------------------------------
 
+/// Push a selection with an explicit member set, bypassing resolution.
+fn push_resolved(store: &mut Store, key: &str, color: [u8; 3], members: &[u32]) {
+    let mut set = RoaringBitmap::new();
+    for &id in members {
+        set.insert(id);
+    }
+    store.selections.resolved.push(ResolvedSelection {
+        sel: selections::Selection {
+            key: key.into(),
+            color,
+            props: selections::SelectionProps::Manual {
+                locations: members.to_vec(),
+            },
+        },
+        set,
+    });
+}
+
 #[test]
 fn render_buffer_with_selection_overlay() {
     let l1 = loc(1, 10.0, 20.0);
     let l2 = loc(2, 30.0, 40.0);
     let mut store = setup_store_with(&[l1, l2]);
     store.bake_overlay();
-    store.selections.all.push(selections::Selection {
-        key: "manual".into(),
-        color: [255, 0, 0],
-        props: selections::SelectionProps::Manual { locations: vec![1] },
-    });
-    let mut bm = RoaringBitmap::new();
-    bm.insert(1);
-    store.selections.loc_sets.push(bm);
+    push_resolved(&mut store, "manual", [255, 0, 0], &[1]);
     store.selections.ids.insert(1);
 
     let req = RenderRequest {
@@ -2009,14 +2020,7 @@ fn color_for_uses_last_matching_selection() {
     let mut store = setup_store_with(&[loc(1, 0.0, 0.0)]);
     // id 1 belongs to two selections with different colors.
     for (key, color) in [("a", [255, 0, 0]), ("b", [0, 0, 255])] {
-        store.selections.all.push(selections::Selection {
-            key: key.into(),
-            color,
-            props: selections::SelectionProps::Manual { locations: vec![1] },
-        });
-        let mut bm = RoaringBitmap::new();
-        bm.insert(1);
-        store.selections.loc_sets.push(bm);
+        push_resolved(&mut store, key, color, &[1]);
     }
     store.selections.ids.insert(1);
 
@@ -2035,19 +2039,10 @@ fn color_map_matches_color_for() {
         ("a", [255, 0, 0], vec![1u32, 2]),
         ("b", [0, 0, 255], vec![2u32, 3]),
     ] {
-        store.selections.all.push(selections::Selection {
-            key: key.into(),
-            color,
-            props: selections::SelectionProps::Manual {
-                locations: members.clone(),
-            },
-        });
-        let mut bm = RoaringBitmap::new();
+        push_resolved(&mut store, key, color, &members);
         for id in &members {
-            bm.insert(*id);
             store.selections.ids.insert(*id);
         }
-        store.selections.loc_sets.push(bm);
     }
 
     let map = store.selections.color_map();
@@ -2375,12 +2370,14 @@ fn manager_remove_preserves_other() {
 // -----------------------------------------------------------------------
 
 fn add_tag_selection(store: &mut Store, tag_id: u32, color: [u8; 3]) {
-    store.selections.all.push(selections::Selection {
-        key: format!("tag:{}", tag_id),
-        color,
-        props: selections::SelectionProps::Tag { tag_id },
+    store.selections.resolved.push(ResolvedSelection {
+        sel: selections::Selection {
+            key: format!("tag:{}", tag_id),
+            color,
+            props: selections::SelectionProps::Tag { tag_id },
+        },
+        set: RoaringBitmap::new(),
     });
-    store.selections.loc_sets.push(RoaringBitmap::new());
 }
 
 /// Parse the binary bitmask and return the cell chars it contains.
@@ -2657,7 +2654,6 @@ fn membership_delta_no_colorpatch_when_membership_unchanged() {
         "no colorPatch when membership unchanged"
     );
 }
-
 
 // -----------------------------------------------------------------------
 // merge_group (duplicate merge policy)

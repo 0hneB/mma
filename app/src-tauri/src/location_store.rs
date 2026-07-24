@@ -245,15 +245,35 @@ pub(crate) struct RenderState {
     pub marker_color: [u8; 3],
 }
 
+/// A selection together with its resolved membership. One value rather than two parallel
+/// vectors, so the index correspondence the color lookups depend on cannot drift.
+pub(crate) struct ResolvedSelection {
+    pub sel: Selection,
+    /// Member location ids.
+    pub set: RoaringBitmap,
+}
+
+/// Zip selections with the member sets `resolve_forest` returned for them. The only place
+/// the two are joined, so the pairing is stated once.
+fn pair_selections(sels: Vec<Selection>, sets: Vec<RoaringBitmap>) -> Vec<ResolvedSelection> {
+    debug_assert_eq!(
+        sels.len(),
+        sets.len(),
+        "resolve_forest returns one set per selection"
+    );
+    sels.into_iter()
+        .zip(sets)
+        .map(|(sel, set)| ResolvedSelection { sel, set })
+        .collect()
+}
+
 pub(crate) struct SelectionState {
-    pub all: Vec<Selection>,
-    /// Per-selection membership, keyed by location id.
-    pub loc_sets: Vec<RoaringBitmap>,
+    pub resolved: Vec<ResolvedSelection>,
     /// Resolved count of every selection node (top-level and nested), keyed by `Selection.key`.
     /// The faithful per-node count source for sidebar display; refreshed on every sync/resolve.
     pub node_counts: HashMap<String, u32>,
     pub version: u64,
-    /// Union of all `loc_sets`. Answers "is this id selected".
+    /// Union of every member set. Answers "is this id selected".
     pub ids: RoaringBitmap,
     pub active_id: Option<u32>,
 }
@@ -265,9 +285,9 @@ impl SelectionState {
             return None;
         }
         let mut color = None;
-        for (si, set) in self.loc_sets.iter().enumerate() {
-            if set.contains(id) {
-                color = Some(self.all[si].color);
+        for r in &self.resolved {
+            if r.set.contains(id) {
+                color = Some(r.sel.color);
             }
         }
         color
@@ -275,10 +295,9 @@ impl SelectionState {
 
     fn color_map(&self) -> HashMap<u32, [u8; 3]> {
         let mut map = HashMap::with_capacity(self.ids.len() as usize);
-        for (si, set) in self.loc_sets.iter().enumerate() {
-            let color = self.all[si].color;
-            for id in set {
-                map.insert(id, color);
+        for r in &self.resolved {
+            for id in &r.set {
+                map.insert(id, r.sel.color);
             }
         }
         map
@@ -467,8 +486,7 @@ impl Store {
                 marker_color: [42, 42, 42],
             },
             selections: SelectionState {
-                all: Vec::new(),
-                loc_sets: Vec::new(),
+                resolved: Vec::new(),
                 node_counts: HashMap::new(),
                 version: 0,
                 ids: RoaringBitmap::new(),
@@ -527,7 +545,7 @@ impl Store {
         self.bump();
         self.update_bounds(&changes);
 
-        let has_selections = !self.selections.all.is_empty();
+        let has_selections = !self.selections.resolved.is_empty();
         let full_resolve = has_selections
             && (changes.full_reset
                 || changes.added.len() + changes.removed.len() + changes.updated.len() > 100
@@ -646,9 +664,9 @@ impl Store {
     /// Whether any active selection requires a full O(S*N) resolve rather than
     /// incremental membership updates (composites and duplicates depend on global state).
     fn selections_need_full_resolve(&self) -> bool {
-        self.selections.all.iter().any(|s| {
+        self.selections.resolved.iter().any(|r| {
             matches!(
-                s.props,
+                r.sel.props,
                 SelectionProps::Duplicates { .. }
                     | SelectionProps::TopK { .. }
                     | SelectionProps::Uncommitted
@@ -778,9 +796,9 @@ impl Store {
                     was_selected.insert(*id);
                 }
             }
-            for set in &mut self.selections.loc_sets {
+            for r in &mut self.selections.resolved {
                 for id in &drop_ids {
-                    set.remove(*id);
+                    r.set.remove(*id);
                 }
             }
             for id in &drop_ids {
@@ -793,17 +811,13 @@ impl Store {
             .iter()
             .chain(changes.updated.iter().map(|(_, n)| n))
             .collect();
-        let sel_props: Vec<SelectionProps> = self
-            .selections
-            .all
-            .iter()
-            .map(|s| s.props.clone())
-            .collect();
-        for (si, props) in sel_props.iter().enumerate() {
+        // Split the borrow so membership and the union can be updated in one pass.
+        let SelectionState { resolved, ids, .. } = &mut self.selections;
+        for r in resolved.iter_mut() {
             for loc in &test_locs {
-                if selections::RowRef::from_loc(loc).matches(&props) {
-                    self.selections.loc_sets[si].insert(loc.id);
-                    self.selections.ids.insert(loc.id);
+                if selections::RowRef::from_loc(loc).matches(&r.sel.props) {
+                    r.set.insert(loc.id);
+                    ids.insert(loc.id);
                 }
             }
         }
@@ -811,10 +825,9 @@ impl Store {
         // Incremental path runs only without composites, so every node is top-level.
         self.selections.node_counts = self
             .selections
-            .all
+            .resolved
             .iter()
-            .zip(&self.selections.loc_sets)
-            .map(|(s, set)| (s.key.clone(), set.len() as u32))
+            .map(|r| (r.sel.key.clone(), r.set.len() as u32))
             .collect();
 
         let mut gained = Vec::new();
@@ -843,26 +856,31 @@ impl Store {
         MembershipDelta { gained, lost }
     }
 
-    /// Full selection membership resolve: recomputes selection_loc_sets, selected_ids,
-    /// selected_colors from scratch. O(S * N). Does NOT build the bitmask file.
+    /// Full selection membership resolve: recomputes every member set, the union, and the
+    /// per-node counts from scratch. O(S * N). Does NOT build the bitmask.
     fn resolve_selection_membership(&mut self) {
-        let sels = self.selections.all.clone();
+        let sels: Vec<Selection> = self
+            .selections
+            .resolved
+            .iter()
+            .map(|r| r.sel.clone())
+            .collect();
         let (loc_sets, node_counts) = {
             let view = self.loc_view();
             selections::resolve_forest(&view, &sels)
         };
-        self.selections.loc_sets = loc_sets;
         self.selections.node_counts = node_counts;
+        self.selections.resolved = pair_selections(sels, loc_sets);
 
         let mut all_selected = RoaringBitmap::new();
-        for set in &self.selections.loc_sets {
-            all_selected |= set;
+        for r in &self.selections.resolved {
+            all_selected |= &r.set;
         }
         self.selections.ids = all_selected;
         self.selections.version += 1;
     }
 
-    /// Build the full selection bitmask from current render_cells + selection_loc_sets.
+    /// Build the full selection bitmask from the current render cells + member sets.
     /// Every cell is rebuilt; incremental membership changes ride the render delta's
     /// colorPatches instead (see `finish_mutation`).
     fn build_selection_bitmask(&self) -> SelectionSync {
@@ -870,15 +888,15 @@ impl Store {
         let selected_count = self.selections.ids.len() as usize;
 
         let t0 = std::time::Instant::now();
-        let num_sels = self.selections.all.len();
+        let num_sels = self.selections.resolved.len();
         // Route selections to per-cell indices (parallel over selections, O(selected)),
         // then serialize the cells in parallel; segments are self-describing so
         // order is irrelevant.
         let routed: Vec<[Vec<u32>; 32]> = self
             .selections
-            .loc_sets
+            .resolved
             .par_iter()
-            .map(|set| selection_cell_indices(&self.render, set))
+            .map(|r| selection_cell_indices(&self.render, &r.set))
             .collect();
         let segments: Vec<Vec<u8>> = self
             .render
@@ -892,8 +910,10 @@ impl Store {
             .collect();
         let num_cells = segments.len();
 
-        let buf =
-            assemble_selection_bitmask(self.selections.all.iter().map(|s| &s.color), &segments);
+        let buf = assemble_selection_bitmask(
+            self.selections.resolved.iter().map(|r| &r.sel.color),
+            &segments,
+        );
         let bitmask = if num_cells > 0 { Some(buf) } else { None };
 
         log::debug!(
@@ -3791,11 +3811,18 @@ pub async fn store_sync_selections(
         let (sel_sets, counts) = selections::resolve_forest(&view, &sels_full);
         drop(view);
 
-        let live: Vec<usize> = (0..sels.len()).filter(|&i| !sels[i].ghosted).collect();
+        // 2. Drop the ghosted ones once, here. Everything downstream reads `live`, so the
+        //    selections and their member sets can never be filtered by two different rules.
+        let live: Vec<ResolvedSelection> = pair_selections(sels_full, sel_sets)
+            .into_iter()
+            .zip(&sels)
+            .filter(|(_, si)| !si.ghosted)
+            .map(|(r, _)| r)
+            .collect();
 
         let mut all_selected = RoaringBitmap::new();
-        for &i in &live {
-            all_selected |= &sel_sets[i];
+        for r in &live {
+            all_selected |= &r.set;
         }
         let selected_count = all_selected.len() as usize;
 
@@ -3803,7 +3830,7 @@ pub async fn store_sync_selections(
         //    serialize the per-cell bitmask binary. Cells are independent → parallel.
         let routed: Vec<[Vec<u32>; 32]> = live
             .par_iter()
-            .map(|&i| selection_cell_indices(&store.render, &sel_sets[i]))
+            .map(|r| selection_cell_indices(&store.render, &r.set))
             .collect();
         let segments: Vec<Vec<u8>> = store
             .render
@@ -3817,16 +3844,10 @@ pub async fn store_sync_selections(
             .collect();
         let num_cells = segments.len();
 
-        let buf = assemble_selection_bitmask(live.iter().map(|&i| &sels[i].color), &segments);
+        let buf = assemble_selection_bitmask(live.iter().map(|r| &r.sel.color), &segments);
 
         store.selections.ids = all_selected;
-        store.selections.all = live.iter().map(|&i| sels_full[i].clone()).collect();
-        store.selections.loc_sets = sel_sets
-            .into_iter()
-            .enumerate()
-            .filter(|(i, _)| !sels[*i].ghosted)
-            .map(|(_, s)| s)
-            .collect();
+        store.selections.resolved = live;
         store.selections.node_counts = counts.clone();
         store.selections.version += 1;
 
@@ -3841,7 +3862,7 @@ pub async fn store_sync_selections(
             _t.elapsed().as_millis(), sels.len(), selected_count, num_cells, buf.len(),
             store.batch.as_ref().map_or(0, |b| b.num_rows()), store.overlay.adds.len(),
             store.overlay.dead.len(), store.alive_count, render_total,
-            store.selections.loc_sets.first().map_or(0, |s| s.len() as usize), counts);
+            store.selections.resolved.first().map_or(0, |r| r.set.len() as usize), counts);
 
         (counts, buf, selected_count, num_cells)
     };
