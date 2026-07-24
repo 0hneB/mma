@@ -857,7 +857,7 @@ describe("Multiple overlapping selections", () => {
 		seedLocations(mgr, 5);
 	});
 
-	it("overlapping selections: last selection's color is on top", () => {
+	it("overlapping selections: one entry per location, in the last selection's color", () => {
 		const cb = mgr.cells.get("s")!;
 		// Red selects [1,2,3], Blue selects [3,4,5] — overlap at 3
 		const n = cb.count;
@@ -886,15 +886,16 @@ describe("Multiple overlapping selections", () => {
 			],
 		);
 
-		// ID=3 appears twice in overlay — last (blue) is drawn on top
+		// ID=3 is in both selections, but gets one entry, in the later (blue) colour.
 		const indices3 = [];
 		for (let i = 0; i < mgr.selOverlayCount; i++) {
 			if (mgr.selOverlayIds[i] === 3) indices3.push(i);
 		}
-		expect(indices3.length).toBe(2);
-		const lastIdx = indices3[indices3.length - 1];
-		expect(mgr.selOverlayColors[lastIdx * 4]).toBe(0);
-		expect(mgr.selOverlayColors[lastIdx * 4 + 2]).toBe(255);
+		expect(indices3.length).toBe(1);
+		expect(mgr.selOverlayColors[indices3[0] * 4]).toBe(0);
+		expect(mgr.selOverlayColors[indices3[0] * 4 + 2]).toBe(255);
+		// Five distinct locations selected, five entries: no stacked duplicates.
+		expect(mgr.selOverlayCount).toBe(5);
 	});
 
 	it("all entries in all selections have alpha=0 in main (even overlapping)", () => {

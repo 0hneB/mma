@@ -552,7 +552,7 @@ describe("applySelectionBitmasks", () => {
 		expect(selectedIds.has(50)).toBe(false);
 	});
 
-	it("multiple selections: overlapping loc appears once per selection, last drawn on top", () => {
+	it("multiple selections: an overlapping loc gets one entry in the last selection's color", () => {
 		mgr.applyDelta({
 			added: [entry("s", 10, 1, 1), entry("s", 20, 2, 2), entry("s", 30, 3, 3)],
 			updated: [],
@@ -577,17 +577,20 @@ describe("applySelectionBitmasks", () => {
 		expect(selectedIds.has(20)).toBe(true);
 		expect(selectedIds.has(30)).toBe(true);
 
-		// id=20 appears twice (once per selection), total overlay count = 4
-		expect(mgr.selOverlayCount).toBe(4);
+		// Three selected locations, three entries: the overlap is resolved, not stacked.
+		expect(mgr.selOverlayCount).toBe(3);
 		const indices20 = mgr.selOverlayIds
 			.slice(0, mgr.selOverlayCount)
 			.reduce<number[]>((acc, id, i) => (id === 20 ? [...acc, i] : acc), []);
-		expect(indices20.length).toBe(2);
-		// First occurrence is red (sel 0), second is blue (sel 1)
-		expect(mgr.selOverlayColors[indices20[0] * 4]).toBe(255);
-		expect(mgr.selOverlayColors[indices20[0] * 4 + 2]).toBe(0);
-		expect(mgr.selOverlayColors[indices20[1] * 4]).toBe(0);
-		expect(mgr.selOverlayColors[indices20[1] * 4 + 2]).toBe(255);
+		expect(indices20.length).toBe(1);
+		// The later selection (blue) wins the shared row.
+		expect(mgr.selOverlayColors[indices20[0] * 4]).toBe(0);
+		expect(mgr.selOverlayColors[indices20[0] * 4 + 2]).toBe(255);
+		// The rows only one selection claims keep their own colour.
+		const idx10 = mgr.selOverlayIds.indexOf(10);
+		expect(mgr.selOverlayColors[idx10 * 4]).toBe(255);
+		const idx30 = mgr.selOverlayIds.indexOf(30);
+		expect(mgr.selOverlayColors[idx30 * 4 + 2]).toBe(255);
 	});
 
 	it("selected entries get alpha=0 in main layer (hidden)", () => {

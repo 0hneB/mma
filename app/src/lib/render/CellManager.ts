@@ -310,6 +310,10 @@ export class CellManager {
 		this.version++;
 	}
 
+	/** Scratch for `applySelectionBitmasks`: per-row winning selection index, reused across
+	 *  cells so a full sync does not allocate one array per cell. */
+	private selWinner = new Int32Array(0);
+
 	/** Drop every overlay entry whose id is in `ids`, compacting in place. */
 	private dropOverlayEntries(ids: Set<number>) {
 		if (ids.size === 0 || this.selOverlayCount === 0) return;
@@ -553,8 +557,9 @@ export class CellManager {
 			}
 		}
 
-		// Count new overlay entries from incoming cells. Index-list selections contribute
-		// in O(selected); only dense bitmask selections need a per-row scan.
+		// Upper bound on new overlay entries: the (selection, row) pair count. A row in
+		// several selections yields one entry, not several, so the write loop below can
+		// finish under this; the buffers are trimmed to the real count afterwards.
 		let newEntries = 0;
 		for (const entry of cellEntries) {
 			const cb = this.cells.get(entry.cellChar);
@@ -627,60 +632,70 @@ export class CellManager {
 			}
 		}
 
-		// Write the new overlay entries. Hot path at scale (select-all hides ~N markers), so
-		// reads/writes go through hoisted local refs to the typed arrays rather than repeated
-		// `this.`/`cb.` property chains. The idx/mask branches share `write` — a local closure
-		// V8 inlines (per SharedFunctionInfo), with the loop-variant values passed as args.
+		// Write the new overlay entries, one per selected location rather than one per
+		// (selection, row) pair. `winner` records which selection owns each row: later
+		// selections overdraw earlier ones, so the highest matching index is the colour.
+		// Resolving it here rather than by stacking quads keeps overlapping selections from
+		// uploading entries that are drawn and immediately covered.
+		// Hot path at scale (select-all hides ~N markers), so reads/writes go through
+		// hoisted local refs rather than repeated `this.`/`cb.` property chains.
 		const sp = this.selOverlayPositions;
 		const sc = this.selOverlayColors;
 		const sa = this.selOverlayAngles;
 		const sid = this.selOverlayIds;
-		for (let si = 0; si < numSels; si++) {
-			const r = selColors[si][0],
-				g = selColors[si][1],
-				b = selColors[si][2];
-			for (const entry of cellEntries) {
-				const cb = this.cells.get(entry.cellChar);
-				if (!cb) continue;
-				const n = Math.min(entry.locCount, cb.count);
+		for (const entry of cellEntries) {
+			const cb = this.cells.get(entry.cellChar);
+			if (!cb) continue;
+			const n = Math.min(entry.locCount, cb.count);
+			if (n === 0) continue;
+			if (this.selWinner.length < n) this.selWinner = new Int32Array(n);
+			const winner = this.selWinner;
+			winner.fill(-1, 0, n);
+			for (let si = 0; si < numSels; si++) {
 				const sel = entry.sels[si];
-				const cc = cb.colors,
-					cpos = cb.positions,
-					cang = cb.angles,
-					cids = cb.ids;
-				// Sets the base color transparent (the overlay draws it in the selection color)
-				// and appends an overlay entry, advancing `oi`.
-				const write = (li: number) => {
-					const locId = cids[li];
-					if (bitSet(bits, locId)) selCount++;
-					const c4 = li * 4;
-					cc[c4] = 0;
-					cc[c4 + 1] = 0;
-					cc[c4 + 2] = 0;
-					cc[c4 + 3] = 0;
-					sp[oi * 2] = cpos[li * 2];
-					sp[oi * 2 + 1] = cpos[li * 2 + 1];
-					const o4 = oi * 4;
-					sc[o4] = r;
-					sc[o4 + 1] = g;
-					sc[o4 + 2] = b;
-					sc[o4 + 3] = 255;
-					sa[oi] = cang[li];
-					sid[oi] = locId;
-					oi++;
-				};
 				if (sel.kind === "idx") {
 					const idx = sel.indices;
-					for (let k = 0; k < idx.length; k++) {
-						if (idx[k] < n) write(idx[k]);
-					}
+					for (let k = 0; k < idx.length; k++) if (idx[k] < n) winner[idx[k]] = si;
 				} else {
 					const m = sel.mask;
-					for (let li = 0; li < n; li++) {
-						if (bitHas(m, li)) write(li);
-					}
+					for (let li = 0; li < n; li++) if (bitHas(m, li)) winner[li] = si;
 				}
 			}
+			const cc = cb.colors,
+				cpos = cb.positions,
+				cang = cb.angles,
+				cids = cb.ids;
+			for (let li = 0; li < n; li++) {
+				const si = winner[li];
+				if (si < 0) continue;
+				const locId = cids[li];
+				if (bitSet(bits, locId)) selCount++;
+				// Base row goes transparent; the overlay entry below is what draws.
+				const c4 = li * 4;
+				cc[c4] = 0;
+				cc[c4 + 1] = 0;
+				cc[c4 + 2] = 0;
+				cc[c4 + 3] = 0;
+				sp[oi * 2] = cpos[li * 2];
+				sp[oi * 2 + 1] = cpos[li * 2 + 1];
+				const o4 = oi * 4;
+				sc[o4] = selColors[si][0];
+				sc[o4 + 1] = selColors[si][1];
+				sc[o4 + 2] = selColors[si][2];
+				sc[o4 + 3] = 255;
+				sa[oi] = cang[li];
+				sid[oi] = locId;
+				oi++;
+			}
+		}
+
+		// Overlapping selections finish under the pair-count bound; hand deck.gl buffers
+		// that are exactly the size of what is drawn.
+		if (oi < total) {
+			this.selOverlayPositions = this.selOverlayPositions.slice(0, oi * 2);
+			this.selOverlayColors = this.selOverlayColors.slice(0, oi * 4);
+			this.selOverlayAngles = this.selOverlayAngles.slice(0, oi);
+			this.selOverlayIds = this.selOverlayIds.slice(0, oi);
 		}
 
 		for (const entry of cellEntries) {
