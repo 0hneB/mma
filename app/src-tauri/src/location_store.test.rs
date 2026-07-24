@@ -1647,8 +1647,8 @@ fn render_buffer_format_matches_js_parser() {
         offset += count as usize * 4;
         // positions: count * 2 * 4 bytes
         offset += count as usize * 2 * 4;
-        // colors: count * 4 bytes
-        offset += count as usize * 4;
+        // visible: count * 1 byte
+        offset += count as usize;
         // angles: count * 4 bytes
         offset += count as usize * 4;
         total_locs += count;
@@ -1679,7 +1679,7 @@ fn arrow_render_angle_is_negated_heading() {
     };
     let buf = build_cell_render_buffers(&mut store, &req);
 
-    // Walk to the single cell's angles segment: [u32 cells][u8 char][u32 count][ids][positions][colors][angles]
+    // Walk to the single cell's angles segment: [u32 cells][u8 char][u32 count][ids][positions][visible][angles]
     let cell_count = u32::from_le_bytes(buf[0..4].try_into().unwrap());
     assert_eq!(cell_count, 1);
     let mut offset = 4usize;
@@ -1688,7 +1688,7 @@ fn arrow_render_angle_is_negated_heading() {
     offset += 5;
     offset += count * 4; // ids
     offset += count * 2 * 4; // positions
-    offset += count * 4; // colors
+    offset += count; // visible
     let angle = f32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap());
     assert_eq!(angle, -90.0, "arrow angle must be the negated heading");
 }
@@ -2009,7 +2009,8 @@ fn render_buffer_with_selection_overlay() {
     let mut offset = 4usize;
     for _ in 0..cell_count {
         let count = u32::from_le_bytes(buf[offset + 1..offset + 5].try_into().unwrap()) as usize;
-        offset += 5 + count * 4 + count * 2 * 4 + count * 4 + count * 4;
+        // ids + positions + visible + angles
+        offset += 5 + count * 4 + count * 2 * 4 + count + count * 4;
     }
     let sel_count = u32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap());
     assert_eq!(sel_count, 1, "one selected location");

@@ -3189,14 +3189,14 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
     let color_map = store.selections.color_map();
     let active_id = store.selections.active_id;
     let arrow_style = req.marker_style == "arrow";
-    let mc = store.render.marker_color;
-    let base_color = [mc[0], mc[1], mc[2], 255u8];
 
-    // 32 cells indexed by render_cell_idx (0-31)
+    // 32 cells indexed by render_cell_idx (0-31). Base markers all draw in the one marker
+    // colour, which JS hands the layer as a constant, so the only per-marker colour fact
+    // here is visibility. The selection overlay below genuinely varies and ships RGBA.
     struct CellOut {
         ids: Vec<u32>,
         positions: Vec<f32>,
-        colors: Vec<u8>,
+        visible: Vec<u8>,
         angles: Vec<f32>,
     }
     const NONE: Option<CellOut> = None;
@@ -3222,17 +3222,15 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
             let out = cells[ci].get_or_insert_with(|| CellOut {
                 ids: Vec::new(),
                 positions: Vec::new(),
-                colors: Vec::new(),
+                visible: Vec::new(),
                 angles: Vec::new(),
             });
             out.positions.push(lng as f32);
             out.positions.push(lat as f32);
             let angle = if arrow_style { -(heading as f32) } else { 0.0 };
-            if selected_set.contains(id) || active_id == Some(id) {
-                out.colors.extend_from_slice(&[0, 0, 0, 0]);
-            } else {
-                out.colors.extend_from_slice(&base_color);
-            }
+            // Hidden when the selection overlay or the active highlight is drawing it instead.
+            let hidden = selected_set.contains(id) || active_id == Some(id);
+            out.visible.push(if hidden { 0 } else { 255 });
             out.angles.push(angle);
             out.ids.push(id);
             if let Some(&[r, g, b]) = color_map.get(&id) {
@@ -3290,10 +3288,11 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         store.render.cells[ci] = Some(cr);
     }
 
-    // Serialize: u32 cell_count, per cell: [1 byte geohash char][u32 count][positions][colors][angles]
+    // Serialize: u32 cell_count, per cell:
+    //   [1 byte geohash char][u32 count][u32[] ids][f32[] positions][u8[] visible][f32[] angles]
     let body_cap: usize = (0..32)
         .filter_map(|ci| cells[ci].as_ref())
-        .map(|o| 5 + o.ids.len() * 4 + o.positions.len() * 4 + o.colors.len() + o.angles.len() * 4)
+        .map(|o| 5 + o.ids.len() * 4 + o.positions.len() * 4 + o.visible.len() + o.angles.len() * 4)
         .sum();
     let sel_cap = if sel_ov.ids.is_empty() {
         0
@@ -3319,7 +3318,7 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         for &v in &out.positions {
             buf.extend_from_slice(&v.to_le_bytes());
         }
-        buf.extend_from_slice(&out.colors);
+        buf.extend_from_slice(&out.visible);
         for &v in &out.angles {
             buf.extend_from_slice(&v.to_le_bytes());
         }

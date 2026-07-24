@@ -244,9 +244,9 @@ describe("CellManager", () => {
 	it("initFromBinary parses render buffer correctly", () => {
 		// Build a binary buffer matching Rust's format:
 		// [u32 cell_count]
-		// per cell: [u8 geohash_char][u32 count][u32[] ids][f32[] positions][u8[] colors][f32[] angles]
+		// per cell: [u8 geohash_char][u32 count][u32[] ids][f32[] positions][u8[] visible][f32[] angles]
 		// [u32 sel_count] (0 for no selections)
-		const buf = new ArrayBuffer(4 + (5 + 2 * 4 + 2 * 2 * 4 + 2 * 4 + 2 * 4) + 4);
+		const buf = new ArrayBuffer(4 + (5 + 2 * 4 + 2 * 2 * 4 + 2 + 2 * 4) + 4);
 		const dv = new DataView(buf);
 		let off = 0;
 
@@ -273,20 +273,8 @@ describe("CellManager", () => {
 		off += 4;
 		dv.setFloat32(off, 40.5, true);
 		off += 4;
-		// colors (RGBA per loc)
-		dv.setUint8(off, 42);
-		off += 1;
-		dv.setUint8(off, 42);
-		off += 1;
-		dv.setUint8(off, 42);
-		off += 1;
+		// visible (one byte per loc)
 		dv.setUint8(off, 255);
-		off += 1;
-		dv.setUint8(off, 42);
-		off += 1;
-		dv.setUint8(off, 42);
-		off += 1;
-		dv.setUint8(off, 42);
 		off += 1;
 		dv.setUint8(off, 255);
 		off += 1;

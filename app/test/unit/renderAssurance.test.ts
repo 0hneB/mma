@@ -562,9 +562,7 @@ describe("Deltas during active selections", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [
-				{ cell: "s", cellIndex, r: 42, g: 42, b: 42, a: 255, selected: false },
-			],
+			colorPatches: [{ cell: "s", cellIndex, r: 42, g: 42, b: 42, a: 255, selected: false }],
 		});
 
 		expect(mgr.selOverlayCount).toBe(1);
@@ -1019,8 +1017,8 @@ describe("initFromBinary clears selection state", () => {
 
 		// Re-init from a minimal binary (1 cell, 2 entries, 0 selection)
 		const buf = buildMinimalBinary("s", [
-			{ id: 100, lng: 1, lat: 2, heading: 0, r: 42, g: 42, b: 42, a: 255 },
-			{ id: 101, lng: 3, lat: 4, heading: 0, r: 42, g: 42, b: 42, a: 255 },
+			{ id: 100, lng: 1, lat: 2, heading: 0, visible: 255 },
+			{ id: 101, lng: 3, lat: 4, heading: 0, visible: 255 },
 		]);
 		mgr.initFromBinary(buf);
 
@@ -1189,7 +1187,7 @@ describe("CellManager totalCount consistency", () => {
 	it("stays correct after initFromBinary", () => {
 		seedLocations(mgr, 5);
 		const buf = buildMinimalBinary("s", [
-			{ id: 100, lng: 1, lat: 2, heading: 0, r: 42, g: 42, b: 42, a: 255 },
+			{ id: 100, lng: 1, lat: 2, heading: 0, visible: 255 },
 		]);
 		mgr.initFromBinary(buf);
 		assertTotalCountConsistent(mgr, "after initFromBinary");
@@ -1365,9 +1363,9 @@ describe("Structural integrity (all three invariants) through operation sequence
 
 	it("holds through initFromBinary", () => {
 		const buf = buildMinimalBinary("s", [
-			{ id: 10, lng: 1, lat: 2, heading: 0, r: 42, g: 42, b: 42, a: 255 },
-			{ id: 20, lng: 3, lat: 4, heading: 90, r: 42, g: 42, b: 42, a: 255 },
-			{ id: 30, lng: 5, lat: 6, heading: 180, r: 42, g: 42, b: 42, a: 255 },
+			{ id: 10, lng: 1, lat: 2, heading: 0, visible: 255 },
+			{ id: 20, lng: 3, lat: 4, heading: 90, visible: 255 },
+			{ id: 30, lng: 5, lat: 6, heading: 180, visible: 255 },
 		]);
 		mgr.initFromBinary(buf);
 		assertStructuralIntegrity(mgr, "after initFromBinary");
@@ -1378,13 +1376,13 @@ describe("Structural integrity (all three invariants) through operation sequence
 			{
 				cell: "s",
 				entries: [
-					{ id: 1, lng: 10, lat: 20, heading: 0, r: 42, g: 42, b: 42, a: 255 },
-					{ id: 2, lng: 30, lat: 40, heading: 0, r: 42, g: 42, b: 42, a: 255 },
+					{ id: 1, lng: 10, lat: 20, heading: 0, visible: 255 },
+					{ id: 2, lng: 30, lat: 40, heading: 0, visible: 255 },
 				],
 			},
 			{
 				cell: "t",
-				entries: [{ id: 3, lng: 50, lat: 60, heading: 0, r: 42, g: 42, b: 42, a: 255 }],
+				entries: [{ id: 3, lng: 50, lat: 60, heading: 0, visible: 255 }],
 			},
 		]);
 		mgr.initFromBinary(buf);
@@ -1425,84 +1423,24 @@ describe("Structural integrity (all three invariants) through operation sequence
 // Helpers — binary builders
 // ===========================================================================
 
-// Helper to build a minimal Rust-format binary
-function buildMinimalBinary(
-	cell: string,
-	entries: {
-		id: number;
-		lng: number;
-		lat: number;
-		heading: number;
-		r: number;
-		g: number;
-		b: number;
-		a: number;
-	}[],
-): ArrayBuffer {
-	const n = entries.length;
-	const cellHeaderSize = 5; // u8 char + u32 count
-	const size = 4 + cellHeaderSize + n * 4 + n * 2 * 4 + n * 4 + n * 4 + 4; // +4 for sel_count
-	const buf = new ArrayBuffer(size);
-	const dv = new DataView(buf);
-	let off = 0;
-
-	dv.setUint32(off, 1, true);
-	off += 4; // 1 cell
-	dv.setUint8(off, cell.charCodeAt(0));
-	off += 1;
-	dv.setUint32(off, n, true);
-	off += 4;
-
-	// IDs
-	for (const e of entries) {
-		dv.setUint32(off, e.id, true);
-		off += 4;
-	}
-	// Positions
-	for (const e of entries) {
-		dv.setFloat32(off, e.lng, true);
-		off += 4;
-		dv.setFloat32(off, e.lat, true);
-		off += 4;
-	}
-	// Colors
-	for (const e of entries) {
-		dv.setUint8(off, e.r);
-		off += 1;
-		dv.setUint8(off, e.g);
-		off += 1;
-		dv.setUint8(off, e.b);
-		off += 1;
-		dv.setUint8(off, e.a);
-		off += 1;
-	}
-	// Angles
-	for (const e of entries) {
-		dv.setFloat32(off, e.heading, true);
-		off += 4;
-	}
-	// Selection count = 0
-	dv.setUint32(off, 0, true);
-
-	return buf;
-}
-
 type BinaryEntry = {
 	id: number;
 	lng: number;
 	lat: number;
 	heading: number;
-	r: number;
-	g: number;
-	b: number;
-	a: number;
+	visible: number;
 };
+
+// Helper to build a minimal Rust-format binary
+function buildMinimalBinary(cell: string, entries: BinaryEntry[]): ArrayBuffer {
+	return buildMultiCellBinary([{ cell, entries }]);
+}
 
 function buildMultiCellBinary(cells: { cell: string; entries: BinaryEntry[] }[]): ArrayBuffer {
 	let size = 4; // u32 cell_count
 	for (const c of cells) {
 		const n = c.entries.length;
-		size += 5 + n * 4 + n * 2 * 4 + n * 4 + n * 4; // header + ids + positions + colors + angles
+		size += 5 + n * 4 + n * 2 * 4 + n + n * 4; // header + ids + positions + visible + angles
 	}
 	size += 4; // sel_count
 
@@ -1530,13 +1468,7 @@ function buildMultiCellBinary(cells: { cell: string; entries: BinaryEntry[] }[])
 			off += 4;
 		}
 		for (const e of c.entries) {
-			dv.setUint8(off, e.r);
-			off += 1;
-			dv.setUint8(off, e.g);
-			off += 1;
-			dv.setUint8(off, e.b);
-			off += 1;
-			dv.setUint8(off, e.a);
+			dv.setUint8(off, e.visible);
 			off += 1;
 		}
 		for (const e of c.entries) {

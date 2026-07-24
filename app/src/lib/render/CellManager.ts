@@ -256,7 +256,7 @@ export class CellManager {
 
 			const idBytes = count * 4;
 			const posBytes = count * 2 * 4;
-			const colBytes = count * 4;
+			const visBytes = count;
 			const angBytes = count * 4;
 
 			const idBuf = new Uint32Array(buf.slice(offset, offset + idBytes));
@@ -271,12 +271,8 @@ export class CellManager {
 
 			cb.positions = new Float32Array(buf.slice(offset, offset + posBytes));
 			offset += posBytes;
-			// Rust still ships RGBA per marker here. The base layer only needs the alpha,
-			// since the RGB is the one global marker colour the layer passes as a constant.
-			const rgba = new Uint8Array(buf, offset, colBytes);
-			cb.visible = new Uint8Array(count);
-			for (let i = 0; i < count; i++) cb.visible[i] = rgba[i * 4 + 3];
-			offset += colBytes;
+			cb.visible = new Uint8Array(buf.slice(offset, offset + visBytes));
+			offset += visBytes;
 			cb.angles = new Float32Array(buf.slice(offset, offset + angBytes));
 			offset += angBytes;
 
