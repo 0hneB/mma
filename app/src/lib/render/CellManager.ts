@@ -131,7 +131,10 @@ export class CellBuffer {
 	ids: number[] = [];
 	idToIndex = new Map<number, number>();
 	positions: Float32Array;
-	colors: Uint8Array;
+	/** Per-marker visibility, 255 draws and 0 hides. Every base marker is drawn in the one
+	 *  global marker colour, which the layer supplies as a constant, so the only per-marker
+	 *  colour fact is whether a selection or the active highlight is covering it. */
+	visible: Uint8Array;
 	angles: Float32Array;
 	count = 0;
 	capacity: number;
@@ -141,7 +144,7 @@ export class CellBuffer {
 	constructor(capacity = MIN_CAPACITY) {
 		this.capacity = capacity;
 		this.positions = new Float32Array(capacity * 2);
-		this.colors = new Uint8Array(capacity * 4);
+		this.visible = new Uint8Array(capacity);
 		this.angles = new Float32Array(capacity);
 	}
 
@@ -151,10 +154,7 @@ export class CellBuffer {
 		const i = this.count;
 		this.positions[i * 2] = entry.lng;
 		this.positions[i * 2 + 1] = entry.lat;
-		this.colors[i * 4] = entry.r;
-		this.colors[i * 4 + 1] = entry.g;
-		this.colors[i * 4 + 2] = entry.b;
-		this.colors[i * 4 + 3] = entry.a;
+		this.visible[i] = entry.a;
 		this.angles[i] = entry.heading;
 		this.ids[i] = entry.id;
 		this.idToIndex.set(entry.id, i);
@@ -172,10 +172,7 @@ export class CellBuffer {
 		if (index !== last) {
 			this.positions[index * 2] = this.positions[last * 2];
 			this.positions[index * 2 + 1] = this.positions[last * 2 + 1];
-			this.colors[index * 4] = this.colors[last * 4];
-			this.colors[index * 4 + 1] = this.colors[last * 4 + 1];
-			this.colors[index * 4 + 2] = this.colors[last * 4 + 2];
-			this.colors[index * 4 + 3] = this.colors[last * 4 + 3];
+			this.visible[index] = this.visible[last];
 			this.angles[index] = this.angles[last];
 
 			const movedId = this.ids[last];
@@ -197,12 +194,10 @@ export class CellBuffer {
 		this.positionVersion++;
 	}
 
-	patchColor(index: number, r: number, g: number, b: number, a: number) {
+	/** Show (255) or hide (0) one marker in the base layer. */
+	patchVisible(index: number, visible: number) {
 		if (index < 0 || index >= this.count) return;
-		this.colors[index * 4] = r;
-		this.colors[index * 4 + 1] = g;
-		this.colors[index * 4 + 2] = b;
-		this.colors[index * 4 + 3] = a;
+		this.visible[index] = visible;
 		this.colorVersion++;
 	}
 
@@ -210,13 +205,13 @@ export class CellBuffer {
 		if (needed <= this.capacity) return;
 		const newCap = Math.max(needed, this.capacity * 2, MIN_CAPACITY);
 		const newPos = new Float32Array(newCap * 2);
-		const newCol = new Uint8Array(newCap * 4);
+		const newVis = new Uint8Array(newCap);
 		const newAng = new Float32Array(newCap);
 		newPos.set(this.positions.subarray(0, this.count * 2));
-		newCol.set(this.colors.subarray(0, this.count * 4));
+		newVis.set(this.visible.subarray(0, this.count));
 		newAng.set(this.angles.subarray(0, this.count));
 		this.positions = newPos;
-		this.colors = newCol;
+		this.visible = newVis;
 		this.angles = newAng;
 		this.capacity = newCap;
 	}
@@ -276,7 +271,11 @@ export class CellManager {
 
 			cb.positions = new Float32Array(buf.slice(offset, offset + posBytes));
 			offset += posBytes;
-			cb.colors = new Uint8Array(buf.slice(offset, offset + colBytes));
+			// Rust still ships RGBA per marker here. The base layer only needs the alpha,
+			// since the RGB is the one global marker colour the layer passes as a constant.
+			const rgba = new Uint8Array(buf, offset, colBytes);
+			cb.visible = new Uint8Array(count);
+			for (let i = 0; i < count; i++) cb.visible[i] = rgba[i * 4 + 3];
 			offset += colBytes;
 			cb.angles = new Float32Array(buf.slice(offset, offset + angBytes));
 			offset += angBytes;
@@ -391,7 +390,7 @@ export class CellManager {
 		for (const cp of delta.colorPatches) {
 			const cb = this.cells.get(cp.cell);
 			if (!cb) continue;
-			cb.patchColor(cp.cellIndex, cp.r, cp.g, cp.b, cp.a);
+			cb.patchVisible(cp.cellIndex, cp.a);
 			affected.add(cp.cell);
 			dropped.add(cb.ids[cp.cellIndex]);
 			if (cp.selected) gained.push(cp);
@@ -504,8 +503,8 @@ export class CellManager {
 
 	/**
 	 * Decode per-cell bitmasks from Rust into a colored selection overlay.
-	 * Selected locations are hidden in their main cell (alpha=0) and drawn in the overlay with
-	 * the selection's color. Later selections overdraw earlier ones. Returns the set of selected IDs.
+	 * Selected locations are hidden in their main cell and drawn in the overlay in the
+	 * selection's color, one entry each. Returns the set of selected IDs.
 	 *
 	 * Supports partial updates: only cells included in `cellEntries` are touched.
 	 * Overlay entries and selectedIds for other cells are preserved.
@@ -513,7 +512,6 @@ export class CellManager {
 	applySelectionBitmasks(
 		selColors: [number, number, number][],
 		cellEntries: SelCellEntry[],
-		defaultColor: [number, number, number] = [42, 42, 42],
 	): SelectedIds {
 		const numSels = selColors.length;
 
@@ -610,26 +608,11 @@ export class CellManager {
 			}
 		}
 
-		// Reset base colors for incoming cells to gray, then write new overlay entries.
-		// Fill the 4-byte gray pattern via exponential copyWithin (memcpy) rather than a
-		// per-row write loop — same result, far fewer JS-level stores.
+		// Show every marker in the incoming cells again, then hide the selected ones below.
 		for (const entry of cellEntries) {
 			const cb = this.cells.get(entry.cellChar);
 			if (!cb) continue;
-			const n = Math.min(entry.locCount, cb.count);
-			if (n === 0) continue;
-			const colors = cb.colors;
-			const total = n * 4;
-			colors[0] = defaultColor[0];
-			colors[1] = defaultColor[1];
-			colors[2] = defaultColor[2];
-			colors[3] = 255;
-			let filled = 4;
-			while (filled < total) {
-				const c = Math.min(filled, total - filled);
-				colors.copyWithin(filled, 0, c);
-				filled += c;
-			}
+			cb.visible.fill(255, 0, Math.min(entry.locCount, cb.count));
 		}
 
 		// Write the new overlay entries, one per selected location rather than one per
@@ -661,7 +644,7 @@ export class CellManager {
 					for (let li = 0; li < n; li++) if (bitHas(m, li)) winner[li] = si;
 				}
 			}
-			const cc = cb.colors,
+			const cvis = cb.visible,
 				cpos = cb.positions,
 				cang = cb.angles,
 				cids = cb.ids;
@@ -670,12 +653,8 @@ export class CellManager {
 				if (si < 0) continue;
 				const locId = cids[li];
 				if (bitSet(bits, locId)) selCount++;
-				// Base row goes transparent; the overlay entry below is what draws.
-				const c4 = li * 4;
-				cc[c4] = 0;
-				cc[c4 + 1] = 0;
-				cc[c4 + 2] = 0;
-				cc[c4 + 3] = 0;
+				// Base row hides; the overlay entry below is what draws.
+				cvis[li] = 0;
 				sp[oi * 2] = cpos[li * 2];
 				sp[oi * 2 + 1] = cpos[li * 2 + 1];
 				const o4 = oi * 4;

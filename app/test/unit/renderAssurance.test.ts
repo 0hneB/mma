@@ -21,9 +21,6 @@ function entry(
 	return { cell, id, lng, lat, heading, r, g, b, a };
 }
 
-function coloredEntry(cell: string, id: number, r: number, g: number, b: number): CellRenderEntry {
-	return entry(cell, id, id, id, 0, r, g, b, 255);
-}
 
 // Simulates the active-location logic from MapEmbed.buildLayers:
 // - Restore old active to default color (unless selected)
@@ -39,7 +36,7 @@ function simulateActiveSwitch(
 			for (const cb of mgr.cells.values()) {
 				const idx = cb.idToIndex.get(prevActiveId);
 				if (idx != null) {
-					cb.patchColor(idx, DEFAULT_R, DEFAULT_G, DEFAULT_B, DEFAULT_A);
+					cb.patchVisible(idx, 255);
 					break;
 				}
 			}
@@ -49,36 +46,30 @@ function simulateActiveSwitch(
 		for (const cb of mgr.cells.values()) {
 			const idx = cb.idToIndex.get(newActiveId);
 			if (idx != null) {
-				cb.patchColor(idx, 0, 0, 0, 0);
+				cb.patchVisible(idx, 0);
 				break;
 			}
 		}
 	}
 }
 
-function getColor(mgr: CellManager, id: number): [number, number, number, number] | null {
+/** Base-layer visibility byte for a location, or null if it has no marker. There is no
+ *  per-marker base colour any more: every base marker draws in the one constant the layer
+ *  supplies, so visibility is the whole per-marker fact. */
+function getVisible(mgr: CellManager, id: number): number | null {
 	for (const cb of mgr.cells.values()) {
 		const idx = cb.idToIndex.get(id);
-		if (idx != null) {
-			return [
-				cb.colors[idx * 4],
-				cb.colors[idx * 4 + 1],
-				cb.colors[idx * 4 + 2],
-				cb.colors[idx * 4 + 3],
-			];
-		}
+		if (idx != null) return cb.visible[idx];
 	}
 	return null;
 }
 
 function isVisible(mgr: CellManager, id: number): boolean {
-	const c = getColor(mgr, id);
-	return c != null && c[3] > 0;
+	return getVisible(mgr, id) === 255;
 }
 
 function isHidden(mgr: CellManager, id: number): boolean {
-	const c = getColor(mgr, id);
-	return c != null && c[3] === 0;
+	return getVisible(mgr, id) === 0;
 }
 
 function selectAll(mgr: CellManager, color: [number, number, number] = [255, 0, 0]): Set<number> {
@@ -130,7 +121,7 @@ function assertNoDoubleMarkers(mgr: CellManager) {
 			const id = cb.ids[i];
 			if (overlayIds.has(id)) {
 				expect(
-					cb.colors[i * 4 + 3],
+					cb.visible[i],
 					`ID ${id} is in overlay but visible in main layer (double marker)`,
 				).toBe(0);
 			}
@@ -144,7 +135,7 @@ function assertNoVanishedMarkers(mgr: CellManager, activeId: number | null = nul
 		for (let i = 0; i < cb.count; i++) {
 			const id = cb.ids[i];
 			if (id === activeId) continue; // active is intentionally hidden
-			const mainAlpha = cb.colors[i * 4 + 3];
+			const mainAlpha = cb.visible[i];
 			if (mainAlpha === 0 && !overlayIdSet.has(id)) {
 				throw new Error(
 					`ID ${id} is hidden in main layer but missing from overlay (vanished marker)`,
@@ -179,8 +170,8 @@ function assertAllVisible(mgr: CellManager) {
 	for (const cb of mgr.cells.values()) {
 		for (let i = 0; i < cb.count; i++) {
 			expect(
-				cb.colors[i * 4 + 3],
-				`ID ${cb.ids[i]} has alpha=${cb.colors[i * 4 + 3]}, expected 255`,
+				cb.visible[i],
+				`ID ${cb.ids[i]} has alpha=${cb.visible[i]}, expected 255`,
 			).toBe(255);
 		}
 	}
@@ -276,11 +267,10 @@ describe("Active location switch invariants", () => {
 		expect(isHidden(mgr, 1)).toBe(true);
 	});
 
-	it("deactivating a location restores default color", () => {
+	it("deactivating a location makes it visible again", () => {
 		simulateActiveSwitch(mgr, null, 1, new Set());
 		simulateActiveSwitch(mgr, 1, null, new Set());
-		expect(isVisible(mgr, 1)).toBe(true);
-		expect(getColor(mgr, 1)).toEqual([DEFAULT_R, DEFAULT_G, DEFAULT_B, DEFAULT_A]);
+		expect(getVisible(mgr, 1)).toBe(255);
 	});
 
 	it("switching active restores the previous and hides the new", () => {
@@ -361,11 +351,11 @@ describe("Selection and main layer consistency", () => {
 		assertOverlayEmpty(mgr);
 	});
 
-	it("clearing selection restores default color, not stale selection color", () => {
+	it("clearing selection makes every marker visible again", () => {
 		selectAll(mgr, [255, 0, 0]);
 		clearSelection(mgr);
 		for (let id = 1; id <= 10; id++) {
-			expect(getColor(mgr, id)).toEqual([DEFAULT_R, DEFAULT_G, DEFAULT_B, DEFAULT_A]);
+			expect(getVisible(mgr, id)).toBe(255);
 		}
 	});
 
@@ -460,8 +450,7 @@ describe("Active location + selection interaction", () => {
 		simulateActiveSwitch(mgr, null, 3, new Set([3]));
 		clearSelection(mgr);
 		simulateActiveSwitch(mgr, 3, null, new Set());
-		expect(isVisible(mgr, 3)).toBe(true);
-		expect(getColor(mgr, 3)).toEqual([DEFAULT_R, DEFAULT_G, DEFAULT_B, DEFAULT_A]);
+		expect(getVisible(mgr, 3)).toBe(255);
 	});
 });
 
@@ -580,7 +569,7 @@ describe("Deltas during active selections", () => {
 
 		expect(mgr.selOverlayCount).toBe(1);
 		expect([...mgr.selOverlayIds.slice(0, 1)]).toEqual([1]);
-		expect([...cb.colors.slice(cellIndex * 4, cellIndex * 4 + 4)]).toEqual([42, 42, 42, 255]);
+		expect(cb.visible[cellIndex]).toBe(255);
 		expect(mgr.selectedIds().has(2)).toBe(false);
 	});
 
@@ -605,52 +594,46 @@ describe("Deltas during active selections", () => {
 		expect(mgr.selOverlayCount).toBe(2);
 		const oi = mgr.selOverlayIds.indexOf(2);
 		expect([...mgr.selOverlayColors.slice(oi * 4, oi * 4 + 4)]).toEqual([0, 200, 0, 255]);
-		expect([...cb.colors.slice(cellIndex * 4, cellIndex * 4 + 4)]).toEqual([0, 200, 0, 0]);
+		expect(cb.visible[cellIndex]).toBe(0);
 	});
 });
 
 // ===========================================================================
-// 5. Tag color changes — the render pipeline's responsibility
+// 5. Membership patches target the right row
 // ===========================================================================
 
-describe("Tag color propagation via colorPatches", () => {
+describe("Membership propagation via colorPatches", () => {
 	let mgr: CellManager;
 
 	beforeEach(() => {
 		mgr = new CellManager();
-		// Simulate 3 entries with a "red tag" color
 		mgr.applyDelta({
-			added: [
-				coloredEntry("s", 1, 200, 50, 50),
-				coloredEntry("s", 2, 200, 50, 50),
-				coloredEntry("s", 3, DEFAULT_R, DEFAULT_G, DEFAULT_B), // untagged
-			],
+			added: [entry("s", 1, 1, 1), entry("s", 2, 2, 2), entry("s", 3, 3, 3)],
 			updated: [],
 			removed: [],
 			colorPatches: [],
 		});
 	});
 
-	it("color patch updates specific entries without affecting others", () => {
-		// "Change tag from red to green"
+	it("a patch hides only the rows it names", () => {
 		mgr.applyDelta({
 			added: [],
 			updated: [],
 			removed: [],
 			colorPatches: [
-				{ cell: "s", cellIndex: 0, r: 50, g: 200, b: 50, a: 255 },
-				{ cell: "s", cellIndex: 1, r: 50, g: 200, b: 50, a: 255 },
+				{ cell: "s", cellIndex: 0, r: 50, g: 200, b: 50, a: 0, selected: true },
+				{ cell: "s", cellIndex: 1, r: 50, g: 200, b: 50, a: 0, selected: true },
 			],
 		});
 
-		expect(getColor(mgr, 1)).toEqual([50, 200, 50, 255]);
-		expect(getColor(mgr, 2)).toEqual([50, 200, 50, 255]);
-		expect(getColor(mgr, 3)).toEqual([DEFAULT_R, DEFAULT_G, DEFAULT_B, DEFAULT_A]);
+		expect(getVisible(mgr, 1)).toBe(0);
+		expect(getVisible(mgr, 2)).toBe(0);
+		expect(getVisible(mgr, 3)).toBe(255);
 	});
 
-	it("color patch after swap-remove targets correct entry", () => {
+	it("a patch after swap-remove targets the row now at that index", () => {
 		const cb = mgr.cells.get("s")!;
-		// Remove id=1 (index 0) — id=3 swaps to index 0
+		// Remove id=1 (index 0); id=3 swaps into index 0.
 		mgr.applyDelta({
 			added: [],
 			updated: [],
@@ -658,16 +641,16 @@ describe("Tag color propagation via colorPatches", () => {
 			colorPatches: [],
 		});
 
-		// Now patch index 0 (which is id=3 after swap)
 		mgr.applyDelta({
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex: 0, r: 0, g: 255, b: 0, a: 255 }],
+			colorPatches: [{ cell: "s", cellIndex: 0, r: 0, g: 255, b: 0, a: 0, selected: true }],
 		});
 
-		expect(getColor(mgr, 3)).toEqual([0, 255, 0, 255]);
 		expect(cb.ids[0]).toBe(3);
+		expect(getVisible(mgr, 3)).toBe(0);
+		expect(getVisible(mgr, 2)).toBe(255);
 	});
 });
 
@@ -926,7 +909,7 @@ describe("Multiple overlapping selections", () => {
 			],
 		);
 		for (let i = 0; i < cb.count; i++) {
-			expect(cb.colors[i * 4 + 3]).toBe(0);
+			expect(cb.visible[i]).toBe(0);
 		}
 	});
 });
@@ -952,10 +935,10 @@ describe("Version tracking for deck.gl update triggers", () => {
 		expect(mgr.selOverlayVersion).toBeGreaterThan(v1);
 	});
 
-	it("colorVersion increments on color patch", () => {
+	it("colorVersion increments on a visibility patch", () => {
 		const cb = mgr.cells.get("s")!;
 		const v0 = cb.colorVersion;
-		cb.patchColor(0, 255, 0, 0, 255);
+		cb.patchVisible(0, 0);
 		expect(cb.colorVersion).toBeGreaterThan(v0);
 	});
 

@@ -27,15 +27,14 @@ describe("CellBuffer", () => {
 		expect(buf.ids).toEqual([]);
 	});
 
-	it("append stores position, color, angle, and id", () => {
+	it("append stores position, visibility, angle, and id", () => {
 		buf.append(entry("s", 1, 10.5, 20.5, 90));
 		expect(buf.count).toBe(1);
 		expect(buf.ids[0]).toBe(1);
 		expect(buf.positions[0]).toBeCloseTo(10.5);
 		expect(buf.positions[1]).toBeCloseTo(20.5);
 		expect(buf.angles[0]).toBeCloseTo(90);
-		expect(buf.colors[0]).toBe(42);
-		expect(buf.colors[3]).toBe(255);
+		expect(buf.visible[0]).toBe(255);
 		expect(buf.idToIndex.get(1)).toBe(0);
 	});
 
@@ -94,13 +93,12 @@ describe("CellBuffer", () => {
 		expect(buf.angles[0]).toBeCloseTo(45);
 	});
 
-	it("patchColor updates RGBA", () => {
+	it("patchVisible hides and shows a row", () => {
 		buf.append(entry("s", 1, 10, 20));
-		buf.patchColor(0, 255, 0, 0, 128);
-		expect(buf.colors[0]).toBe(255);
-		expect(buf.colors[1]).toBe(0);
-		expect(buf.colors[2]).toBe(0);
-		expect(buf.colors[3]).toBe(128);
+		buf.patchVisible(0, 0);
+		expect(buf.visible[0]).toBe(0);
+		buf.patchVisible(0, 255);
+		expect(buf.visible[0]).toBe(255);
 	});
 
 	it("grows capacity when needed", () => {
@@ -176,11 +174,10 @@ describe("CellManager", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex: 0, r: 255, g: 0, b: 0, a: 128 }],
+			colorPatches: [{ cell: "s", cellIndex: 0, r: 255, g: 0, b: 0, a: 0, selected: true }],
 		});
 		const cb = mgr.cells.get("s")!;
-		expect(cb.colors[0]).toBe(255);
-		expect(cb.colors[3]).toBe(128);
+		expect(cb.visible[0]).toBe(0);
 	});
 
 	it("applyDelta with fullReset clears everything first", () => {
@@ -312,7 +309,7 @@ describe("CellManager", () => {
 		expect(cb.positions[1]).toBeCloseTo(20.5);
 		expect(cb.positions[2]).toBeCloseTo(30.5);
 		expect(cb.positions[3]).toBeCloseTo(40.5);
-		expect(cb.colors[3]).toBe(255);
+		expect(cb.visible[0]).toBe(255);
 		expect(cb.angles[0]).toBeCloseTo(90);
 		expect(cb.angles[1]).toBeCloseTo(180);
 		expect(cb.idToIndex.get(42)).toBe(0);
@@ -608,13 +605,11 @@ describe("applySelectionBitmasks", () => {
 		);
 
 		const cb = mgr.cells.get("s")!;
-		// Index 0 (selected) should be hidden: alpha=0
-		expect(cb.colors[0 * 4 + 3]).toBe(0);
-		// Index 1 (not selected) should be visible: alpha=255
-		expect(cb.colors[1 * 4 + 3]).toBe(255);
+		expect(cb.visible[0]).toBe(0); // selected, so the overlay draws it instead
+		expect(cb.visible[1]).toBe(255);
 	});
 
-	it("unselected entries get default color restored", () => {
+	it("unselected entries become visible again", () => {
 		mgr.applyDelta({
 			added: [entry("s", 10, 1, 1), entry("s", 20, 2, 2)],
 			updated: [],
@@ -629,15 +624,13 @@ describe("applySelectionBitmasks", () => {
 		);
 		// Both hidden
 		const cb = mgr.cells.get("s")!;
-		expect(cb.colors[0 * 4 + 3]).toBe(0);
-		expect(cb.colors[1 * 4 + 3]).toBe(0);
+		expect(cb.visible[0]).toBe(0);
+		expect(cb.visible[1]).toBe(0);
 
-		// Now apply empty selection — should restore default colors
+		// An empty selection shows them again.
 		mgr.applySelectionBitmasks([], [{ cellChar: "s", locCount: 2, sels: [] }]);
-		expect(cb.colors[0 * 4]).toBe(42);
-		expect(cb.colors[0 * 4 + 3]).toBe(255);
-		expect(cb.colors[1 * 4]).toBe(42);
-		expect(cb.colors[1 * 4 + 3]).toBe(255);
+		expect(cb.visible[0]).toBe(255);
+		expect(cb.visible[1]).toBe(255);
 	});
 
 	// -----------------------------------------------------------------------

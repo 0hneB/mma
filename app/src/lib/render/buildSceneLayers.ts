@@ -3,6 +3,7 @@ import { ScatterplotLayer, PolygonLayer, PathLayer, LineLayer } from "@deck.gl/l
 import SDFMarkerLayer from "@/lib/render/sdf-marker-layer/SDFMarkerLayer";
 import { baseMarkerLayers, buildMarkerLayer, MARKER_STYLE } from "@/lib/render/markerLayer";
 import PanoCoverageLayer from "@/lib/render/PanoCoverageLayer";
+import { getMarkerDefaultColor } from "@/lib/render/sceneStore";
 import type { CellManager } from "@/lib/render/CellManager";
 import type { MarkerStyle } from "@/types";
 import type { LatLng } from "@/types";
@@ -149,7 +150,15 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 			}),
 		);
 
-	layers.push(...baseMarkerLayers(cm, ctx.markerStyle, ctx.markerOpacity, ctx.markerSize));
+	layers.push(
+		...baseMarkerLayers(
+			cm,
+			ctx.markerStyle,
+			getMarkerDefaultColor(),
+			ctx.markerOpacity,
+			ctx.markerSize,
+		),
+	);
 
 	if (isSeenOverlayActive()) {
 		const seen = getSeenOverlayEntries();
@@ -182,8 +191,8 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 				cm.selOverlayCount,
 				{
 					positions: cm.selOverlayPositions,
-					colors: cm.selOverlayColors,
 					angles: cm.selOverlayAngles,
+					color: { kind: "perMarker", colors: cm.selOverlayColors },
 				},
 				cm.selOverlayVersion,
 				cm.selOverlayVersion,
