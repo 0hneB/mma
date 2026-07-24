@@ -2367,6 +2367,128 @@ fn manager_remove_preserves_other() {
 }
 
 // -----------------------------------------------------------------------
+// create_tags_inner: create-and-assign in one mutation
+// -----------------------------------------------------------------------
+
+#[test]
+fn create_tags_with_locations_never_leaves_the_tag_at_zero() {
+    let mut store = setup_store_with(&[loc(1, 10.0, 20.0), loc(2, 10.1, 20.1)]);
+
+    let result = create_tags_inner(&mut store, &["field".to_string()], &[1, 2]);
+
+    let tag = store
+        .tags
+        .all
+        .values()
+        .find(|t| t.name == "field")
+        .expect("tag created");
+    assert_eq!(tag.count, 2, "the count is right in the same mutation");
+    assert!(
+        tag.visible,
+        "and it is not flipped invisible for being empty"
+    );
+    for id in [1, 2] {
+        assert!(store.get_loc_by_id(id).unwrap().tags.contains(&tag.id));
+    }
+    assert_eq!(
+        result.status.tag_counts.unwrap().get(&tag.id),
+        Some(&2),
+        "the same mutation reports the count to JS"
+    );
+}
+
+#[test]
+fn create_tags_without_locations_only_creates() {
+    let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
+
+    create_tags_inner(&mut store, &["solo".to_string()], &[]);
+
+    let tag = store.tags.all.values().find(|t| t.name == "solo").unwrap();
+    assert_eq!(tag.count, 0);
+    assert!(store.get_loc_by_id(1).unwrap().tags.is_empty());
+}
+
+#[test]
+fn an_empty_tag_survives_an_unrelated_mutation() {
+    let mut store = setup_store_with(&[loc(1, 10.0, 20.0), loc(2, 30.0, 40.0)]);
+    create_tags_inner(&mut store, &["empty".to_string()], &[]);
+    let tag_id = store
+        .tags
+        .all
+        .values()
+        .find(|t| t.name == "empty")
+        .unwrap()
+        .id;
+    assert!(store.tags.all[&tag_id].visible, "visible on creation");
+
+    // Move an unrelated location. Visibility is re-derived only for tags this touched.
+    let old = store.get_loc_by_id(2).unwrap();
+    let moved = Location {
+        lat: 31.0,
+        ..old.clone()
+    };
+    store.finish_mutation(ChangeSet {
+        updated: vec![(old, moved)],
+        ..Default::default()
+    });
+
+    assert!(
+        store.tags.all[&tag_id].visible,
+        "an unrelated edit must not hide a tag that is merely empty"
+    );
+}
+
+#[test]
+fn losing_its_last_location_still_hides_a_tag() {
+    let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
+    create_tags_inner(&mut store, &["fading".to_string()], &[1]);
+    let tag_id = store
+        .tags
+        .all
+        .values()
+        .find(|t| t.name == "fading")
+        .unwrap()
+        .id;
+    assert!(store.tags.all[&tag_id].visible);
+
+    // Strip it back off: the tag IS touched, so visibility is re-derived and it hides.
+    let old = store.get_loc_by_id(1).unwrap();
+    let untagged = Location {
+        tags: vec![],
+        ..old.clone()
+    };
+    store.remove_tag_counts(&[old.clone()]);
+    store.add_tag_counts(&[untagged.clone()]);
+    store.finish_mutation(ChangeSet {
+        updated: vec![(old, untagged)],
+        ..Default::default()
+    });
+
+    assert_eq!(store.tags.all[&tag_id].count, 0);
+    assert!(!store.tags.all[&tag_id].visible);
+}
+
+#[test]
+fn create_tags_is_idempotent_against_locations_that_already_have_the_tag() {
+    let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
+    create_tags_inner(&mut store, &["dup".to_string()], &[1]);
+    let tag_id = store
+        .tags
+        .all
+        .values()
+        .find(|t| t.name == "dup")
+        .unwrap()
+        .id;
+
+    // Same name, same location: no second copy of the tag, no double count.
+    create_tags_inner(&mut store, &["DUP".to_string()], &[1]);
+
+    assert_eq!(store.tags.all.values().filter(|t| t.count > 0).count(), 1);
+    assert_eq!(store.tags.all[&tag_id].count, 1);
+    assert_eq!(store.get_loc_by_id(1).unwrap().tags, vec![tag_id]);
+}
+
+// -----------------------------------------------------------------------
 // Selection bitmask: partial cell invariants
 // -----------------------------------------------------------------------
 

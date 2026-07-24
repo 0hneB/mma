@@ -307,7 +307,11 @@ impl SelectionState {
 pub(crate) struct TagState {
     pub all: HashMap<u32, Tag>,
     pub dirty: bool,
-    pub counts_dirty: bool,
+    /// Tags whose count moved since the last `finish_mutation`, which drains it. Decides
+    /// both which tags get their visibility re-derived (scanning all of them instead would
+    /// hide any tag merely sitting at zero, including one just created) and whether the
+    /// result carries `tag_counts` at all.
+    pub touched: HashSet<u32>,
     pub next_id: u32,
     /// `tag_id -> set of member location ids`. Lets a `Tag` selection resolve by
     /// cloning a set instead of scanning every row's tag list. Maintained
@@ -495,7 +499,7 @@ impl Store {
             tags: TagState {
                 all: HashMap::new(),
                 dirty: false,
-                counts_dirty: false,
+                touched: HashSet::new(),
                 next_id: 1,
                 sets: HashMap::new(),
             },
@@ -527,17 +531,6 @@ impl Store {
         }
     }
 
-    /// MutationResult for metadata-only changes (tags, reorder) that don't touch locations.
-    fn metadata_result(&self) -> MutationResult {
-        MutationResult {
-            status: self.store_status(),
-            delta: RenderDelta::default(),
-            selection_sync: None,
-            new_field_defs: None,
-            tags: Some(self.tags.all.clone()),
-        }
-    }
-
     /// Bump version, derive the render delta + selection sync from the semantic
     /// changeset, and return the full mutation result. The changeset is the single
     /// source of truth; the render delta and selection sync are two projections of it.
@@ -545,7 +538,9 @@ impl Store {
         self.bump();
         self.update_bounds(&changes);
 
-        let has_selections = !self.selections.resolved.is_empty();
+        // A metadata-only mutation (tag rename, reorder, a create with nothing to assign)
+        // moves no rows, so there is no membership to re-test and no delta to derive.
+        let has_selections = !changes.is_empty() && !self.selections.resolved.is_empty();
         let full_resolve = has_selections
             && (changes.full_reset
                 || changes.added.len() + changes.removed.len() + changes.updated.len() > 100
@@ -620,10 +615,12 @@ impl Store {
 
         let mut tags = None;
         let mut vis_changed = false;
-        // NOTE: tags created with count=0 (via store_create_tags) will be
-        // flipped to visible=false here on the next unrelated mutation.
-        // Create is followed by assign so this shouldn't matter.
-        for tag in self.tags.all.values_mut() {
+        let touched = std::mem::take(&mut self.tags.touched);
+        let counts_changed = !touched.is_empty();
+        for tag_id in touched {
+            let Some(tag) = self.tags.all.get_mut(&tag_id) else {
+                continue;
+            };
             let should = tag.count > 0;
             if tag.visible != should {
                 tag.visible = should;
@@ -636,7 +633,7 @@ impl Store {
         }
 
         let mut status = self.store_status();
-        if !std::mem::take(&mut self.tags.counts_dirty) {
+        if !counts_changed {
             status.tag_counts = None;
         }
 
@@ -933,9 +930,6 @@ impl Store {
 
     /// Adjust tag counts by `delta` (+1 for adds, -1 for removes). O(L * T) where L = locs, T = avg tags per loc.
     pub(crate) fn update_tag_counts(&mut self, locs: &[Location], delta: isize) {
-        if locs.iter().any(|l| !l.tags.is_empty()) {
-            self.tags.counts_dirty = true;
-        }
         // Pre-aggregate membership changes per tag for bulk bitmap operations.
         let mut members: HashMap<u32, Vec<u32>> = HashMap::new();
         for loc in locs {
@@ -962,6 +956,7 @@ impl Store {
                     self.tags.dirty = true;
                 }
                 members.entry(tag_id).or_default().push(loc.id);
+                self.tags.touched.insert(tag_id);
             }
         }
         for (tag_id, mut ids) in members {
@@ -1764,6 +1759,16 @@ pub struct ChangeSet {
     pub removed: Vec<u32>,
     pub updated: Vec<(Location, Location)>,
     pub full_reset: bool,
+}
+
+impl ChangeSet {
+    /// No rows moved. A metadata-only mutation (tag rename, reorder) produces one of these.
+    pub(crate) fn is_empty(&self) -> bool {
+        !self.full_reset
+            && self.added.is_empty()
+            && self.removed.is_empty()
+            && self.updated.is_empty()
+    }
 }
 
 /// A newly-added marker to a render cell: position, heading, and base color.
@@ -3637,57 +3642,98 @@ pub(crate) fn write_tags_json(
 
 /// Create tags by name. Deduplicates case-insensitively: if a tag with the same name
 /// already exists, it is made visible instead of creating a duplicate.
+///
+/// `location_ids` assigns every resulting tag to those locations in the same mutation.
+/// Doing both here is not a convenience: creating and assigning as two commands leaves the
+/// tag visible at count 0 for the round trip in between, and makes the caller fetch every
+/// location into JS just to append an id Rust already has.
 #[tauri::command]
 #[specta::specta]
 pub fn store_create_tags(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
     names: Vec<String>,
+    location_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     with_store!(webview, state, |store| {
-        let mut name_to_id: HashMap<String, u32> = HashMap::new();
-        for (&id, entry) in &store.tags.all {
-            name_to_id.insert(entry.name.to_lowercase(), id);
-        }
+        Ok(create_tags_inner(store, &names, &location_ids))
+    })
+}
 
-        for name in &names {
-            if let Some(&id) = name_to_id.get(&name.to_lowercase()) {
-                let tag = store.tags.all.get_mut(&id).unwrap();
-                if !tag.visible {
-                    tag.visible = true;
-                }
-            } else {
-                let id = store.alloc_tag_id();
-                let color = util::color_for_name(name);
-                let order = Some(
-                    store
-                        .tags
-                        .all
-                        .values()
-                        .filter_map(|t| t.order)
-                        .max()
-                        .map_or(1, |m| m + 1),
-                );
-                let tag = Tag {
-                    id,
-                    name: name.clone(),
-                    color,
-                    visible: true,
-                    order,
-                    count: 0,
-                    doclinks: Vec::new(),
-                };
-                store.tags.all.insert(id, tag.clone());
-                name_to_id.insert(name.to_lowercase(), id);
+/// Ensure `names` exist as tags and are on `location_ids`, in one mutation. An empty
+/// `location_ids` just creates them.
+pub(crate) fn create_tags_inner(
+    store: &mut Store,
+    names: &[String],
+    location_ids: &[u32],
+) -> MutationResult {
+    let mut name_to_id: HashMap<String, u32> = HashMap::new();
+    for (&id, entry) in &store.tags.all {
+        name_to_id.insert(entry.name.to_lowercase(), id);
+    }
+
+    let mut tag_ids: Vec<u32> = Vec::with_capacity(names.len());
+    for name in names {
+        if let Some(&id) = name_to_id.get(&name.to_lowercase()) {
+            let tag = store.tags.all.get_mut(&id).unwrap();
+            if !tag.visible {
+                tag.visible = true;
+            }
+            tag_ids.push(id);
+        } else {
+            let id = store.alloc_tag_id();
+            let color = util::color_for_name(name);
+            let order = Some(
+                store
+                    .tags
+                    .all
+                    .values()
+                    .filter_map(|t| t.order)
+                    .max()
+                    .map_or(1, |m| m + 1),
+            );
+            let tag = Tag {
+                id,
+                name: name.clone(),
+                color,
+                visible: true,
+                order,
+                count: 0,
+                doclinks: Vec::new(),
+            };
+            store.tags.all.insert(id, tag.clone());
+            name_to_id.insert(name.to_lowercase(), id);
+            tag_ids.push(id);
+        }
+    }
+
+    if !names.is_empty() {
+        store.tags.dirty = true;
+    }
+
+    let mut updated: Vec<(Location, Location)> = Vec::new();
+    for &id in location_ids {
+        let Some(old) = store.get_loc_by_id(id) else {
+            continue;
+        };
+        let mut tags = old.tags.clone();
+        for &t in &tag_ids {
+            if !tags.contains(&t) {
+                tags.push(t);
             }
         }
-
-        if !names.is_empty() {
-            store.tags.dirty = true;
+        if tags.len() == old.tags.len() {
+            continue; // already had all of them
         }
+        let mut new_loc = old.clone();
+        new_loc.tags = tags;
+        updated.push((old, new_loc));
+    }
 
-        Ok(store.metadata_result())
-    })
+    let changeset = store.commit_tag_update(updated);
+    let mut result = store.finish_mutation(changeset);
+    result.tags = Some(store.tags.all.clone());
+    result
 }
 
 /// Persist tag ordering. `ordered_ids` specifies the desired order; each tag's
@@ -3706,7 +3752,9 @@ pub fn store_reorder_tags(
             }
         }
         store.tags.dirty = true;
-        Ok(store.metadata_result())
+        let mut result = store.finish_mutation(ChangeSet::default());
+        result.tags = Some(store.tags.all.clone());
+        Ok(result)
     })
 }
 
