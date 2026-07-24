@@ -292,71 +292,77 @@ function unwrapUnary(
 	};
 }
 
+/** Rebuild a composite around `next`: a group that drops to one child collapses to it, an empty
+ *  one is gone (null). `rewrap` keeps a unary wrapper (Invert) around whatever survives. */
+function rebuildComposite(
+	type: GroupType,
+	rewrap: (inner: Selection) => Selection,
+	next: Selection[],
+): Selection | null {
+	if (next.length === 0) return null;
+	return rewrap(next.length === 1 ? next[0] : buildSelection({ type, selections: next }));
+}
+
+/** `updated: null` means the composite is empty now and the caller must drop it. `dissolve` hoists a
+ *  removed group's children into the parent instead of taking them with it — a delete ungroups,
+ *  an extract must not (the child keeps its own children when it leaves). */
 function removeChildFromComposite(
 	sel: Selection,
 	parentKey: string,
 	childKey: string,
-): { updated: Selection; removed: Selection } | null {
+	dissolve: boolean,
+): { updated: Selection | null; removed: Selection } | null {
 	const grp = unwrapUnary(sel);
 	if (!grp) return null;
 	const { props: compositeProps, rewrap } = grp;
 	const children = compositeProps.selections;
+	const rebuild = (next: Selection[]) => rebuildComposite(compositeProps.type, rewrap, next);
 
 	if (sel.key === parentKey) {
 		const childIdx = children.findIndex((s) => s.key === childKey);
 		if (childIdx === -1) return null;
 		const child = children[childIdx];
-		const unwrapped = isVariant(child.props, GROUP_TYPES) ? child.props.selections : [];
-		const remaining = [
-			...children.slice(0, childIdx),
-			...unwrapped,
-			...children.slice(childIdx + 1),
-		];
-		const group =
-			remaining.length <= 1
-				? (remaining[0] ?? child)
-				: buildSelection({ type: compositeProps.type, selections: remaining });
-		return { updated: rewrap(group), removed: child };
+		const inlined = dissolve && isVariant(child.props, GROUP_TYPES) ? child.props.selections : [];
+		return { updated: rebuild(children.toSpliced(childIdx, 1, ...inlined)), removed: child };
 	}
 
 	for (let i = 0; i < children.length; i++) {
-		const result = removeChildFromComposite(children[i], parentKey, childKey);
+		const result = removeChildFromComposite(children[i], parentKey, childKey, dissolve);
 		if (result) {
-			const newChildren = children.with(i, result.updated);
-			return {
-				updated: rewrap(buildSelection({ type: compositeProps.type, selections: newChildren })),
-				removed: result.removed,
-			};
+			const next = result.updated ? children.with(i, result.updated) : children.toSpliced(i, 1);
+			return { updated: rebuild(next), removed: result.removed };
 		}
 	}
 	return null;
 }
 
+/** `extract` puts the child back at the top level; `delete` drops it, ungrouping a nested group's
+ *  children into the parent. */
 function detachChild(
 	current: Selection[],
 	parentKey: string,
 	childKey: string,
-	reinsert: boolean,
+	mode: "extract" | "delete",
 ): Selection[] {
 	for (let i = 0; i < current.length; i++) {
-		const result = removeChildFromComposite(current[i], parentKey, childKey);
+		const result = removeChildFromComposite(current[i], parentKey, childKey, mode === "delete");
 		if (result) {
-			const out = [...current];
-			out[i] = result.updated;
-			if (reinsert) out.splice(i + 1, 0, result.removed);
+			const out = result.updated ? current.with(i, result.updated) : current.toSpliced(i, 1);
+			if (mode === "extract") out.splice(result.updated ? i + 1 : i, 0, result.removed);
 			return out;
 		}
 	}
 	return current;
 }
 
-/** Pull a child out of a composite back into the top-level list. Parent collapses if only one child remains. */
+/** Pull a child out of a composite back into the top-level list, children and all. Parent collapses
+ *  if only one child remains, and disappears if none do. */
 export function decomposeChild(
 	current: Selection[],
 	parentKey: string,
 	childKey: string,
 ): Selection[] {
-	return detachChild(current, parentKey, childKey, true);
+	return detachChild(current, parentKey, childKey, "extract");
 }
 
 export function removeFromComposite(
@@ -364,7 +370,7 @@ export function removeFromComposite(
 	parentKey: string,
 	childKey: string,
 ): Selection[] {
-	return detachChild(current, parentKey, childKey, false);
+	return detachChild(current, parentKey, childKey, "delete");
 }
 
 export function composeSiblings(
