@@ -157,12 +157,9 @@ export function startSceneEngine(): () => void {
 		const affected = scene.applyDelta(delta);
 		const aid = getMapState().activeLocation?.id ?? null;
 		if (aid != null) patchMarker(aid, ACTIVE_HIDDEN);
-		if (delta.colorPatches.length > 0) {
-			const selPatches = delta.colorPatches.filter(
-				(cp) =>
-					!(cp.r === markerDefault[0] && cp.g === markerDefault[1] && cp.b === markerDefault[2]),
-			);
-			scene.appendToSelectionOverlay(selPatches);
+		// No bitmask follows an incremental mutation; applyDelta already folded membership in.
+		if (delta.colorPatches.length > 0 || delta.removed.length > 0) {
+			setSelectedLocationIds(scene.selectedIds());
 		}
 		t.end({ affected: affected.size, added: delta.added.length, removed: delta.removed.length });
 		if (affected.size > 0 || delta.colorPatches.length > 0) emitEvent("scene:changed");

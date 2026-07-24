@@ -2455,44 +2455,72 @@ fn tag_patch_applies_set_fields_only() {
     assert_eq!(tag.name, "A");
 }
 
-#[test]
-fn partial_bitmask_only_contains_affected_cells() {
-    // Two locations in different geohash cells
-    let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
-    let l2 = loc_with_tags(2, -30.0, -40.0, vec![1]);
-    let mut store = setup_store_with(&[l1.clone(), l2.clone()]);
+/// Insert tag `id` with `count` members so selection resolution can see it.
+fn insert_tag(store: &mut Store, id: u32, count: usize) {
     store.tags.all.insert(
-        1,
+        id,
         Tag {
-            id: 1,
-            name: "A".into(),
+            id,
+            name: format!("tag{id}"),
             color: "#ff0000".into(),
             visible: true,
             order: None,
-            count: 2,
+            count,
             doclinks: Vec::new(),
         },
     );
+}
+
+#[test]
+fn incremental_membership_change_ships_no_bitmask() {
+    let l1 = loc_with_tags(1, 10.0, 20.0, vec![]);
+    let mut store = setup_store_with(&[l1.clone()]);
+    insert_tag(&mut store, 1, 0);
     add_tag_selection(&mut store, 1, [255, 0, 0]);
 
-    // Verify they're in different cells
-    let c1 = render_cell_idx(10.0, 20.0);
-    let c2 = render_cell_idx(-30.0, -40.0);
-    assert_ne!(c1, c2, "test requires locations in different cells");
-
-    // Update only l1's tags — only l1's cell should be in the bitmask
     let result = store.finish_mutation(ChangeSet {
-        updated: vec![(l1.clone(), loc_with_tags(1, 10.0, 20.0, vec![1]))],
+        updated: vec![(l1, loc_with_tags(1, 10.0, 20.0, vec![1]))],
         ..Default::default()
     });
 
-    let sync = result.selection_sync.unwrap();
-    let buf = sync.bitmask.expect("should send bitmask");
-    let cells = bitmask_cell_chars(&buf);
+    let sync = result.selection_sync.expect("counts still sync");
+    assert!(
+        sync.bitmask.is_none(),
+        "the incremental path carries membership on the render delta, not a bitmask"
+    );
+    assert_eq!(sync.selected_count, 1);
+    assert_eq!(result.delta.color_patches.len(), 1);
+}
+
+#[test]
+fn full_resolve_ships_a_bitmask_for_every_cell() {
+    // Two locations in different geohash cells, both tagged.
+    let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
+    let l2 = loc_with_tags(2, -30.0, -40.0, vec![1]);
+    assert_ne!(
+        render_cell_idx(10.0, 20.0),
+        render_cell_idx(-30.0, -40.0),
+        "test requires locations in different cells"
+    );
+    let mut store = setup_store_with(&[l1.clone(), l2.clone()]);
+    insert_tag(&mut store, 1, 2);
+    add_tag_selection(&mut store, 1, [255, 0, 0]);
+
+    // `full_reset` forces the full-resolve branch.
+    let result = store.finish_mutation(ChangeSet {
+        full_reset: true,
+        ..Default::default()
+    });
+
+    let buf = result
+        .selection_sync
+        .unwrap()
+        .bitmask
+        .expect("full resolve rebuilds the whole bitmask");
     assert_eq!(
-        cells.len(),
-        1,
-        "only the affected cell should be in the bitmask"
+        bitmask_cell_chars(&buf).len(),
+        2,
+        "a full resolve covers every non-empty cell, not just changed ones"
     );
 }
 
@@ -2527,9 +2555,70 @@ fn membership_delta_reports_gained_on_tag_add() {
         "should emit colorPatch for gained selection"
     );
     let cp = &result.delta.color_patches[0];
-    assert_eq!(cp.r, 255);
-    assert_eq!(cp.g, 0);
-    assert_eq!(cp.b, 0);
+    assert!(cp.selected, "gained membership");
+    assert_eq!([cp.r, cp.g, cp.b], [255, 0, 0], "the selection colour");
+    assert_eq!(
+        cp.a, 0,
+        "a selected row is transparent in the base layer; the overlay draws it"
+    );
+}
+
+#[test]
+fn membership_delta_reports_lost_on_tag_remove() {
+    let tagged = loc_with_tags(1, 10.0, 20.0, vec![1]);
+    let mut store = setup_store_with(&[tagged.clone()]);
+    insert_tag(&mut store, 1, 1);
+    add_tag_selection(&mut store, 1, [255, 0, 0]);
+    store.resolve_selection_membership();
+    assert!(store.selections.ids.contains(1), "starts selected");
+
+    let untagged = loc_with_tags(1, 10.0, 20.0, vec![]);
+    let result = store.finish_mutation(ChangeSet {
+        updated: vec![(tagged, untagged)],
+        ..Default::default()
+    });
+
+    assert!(!store.selections.ids.contains(1), "left the selection");
+    assert_eq!(
+        result.delta.color_patches.len(),
+        1,
+        "a row that leaves a selection must be restored in the base layer"
+    );
+    let cp = &result.delta.color_patches[0];
+    assert!(!cp.selected, "lost membership");
+    assert_eq!(
+        [cp.r, cp.g, cp.b],
+        store.render.marker_color,
+        "restored to the default marker colour"
+    );
+    assert_eq!(cp.a, 255, "and made opaque again, or it stays invisible");
+}
+
+#[test]
+fn removed_selected_location_leaves_no_colorpatch() {
+    // A deleted row has no cell left to patch; JS drops it from the overlay via
+    // `delta.removed`, so emitting a colorPatch for it would dangle.
+    let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
+    let l2 = loc_with_tags(2, 10.001, 20.001, vec![1]);
+    let mut store = setup_store_with(&[l1, l2]);
+    insert_tag(&mut store, 1, 2);
+    add_tag_selection(&mut store, 1, [255, 0, 0]);
+    store.resolve_selection_membership();
+
+    let result = store.finish_mutation(ChangeSet {
+        removed: vec![1],
+        ..Default::default()
+    });
+
+    assert!(
+        result.delta.color_patches.is_empty(),
+        "no colorPatch for a row that no longer has a cell"
+    );
+    assert!(
+        result.delta.removed.iter().any(|r| r.id == 1),
+        "the removal itself is what drops it from the overlay"
+    );
+    assert!(!store.selections.ids.contains(1));
 }
 
 #[test]
@@ -2569,39 +2658,6 @@ fn membership_delta_no_colorpatch_when_membership_unchanged() {
     );
 }
 
-#[test]
-fn removal_bitmask_includes_affected_cell() {
-    let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
-    let l2 = loc_with_tags(2, 10.001, 20.001, vec![1]);
-    let mut store = setup_store_with(&[l1.clone(), l2.clone()]);
-    store.tags.all.insert(
-        1,
-        Tag {
-            id: 1,
-            name: "A".into(),
-            color: "#ff0000".into(),
-            visible: true,
-            order: None,
-            count: 2,
-            doclinks: Vec::new(),
-        },
-    );
-    add_tag_selection(&mut store, 1, [255, 0, 0]);
-    store.resolve_selection_membership();
-
-    // Remove l1
-    let result = store.finish_mutation(ChangeSet {
-        removed: vec![1],
-        ..Default::default()
-    });
-
-    // The bitmask should include the cell that l1 was in
-    let sync = result.selection_sync.unwrap();
-    assert!(
-        sync.bitmask.is_some(),
-        "should send bitmask for the affected cell"
-    );
-}
 
 // -----------------------------------------------------------------------
 // merge_group (duplicate merge policy)
@@ -2713,7 +2769,7 @@ fn selection_cell_segment_adapts_format() {
     // Sparse (one selected id) -> routed member-walk -> index-list (format byte 1).
     let mut sparse = RoaringBitmap::new();
     sparse.insert(5);
-    let routed = vec![selection_cell_indices(&render, &sparse, None)];
+    let routed = vec![selection_cell_indices(&render, &sparse)];
     let seg = serialize_cell_segment(0, cr, &routed);
     assert_eq!(parse_header(&seg), n as u32);
     assert_eq!(
@@ -2733,21 +2789,18 @@ fn selection_cell_segment_adapts_format() {
 
     // Dense (select all) -> cell scan -> bitmask (format byte 0), all bits set.
     let dense: RoaringBitmap = (0..n as u32).collect();
-    let routed = vec![selection_cell_indices(&render, &dense, None)];
+    let routed = vec![selection_cell_indices(&render, &dense)];
     let seg = serialize_cell_segment(0, cr, &routed);
     let mask_bytes = n.div_ceil(8);
     assert_eq!(seg[5], 0, "select-all should use the dense bitmask format");
     assert_eq!(seg.len(), 5 + 1 + mask_bytes);
     assert!(seg[6..].iter().all(|&b| b == 0xFF), "every bit set");
 
-    // Affected-scope filter: routing for a cell outside the scope yields nothing.
-    let mut other_cell_only = std::collections::HashSet::new();
-    other_cell_only.insert(1u8);
-    let routed = selection_cell_indices(&render, &sparse, Some(&other_cell_only));
-    assert!(
-        routed[0].is_empty(),
-        "out-of-scope cells must not be routed"
-    );
+    // Ids in no render cell route nowhere rather than panicking.
+    let mut absent = RoaringBitmap::new();
+    absent.insert(n as u32 + 10);
+    let routed = selection_cell_indices(&render, &absent);
+    assert!(routed.iter().all(|v| v.is_empty()));
 }
 
 // -----------------------------------------------------------------------

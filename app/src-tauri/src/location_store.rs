@@ -93,31 +93,23 @@ fn assemble_selection_bitmask<'a>(
 }
 
 /// Route one selection's id-set to per-cell local render indices. Adaptive so the cost
-/// is O(min(set size, render size in scope)) rather than O(render size) per selection:
-/// sparse sets walk their members and probe `id_to_cell_idx`/`id_to_index`; dense sets
-/// (where member-walking would do the same work anyway) scan the cell arrays directly.
-/// `affected` limits the scope to those cells (delta path); `None` = all cells.
-fn selection_cell_indices(
-    render: &RenderState,
-    set: &RoaringBitmap,
-    affected: Option<&HashSet<u8>>,
-) -> [Vec<u32>; 32] {
+/// is O(min(set size, render size)) rather than O(render size) per selection: sparse sets
+/// walk their members and probe `id_to_cell_idx`/`id_to_index`; dense sets (where
+/// member-walking would do the same work anyway) scan the cell arrays directly.
+fn selection_cell_indices(render: &RenderState, set: &RoaringBitmap) -> [Vec<u32>; 32] {
     let mut out: [Vec<u32>; 32] = std::array::from_fn(|_| Vec::new());
-    let in_scope = |ci: u8| affected.map_or(true, |a| a.contains(&ci));
-    let scope_size: usize = render
+    let render_size: usize = render
         .cells
         .iter()
-        .enumerate()
-        .filter(|(ci, _)| in_scope(*ci as u8))
-        .filter_map(|(_, o)| o.as_ref())
+        .filter_map(|o| o.as_ref())
         .map(|cr| cr.id_order.len())
         .sum();
-    if (set.len() as usize) <= scope_size {
+    if (set.len() as usize) <= render_size {
         for id in set {
             let Some(&ci) = render.id_to_cell_idx.get(id as usize) else {
                 continue;
             };
-            if ci == 255 || !in_scope(ci) {
+            if ci == 255 {
                 continue;
             }
             let Some(cr) = render.cells[ci as usize].as_ref() else {
@@ -132,9 +124,6 @@ fn selection_cell_indices(
         }
     } else {
         for (ci, opt) in render.cells.iter().enumerate() {
-            if !in_scope(ci as u8) {
-                continue;
-            }
             let Some(cr) = opt.as_ref() else { continue };
             for (li, &id) in cr.id_order.iter().enumerate() {
                 if set.contains(id) {
@@ -544,27 +533,7 @@ impl Store {
                 || changes.added.len() + changes.removed.len() + changes.updated.len() > 100
                 || self.selections_need_full_resolve());
 
-        // Step 1: Record which render cells contain changed IDs BEFORE anything mutates render_cells.
-        let affected_cells: HashSet<u8> = if has_selections {
-            let mut cells = HashSet::new();
-            for &id in changes
-                .removed
-                .iter()
-                .chain(changes.added.iter().map(|l| &l.id))
-                .chain(changes.updated.iter().map(|(_, n)| &n.id))
-            {
-                if let Some(&ci) = self.render.id_to_cell_idx.get(id as usize) {
-                    if ci != 255 {
-                        cells.insert(ci);
-                    }
-                }
-            }
-            cells
-        } else {
-            HashSet::new()
-        };
-
-        // Step 2: Update selection membership and get back what changed.
+        // Step 1: Update selection membership and get back what changed.
         let membership_delta = if has_selections {
             if full_resolve {
                 self.resolve_selection_membership();
@@ -576,36 +545,56 @@ impl Store {
             None
         };
 
-        // Step 3: Derive render delta (mutates render_cells).
+        // Step 2: Derive render delta (mutates render_cells).
         let mut delta = self.derive_render_delta(&changes);
 
-        // Step 4: Emit colorPatches from membership changes.
+        // Step 3: Project membership changes onto colorPatches. This is the whole
+        // incremental selection update: gained rows go transparent in the base layer
+        // (the overlay draws them in the selection color), lost rows go back to the
+        // marker color and drop out of the overlay. Rows lost by deletion have no cell
+        // left to patch; JS drops those from the overlay via `delta.removed`.
         if let Some(ref md) = membership_delta {
+            let [mr, mg, mb] = self.render.marker_color;
             for &(id, color) in &md.gained {
-                if let Some((cell, ci)) = self.cell_lookup(id) {
+                if let Some((cell, cell_index)) = self.cell_lookup(id) {
                     delta.color_patches.push(ColorPatchEntry {
                         cell,
-                        cell_index: ci,
+                        cell_index,
                         r: color[0],
                         g: color[1],
                         b: color[2],
+                        a: 0,
+                        selected: true,
+                    });
+                }
+            }
+            for &id in &md.lost {
+                if let Some((cell, cell_index)) = self.cell_lookup(id) {
+                    delta.color_patches.push(ColorPatchEntry {
+                        cell,
+                        cell_index,
+                        r: mr,
+                        g: mg,
+                        b: mb,
                         a: 255,
+                        selected: false,
                     });
                 }
             }
         }
 
-        // Step 5: Build bitmask for affected cells.
-        let mut bitmask_cells = affected_cells;
-        for loc in &changes.added {
-            let ci = render_cell_idx(loc.lat, loc.lng);
-            bitmask_cells.insert(ci);
-        }
+        // Step 4: Only a full resolve ships a bitmask. The incremental path is carried
+        // entirely by the colorPatches above, which cost O(changed) instead of the
+        // O(rows in the affected cells) that a per-cell bitmask rebuild costs.
         let selection_sync = if has_selections {
             if full_resolve {
-                Some(self.build_selection_bitmask(None))
+                Some(self.build_selection_bitmask())
             } else {
-                Some(self.build_selection_bitmask(Some(&bitmask_cells)))
+                Some(SelectionSync {
+                    counts: self.selections.node_counts.clone(),
+                    bitmask: None,
+                    selected_count: self.selections.ids.len() as usize,
+                })
             }
         } else {
             None
@@ -873,31 +862,23 @@ impl Store {
         self.selections.version += 1;
     }
 
-    /// Build the selection bitmask file from current render_cells + selection_loc_sets.
-    /// `affected = None` rebuilds all cells (full resolve path); `Some` restricts the
-    /// rebuild to those cell indices (incremental delta path).
-    fn build_selection_bitmask(&self, affected: Option<&HashSet<u8>>) -> SelectionSync {
+    /// Build the full selection bitmask from current render_cells + selection_loc_sets.
+    /// Every cell is rebuilt; incremental membership changes ride the render delta's
+    /// colorPatches instead (see `finish_mutation`).
+    fn build_selection_bitmask(&self) -> SelectionSync {
         let counts = self.selections.node_counts.clone();
         let selected_count = self.selections.ids.len() as usize;
-
-        if affected.is_some_and(|a| a.is_empty()) {
-            return SelectionSync {
-                counts,
-                bitmask: None,
-                selected_count,
-            };
-        }
 
         let t0 = std::time::Instant::now();
         let num_sels = self.selections.all.len();
         // Route selections to per-cell indices (parallel over selections, O(selected)),
-        // then serialize affected cells in parallel; segments are self-describing so
+        // then serialize the cells in parallel; segments are self-describing so
         // order is irrelevant.
         let routed: Vec<[Vec<u32>; 32]> = self
             .selections
             .loc_sets
             .par_iter()
-            .map(|set| selection_cell_indices(&self.render, set, affected))
+            .map(|set| selection_cell_indices(&self.render, set))
             .collect();
         let segments: Vec<Vec<u8>> = self
             .render
@@ -905,11 +886,6 @@ impl Store {
             .par_iter()
             .enumerate()
             .filter_map(|(ci, opt)| {
-                if let Some(a) = affected {
-                    if !a.contains(&(ci as u8)) {
-                        return None;
-                    }
-                }
                 let cr = opt.as_ref()?;
                 Some(serialize_cell_segment(ci, cr, &routed))
             })
@@ -921,12 +897,11 @@ impl Store {
         let bitmask = if num_cells > 0 { Some(buf) } else { None };
 
         log::debug!(
-            "[sel] total={}ms sels={} selected={} cells={} incremental={}",
+            "[sel] total={}ms sels={} selected={} cells={}",
             t0.elapsed().as_millis(),
             num_sels,
             selected_count,
             num_cells,
-            affected.is_some()
         );
 
         SelectionSync {
@@ -1807,8 +1782,10 @@ pub struct CellRemoval {
     pub id: u32,
 }
 
-/// Override the RGBA color of a single marker within a cell (used when selection
-/// membership changes without a position change).
+/// One location's selection-membership change, projected onto the render buffers.
+/// `selected` says which way it went, and the RGBA is the base-layer color: a gained
+/// row is transparent there and drawn by the overlay in `r,g,b`; a lost row gets the
+/// opaque marker color back and drops out of the overlay.
 #[derive(serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ColorPatchEntry {
@@ -1818,6 +1795,7 @@ pub struct ColorPatchEntry {
     pub g: u8,
     pub b: u8,
     pub a: u8,
+    pub selected: bool,
 }
 
 /// Selection bitmask sync payload. `bitmask` carries the packed per-cell bitmask bytes
@@ -3825,7 +3803,7 @@ pub async fn store_sync_selections(
         //    serialize the per-cell bitmask binary. Cells are independent → parallel.
         let routed: Vec<[Vec<u32>; 32]> = live
             .par_iter()
-            .map(|&i| selection_cell_indices(&store.render, &sel_sets[i], None))
+            .map(|&i| selection_cell_indices(&store.render, &sel_sets[i]))
             .collect();
         let segments: Vec<Vec<u8>> = store
             .render

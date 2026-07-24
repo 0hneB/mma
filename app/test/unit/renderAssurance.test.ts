@@ -539,7 +539,7 @@ describe("Deltas during active selections", () => {
 		expect(mgr.selOverlayPositions[oi * 2 + 1]).toBeCloseTo(888);
 	});
 
-	it("color patch on non-selected entry doesn't affect selection overlay", () => {
+	it("deselect patch on an unselected entry leaves the overlay untouched", () => {
 		selectIds(mgr, new Set([1, 2]));
 		const vBefore = mgr.selOverlayVersion;
 
@@ -555,13 +555,57 @@ describe("Deltas during active selections", () => {
 					g: 100,
 					b: 50,
 					a: 255,
+					selected: false,
 				},
 			],
 		});
 
-		// Overlay should not have changed
 		expect(mgr.selOverlayVersion).toBe(vBefore);
 		expect(mgr.selOverlayCount).toBe(2);
+	});
+
+	it("deselect patch drops the entry and restores its base colour", () => {
+		selectIds(mgr, new Set([1, 2]));
+		const cb = mgr.cells.get("s")!;
+		const cellIndex = cb.idToIndex.get(2)!;
+
+		mgr.applyDelta({
+			added: [],
+			updated: [],
+			removed: [],
+			colorPatches: [
+				{ cell: "s", cellIndex, r: 42, g: 42, b: 42, a: 255, selected: false },
+			],
+		});
+
+		expect(mgr.selOverlayCount).toBe(1);
+		expect([...mgr.selOverlayIds.slice(0, 1)]).toEqual([1]);
+		expect([...cb.colors.slice(cellIndex * 4, cellIndex * 4 + 4)]).toEqual([42, 42, 42, 255]);
+		expect(mgr.selectedIds().has(2)).toBe(false);
+	});
+
+	it("reselect patch replaces rather than duplicates an overlay entry", () => {
+		selectIds(mgr, new Set([1, 2]));
+		const cb = mgr.cells.get("s")!;
+		const cellIndex = cb.idToIndex.get(2)!;
+
+		// Same id patched selected twice: the overlay must still hold exactly one entry.
+		const patch = {
+			cell: "s",
+			cellIndex,
+			r: 0,
+			g: 200,
+			b: 0,
+			a: 0,
+			selected: true,
+		};
+		mgr.applyDelta({ added: [], updated: [], removed: [], colorPatches: [patch] });
+		mgr.applyDelta({ added: [], updated: [], removed: [], colorPatches: [patch] });
+
+		expect(mgr.selOverlayCount).toBe(2);
+		const oi = mgr.selOverlayIds.indexOf(2);
+		expect([...mgr.selOverlayColors.slice(oi * 4, oi * 4 + 4)]).toEqual([0, 200, 0, 255]);
+		expect([...cb.colors.slice(cellIndex * 4, cellIndex * 4 + 4)]).toEqual([0, 200, 0, 0]);
 	});
 });
 

@@ -407,8 +407,10 @@ export type CellRemoval = {
 };
 
 /**
- *  Override the RGBA color of a single marker within a cell (used when selection
- *  membership changes without a position change).
+ *  One location's selection-membership change, projected onto the render buffers.
+ *  `selected` says which way it went, and the RGBA is the base-layer color: a gained
+ *  row is transparent there and drawn by the overlay in `r,g,b`; a lost row gets the
+ *  opaque marker color back and drops out of the overlay.
  */
 export type ColorPatchEntry = {
 	cell: string,
@@ -417,6 +419,7 @@ export type ColorPatchEntry = {
 	g: number,
 	b: number,
 	a: number,
+	selected: boolean,
 };
 
 /**

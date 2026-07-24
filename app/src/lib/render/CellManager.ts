@@ -310,11 +310,40 @@ export class CellManager {
 		this.version++;
 	}
 
-	/** Apply an incremental delta (adds, swap-removes, position patches, color patches). Returns affected cell keys. */
-	private _removedIds = new Set<number>();
+	/** Drop every overlay entry whose id is in `ids`, compacting in place. */
+	private dropOverlayEntries(ids: Set<number>) {
+		if (ids.size === 0 || this.selOverlayCount === 0) return;
+		const pos = this.selOverlayPositions;
+		const col = this.selOverlayColors;
+		const ang = this.selOverlayAngles;
+		const sid = this.selOverlayIds;
+		let oi = 0;
+		for (let i = 0; i < this.selOverlayCount; i++) {
+			if (ids.has(sid[i])) continue;
+			if (oi !== i) {
+				pos[oi * 2] = pos[i * 2];
+				pos[oi * 2 + 1] = pos[i * 2 + 1];
+				const o4 = oi * 4,
+					p4 = i * 4;
+				col[o4] = col[p4];
+				col[o4 + 1] = col[p4 + 1];
+				col[o4 + 2] = col[p4 + 2];
+				col[o4 + 3] = col[p4 + 3];
+				ang[oi] = ang[i];
+				sid[oi] = sid[i];
+			}
+			oi++;
+		}
+		if (oi === this.selOverlayCount) return; // nothing matched, leave the version alone
+		this.selOverlayCount = oi;
+		this.selOverlayVersion++;
+	}
 
+	/** Apply an incremental delta (adds, swap-removes, position patches, color patches). Returns affected cell keys. */
 	applyDelta(delta: RenderDelta): Set<string> {
 		const affected = new Set<string>();
+		// Ids leaving the overlay: deleted rows plus rows that lost membership. One pass at the end.
+		const dropped = new Set<number>();
 
 		for (const rem of delta.removed) {
 			const cb = this.cells.get(rem.cell);
@@ -323,7 +352,7 @@ export class CellManager {
 				this.totalCount--;
 				affected.add(rem.cell);
 			}
-			this._removedIds.add(rem.id);
+			dropped.add(rem.id);
 		}
 
 		for (const entry of delta.added) {
@@ -351,13 +380,20 @@ export class CellManager {
 			}
 		}
 
+		// Membership changes. The RGBA is the base layer's (a selected row is transparent
+		// there); `selected` says which way the overlay entry goes. Dropping first means a
+		// row that re-enters a selection never doubles up.
+		const gained: ColorPatchEntry[] = [];
 		for (const cp of delta.colorPatches) {
 			const cb = this.cells.get(cp.cell);
-			if (cb) {
-				cb.patchColor(cp.cellIndex, cp.r, cp.g, cp.b, cp.a);
-				affected.add(cp.cell);
-			}
+			if (!cb) continue;
+			cb.patchColor(cp.cellIndex, cp.r, cp.g, cp.b, cp.a);
+			affected.add(cp.cell);
+			dropped.add(cb.ids[cp.cellIndex]);
+			if (cp.selected) gained.push(cp);
 		}
+		this.dropOverlayEntries(dropped);
+		this.appendToSelectionOverlay(gained);
 
 		this.version++;
 		return affected;
@@ -395,7 +431,9 @@ export class CellManager {
 			col[oi * 4] = cp.r;
 			col[oi * 4 + 1] = cp.g;
 			col[oi * 4 + 2] = cp.b;
-			col[oi * 4 + 3] = cp.a;
+			// The overlay always draws opaque; `cp.a` is the base layer's alpha, which is 0
+			// for a selected row precisely so this entry is what shows.
+			col[oi * 4 + 3] = 255;
 			ang[oi] = cb.angles[cp.cellIndex];
 			ids[oi] = cb.ids[cp.cellIndex];
 		}
@@ -507,9 +545,10 @@ export class CellManager {
 					bitSet(incomingBits, ids[i]);
 				}
 			}
-			const rem = this._removedIds;
+			// Deleted rows already left the overlay in `applyDelta`, so only incoming-cell
+			// membership decides what is kept here.
 			for (let i = 0; i < prevCount; i++) {
-				if (bitHas(incomingBits, prevIds[i]) || rem.has(prevIds[i])) continue;
+				if (bitHas(incomingBits, prevIds[i])) continue;
 				keptCount++;
 			}
 		}
@@ -540,18 +579,17 @@ export class CellManager {
 		this.selOverlayIds = new Uint32Array(total);
 
 		// Copy the kept entries straight from the old typed arrays into the new ones (skipping
-		// incoming/removed), setting their selected bits — no objects, no Set lookups.
+		// incoming cells), setting their selected bits. No objects, no Set lookups.
 		let oi = 0;
 		if (!isFull) {
 			const sp = this.selOverlayPositions,
 				sc = this.selOverlayColors;
 			const sa = this.selOverlayAngles,
 				sid = this.selOverlayIds;
-			const rem = this._removedIds;
 			const inc = incomingBits!;
 			for (let i = 0; i < prevCount; i++) {
 				const id = prevIds[i];
-				if (bitHas(inc, id) || rem.has(id)) continue;
+				if (bitHas(inc, id)) continue;
 				sp[oi * 2] = prevPos[i * 2];
 				sp[oi * 2 + 1] = prevPos[i * 2 + 1];
 				const o4 = oi * 4,
@@ -653,7 +691,6 @@ export class CellManager {
 		this.selOverlayCount = oi;
 		this.selOverlayVersion++;
 		this.version++;
-		this._removedIds.clear();
 		return new SelectedIds(bits, selCount);
 	}
 
