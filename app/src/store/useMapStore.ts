@@ -850,15 +850,21 @@ export function toggleTagSelections(tagIds: number[]) {
 	});
 }
 
-/** Tag ids that currently have a Tag selection (cached; keyed on the selection list). */
-export const getSelectedTagIds: () => ReadonlySet<number> = memoOnRefs(
-	() => [state.selections] as const,
-	(sels) => {
-		const ids = new Set<number>();
-		for (const s of sels) if (s.props.type === "Tag") ids.add(s.props.tagId);
-		return ids;
-	},
-);
+/** Tag ids that currently have a Tag selection (cached; keyed on the selection list,
+ *  identity-stable while the set of ids is unchanged). */
+export const getSelectedTagIds: () => ReadonlySet<number> = (() => {
+	let prev: Set<number> | null = null;
+	return memoOnRefs(
+		() => [state.selections] as const,
+		(sels) => {
+			const ids = new Set<number>();
+			for (const s of sels) if (s.props.type === "Tag") ids.add(s.props.tagId);
+			if (prev && prev.size === ids.size && [...ids].every((id) => prev!.has(id))) return prev;
+			prev = ids;
+			return ids;
+		},
+	);
+})();
 
 let virtualIdSeq = 0;
 /** Each preview gets a fresh negative id so its identity changes between previews (the pano viewer re-resolves on active-id change). */

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NSelect } from "@/components/primitives/NSelect";
 import {
 	useMapState,
+	getMapState,
 	addTagToLocations,
 	createTags,
 	addSelections,
@@ -161,14 +162,84 @@ function TopKPanel({
 	);
 }
 
-export function MapOverview({ hidden }: { hidden?: boolean }) {
-	const map = useMapState((s) => s.map);
-	const selected = useMapState((s) => s.selectedLocationIds);
+function SelectedCount({ className }: { className?: string }) {
+	const total = useMapState((s) => s.selectedLocationIds.size);
+	return (
+		<span className={className}>
+			<span className="mono">{fmt.format(total)}</span> selected
+		</span>
+	);
+}
+
+function SelectionList() {
 	const selections = useMapState((s) => s.selections);
+	if (selections.length === 0) return null;
+	return (
+		<div className="selection-manager__selections">
+			{selections.map((sel) => (
+				<SelectionRow key={sel.key} selection={sel} />
+			))}
+		</div>
+	);
+}
+
+function BulkTagForm() {
+	const [bulkTagInput, setBulkTagInput] = useState("");
+	const hasSelection = useMapState((s) => s.selectedLocationIds.size > 0);
 	const visibleTags = useMapState(getVisibleTags);
 	const tagCounts = useMapState((s) => s.tagCounts);
-	const [bulkTagInput, setBulkTagInput] = useState("");
 	const tagSortMode = useSetting("tagSortMode");
+
+	const handleBulkAddTag = async (e: React.FormEvent) => {
+		e.preventDefault();
+		const name = bulkTagInput.trim();
+		const selected = getMapState().selectedLocationIds;
+		if (!name || selected.size === 0) return;
+		const [resolved] = await createTags([name]);
+		addTagToLocations(resolved.id, [...selected]);
+		setBulkTagInput("");
+	};
+
+	const bulkSuggestions = (() => {
+		const all = sortTagsByMode(visibleTags, tagSortMode, tagCounts);
+		const q = bulkTagInput.trim().toLowerCase();
+		return (q ? all.filter((t) => t.name.toLowerCase().includes(q)) : all).slice(0, 15);
+	})();
+
+	const handleBulkPick = (t: Tag) => {
+		const selected = getMapState().selectedLocationIds;
+		if (selected.size === 0) return;
+		addTagToLocations(t.id, [...selected]);
+		setBulkTagInput("");
+	};
+
+	return (
+		<form className="selection-manager__bulk-tag" onSubmit={handleBulkAddTag}>
+			<span className={`tag-input has-button${!hasSelection ? " is-disabled" : ""}`}>
+				<button type="submit" className="button tag-input__button" disabled={!hasSelection}>
+					+
+				</button>
+				<SuggestInput
+					containerClassName="tag-input__suggest"
+					inputClassName="tag-input__value"
+					placeholder="Bulk-add tag..."
+					disabled={!hasSelection}
+					value={bulkTagInput}
+					onChange={setBulkTagInput}
+					suggestions={bulkSuggestions}
+					getKey={(t) => t.id}
+					onPick={handleBulkPick}
+					renderItem={(t) => t.name}
+					pickOnEnter={false}
+					listStyle={{ top: "100%", right: 0, zIndex: 10 }}
+				/>
+			</span>
+		</form>
+	);
+}
+
+export function MapOverview({ hidden }: { hidden?: boolean }) {
+	const map = useMapState((s) => s.map);
 	const [selectionsCollapsed, setSelectionsCollapsed] = useState(false);
 	const [dupDistance, setDupDistance] = useState(1);
 	const [topKField, setTopKField] = useState("");
@@ -190,36 +261,13 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 	useDialog("review-sessions", () => setShowReviews(true));
 
 	useDialog("review-selected", () => {
-		if (selected.size === 0) return;
+		const { selectedLocationIds, selections } = getMapState();
+		if (selectedLocationIds.size === 0) return;
 		const source = selections.length === 1 ? selections[0] : undefined;
-		beginReview(Array.from(selected), source);
+		beginReview(Array.from(selectedLocationIds), source);
 	});
 
 	if (!map) return null;
-
-	const handleBulkAddTag = async (e: React.FormEvent) => {
-		e.preventDefault();
-		const name = bulkTagInput.trim();
-		if (!name || selected.size === 0) return;
-		const [resolved] = await createTags([name]);
-		addTagToLocations(resolved.id, [...selected]);
-		setBulkTagInput("");
-	};
-
-	const bulkSuggestions = (() => {
-		const all = sortTagsByMode(visibleTags, tagSortMode, tagCounts);
-		const q = bulkTagInput.trim().toLowerCase();
-		return (q ? all.filter((t) => t.name.toLowerCase().includes(q)) : all).slice(0, 15);
-	})();
-
-	const handleBulkPick = (t: Tag) => {
-		if (selected.size === 0) return;
-		addTagToLocations(t.id, [...selected]);
-		setBulkTagInput("");
-	};
-
-	const hasSelection = selected.size > 0;
-	const hasSelections = selections.length > 0;
 
 	return (
 		<section className="map-overview" hidden={hidden}>
@@ -230,54 +278,20 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 				title="Selections"
 				isCollapsed={selectionsCollapsed}
 				onCollapse={setSelectionsCollapsed}
-				collapsedAddons={
-					<span>
-						<span className="mono">{fmt.format(selected.size)}</span> selected
-					</span>
-				}
+				collapsedAddons={<SelectedCount />}
 				addons={
 					<>
-						<span className="selection-manager__count">
-							<span className="mono">{fmt.format(selected.size)}</span> selected
-						</span>
+						<SelectedCount className="selection-manager__count" />
 						<span className="selection-manager__space" />
 						<PluginToolbar />
 						<Button onClick={() => openDialog("command-palette")}>Commands...</Button>
 					</>
 				}
 			>
-				{hasSelections && (
-					<div className="selection-manager__selections">
-						{selections.map((sel) => (
-							<SelectionRow key={sel.key} selection={sel} />
-						))}
-					</div>
-				)}
+				<SelectionList />
 
 				<PinnedToolbar
-					right={
-						<form className="selection-manager__bulk-tag" onSubmit={handleBulkAddTag}>
-							<span className={`tag-input has-button${!hasSelection ? " is-disabled" : ""}`}>
-								<button type="submit" className="button tag-input__button" disabled={!hasSelection}>
-									+
-								</button>
-								<SuggestInput
-									containerClassName="tag-input__suggest"
-									inputClassName="tag-input__value"
-									placeholder="Bulk-add tag..."
-									disabled={!hasSelection}
-									value={bulkTagInput}
-									onChange={setBulkTagInput}
-									suggestions={bulkSuggestions}
-									getKey={(t) => t.id}
-									onPick={handleBulkPick}
-									renderItem={(t) => t.name}
-									pickOnEnter={false}
-									listStyle={{ top: "100%", right: 0, zIndex: 10 }}
-								/>
-							</span>
-						</form>
-					}
+					right={<BulkTagForm />}
 					panels={{
 						"select-random": {
 							render: () => <RandomPickPanel />,

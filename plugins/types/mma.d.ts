@@ -1673,7 +1673,8 @@ declare function decomposeChild(parentKey: string, childKey: string): void;
 declare function removeChildFromSelection(parentKey: string, childKey: string): void;
 /** Toggle tag selections on/off for the given tags (used by tag-pill clicks). */
 declare function toggleTagSelections(tagIds: number[]): void;
-/** Tag ids that currently have a Tag selection (cached; keyed on the selection list). */
+/** Tag ids that currently have a Tag selection (cached; keyed on the selection list,
+ *  identity-stable while the set of ids is unchanged). */
 declare const getSelectedTagIds: () => ReadonlySet<number>;
 /** Open a staged-import location read-only, "as if" it were active. The location becomes
  *  virtual (negative id; ImportPreview flag) so identity and mutate-guards derive from it. */
