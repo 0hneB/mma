@@ -170,8 +170,7 @@ export async function handleMapClick(
 
 	if (domEvent instanceof MouseEvent && domEvent.button !== 0) return;
 
-	if (ctx.measuring) return;
-
+	// Interceptors first: the measure tool consumes the click to place a node.
 	if (
 		info.coordinate &&
 		tryInterceptClick(
@@ -181,6 +180,8 @@ export async function handleMapClick(
 		)
 	)
 		return;
+
+	if (ctx.measuring) return;
 
 	if (isLocationLayer(info.layer?.id)) {
 		const picked = await resolvePicked();
