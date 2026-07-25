@@ -444,6 +444,9 @@ export class CellManager {
 	selOverlayCount = 0;
 	selOverlayVersion = 0;
 
+	/** Write patches as overlay entries from `startIndex`, compacting over any patch whose
+	 *  cell/index is stale, and return the entry count — a skipped slot must not be counted
+	 *  or a zeroed phantom entry (id 0) leaks into `selectedIds`. */
 	private writeOverlayEntries(
 		startIndex: number,
 		colorPatches: ColorPatchEntry[],
@@ -451,12 +454,12 @@ export class CellManager {
 		col: Uint8Array,
 		ang: Float32Array,
 		ids: Uint32Array,
-	) {
+	): number {
+		let oi = startIndex;
 		for (let i = 0; i < colorPatches.length; i++) {
 			const cp = colorPatches[i];
 			const cb = this.cells.get(cp.cell);
 			if (!cb || cp.cellIndex >= cb.count) continue;
-			const oi = startIndex + i;
 			pos[oi * 2] = cb.positions[cp.cellIndex * 2];
 			pos[oi * 2 + 1] = cb.positions[cp.cellIndex * 2 + 1];
 			col[oi * 4] = cp.r;
@@ -467,13 +470,15 @@ export class CellManager {
 			col[oi * 4 + 3] = 255;
 			ang[oi] = cb.angles[cp.cellIndex];
 			ids[oi] = cb.ids[cp.cellIndex];
+			oi++;
 		}
+		return oi;
 	}
 
 	/** Build a selection overlay from explicit color patches (used by non-bitmask code paths). */
 	buildSelectionOverlay(colorPatches: ColorPatchEntry[], _angles?: boolean) {
-		this.selOverlayCount = colorPatches.length;
 		if (colorPatches.length === 0) {
+			this.selOverlayCount = 0;
 			this.selOverlayIds = new Uint32Array(0);
 			this.selOverlayVersion++;
 			return;
@@ -483,7 +488,7 @@ export class CellManager {
 		this.selOverlayColors = new Uint8Array(n * 4);
 		this.selOverlayAngles = new Float32Array(n);
 		this.selOverlayIds = new Uint32Array(n);
-		this.writeOverlayEntries(
+		this.selOverlayCount = this.writeOverlayEntries(
 			0,
 			colorPatches,
 			this.selOverlayPositions,
@@ -507,12 +512,11 @@ export class CellManager {
 		col.set(this.selOverlayColors.subarray(0, oldCount * 4));
 		ang.set(this.selOverlayAngles.subarray(0, oldCount));
 		ids.set(this.selOverlayIds.subarray(0, oldCount));
-		this.writeOverlayEntries(oldCount, colorPatches, pos, col, ang, ids);
+		this.selOverlayCount = this.writeOverlayEntries(oldCount, colorPatches, pos, col, ang, ids);
 		this.selOverlayPositions = pos;
 		this.selOverlayColors = col;
 		this.selOverlayAngles = ang;
 		this.selOverlayIds = ids;
-		this.selOverlayCount = newCount;
 		this.selOverlayVersion++;
 	}
 

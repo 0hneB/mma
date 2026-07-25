@@ -574,6 +574,21 @@ describe("Deltas during active selections", () => {
 		assertNoVanishedMarkers(mgr);
 	});
 
+	it("a stale gained patch is compacted out instead of counted as id 0", () => {
+		selectIds(mgr, new Set([1]));
+		const before = mgr.selOverlayCount;
+
+		mgr.applyDelta({
+			added: [],
+			updated: [],
+			removed: [],
+			colorPatches: [{ cell: "s", cellIndex: 9999, r: 1, g: 2, b: 3, a: 0, selected: true }],
+		});
+
+		expect(mgr.selOverlayCount).toBe(before);
+		expect(mgr.selectedIds().has(0)).toBe(false);
+	});
+
 	it("deselect patch on an unselected entry leaves the overlay untouched", () => {
 		selectIds(mgr, new Set([1, 2]));
 		const vBefore = mgr.selOverlayVersion;
@@ -1031,10 +1046,10 @@ describe("buildSelectionOverlay (explicit patches)", () => {
 		assertOverlayEmpty(mgr);
 	});
 
-	it("out-of-bounds cellIndex is skipped safely", () => {
+	it("out-of-bounds cellIndex is compacted out, not counted", () => {
 		mgr.buildSelectionOverlay([{ cell: "s", cellIndex: 999, r: 255, g: 0, b: 0, a: 255 }]);
-		// The entry is "allocated" (count=1) but has zeroed data since the copy was skipped
-		expect(mgr.selOverlayCount).toBe(1);
+		// A skipped slot must not be counted, or a zeroed phantom entry (id 0) leaks out.
+		expect(mgr.selOverlayCount).toBe(0);
 	});
 
 	it("appendToSelectionOverlay adds without replacing", () => {
