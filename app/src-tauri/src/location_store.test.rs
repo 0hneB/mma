@@ -409,13 +409,10 @@ fn undo_add() {
         removed: vec![],
     });
 
-    let _delta = apply_edit_reverse(
-        &mut store,
-        &EditEntry {
-            created: vec![l],
-            removed: vec![],
-        },
-    );
+    let _delta = store.apply_edit_reverse(&EditEntry {
+        created: vec![l],
+        removed: vec![],
+    });
     assert_eq!(store.alive_count, 0);
     assert!(store.get_loc_by_id(1).is_none());
 }
@@ -425,13 +422,10 @@ fn undo_remove() {
     let l = loc(1, 10.0, 20.0);
     let mut store = setup_store_with(&[]);
     // simulate: location was removed, undo should re-add it
-    let _delta = apply_edit_reverse(
-        &mut store,
-        &EditEntry {
-            created: vec![],
-            removed: vec![l.clone()],
-        },
-    );
+    let _delta = store.apply_edit_reverse(&EditEntry {
+        created: vec![],
+        removed: vec![l.clone()],
+    });
     assert_eq!(store.alive_count, 1);
     let got = store.get_loc_by_id(1).unwrap();
     assert_eq!(got.lat, 10.0);
@@ -447,7 +441,7 @@ fn undo_update_restores_original() {
         created: vec![updated],
         removed: vec![original.clone()],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
 
     let got = store.get_loc_by_id(1).unwrap();
     assert_eq!(got.heading, 0.0);
@@ -462,10 +456,10 @@ fn redo_after_undo() {
         removed: vec![],
     };
 
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.alive_count, 0);
 
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert_eq!(store.alive_count, 1);
     assert!(store.get_loc_by_id(1).is_some());
 }
@@ -514,7 +508,7 @@ fn tag_counts_correct_after_undo_add() {
         created: vec![l],
         removed: vec![],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(0));
 }
 
@@ -528,7 +522,7 @@ fn tag_counts_correct_after_undo_remove() {
         created: vec![],
         removed: vec![l],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(1));
 }
 
@@ -548,7 +542,7 @@ fn tag_counts_correct_after_undo_tag_change() {
         created: vec![new],
         removed: vec![old],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
 
     assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(1));
     assert_eq!(store.tags.all.get(&20).map(|t| t.count), Some(0));
@@ -563,10 +557,10 @@ fn tag_counts_survive_undo_redo_cycle() {
         removed: vec![],
     };
 
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(0));
 
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(1));
 }
 
@@ -582,7 +576,7 @@ fn delta_has_added_entry_for_new_location() {
         created: vec![l],
         removed: vec![],
     };
-    let delta = apply_edit_forward(&mut store, &entry);
+    let delta = store.apply_edit_forward(&entry);
     assert_eq!(delta.added.len(), 1);
     assert_eq!(delta.added[0].id, 1);
     assert_eq!(delta.removed.len(), 0);
@@ -596,7 +590,7 @@ fn delta_has_removed_entry_for_deleted_location() {
         created: vec![],
         removed: vec![l],
     };
-    let delta = apply_edit_forward(&mut store, &entry);
+    let delta = store.apply_edit_forward(&entry);
     assert_eq!(delta.removed.len(), 1);
     assert_eq!(delta.removed[0], 1);
     assert_eq!(delta.added.len(), 0);
@@ -612,7 +606,7 @@ fn delta_has_both_for_moved_location() {
         created: vec![new],
         removed: vec![old],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
     // cross-cell move => remove old + add new
     assert_eq!(delta.removed.len(), 1);
@@ -628,7 +622,7 @@ fn delta_add_uses_configured_marker_color() {
         created: vec![loc(2, 30.0, 40.0)],
         removed: vec![],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
 
     assert_eq!(delta.added.len(), 1);
@@ -653,7 +647,7 @@ fn samey_location_skips_render_delta() {
         created: vec![new],
         removed: vec![old],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
 
     assert_eq!(
@@ -675,7 +669,7 @@ fn samey_location_with_heading_change_does_rerender() {
         created: vec![new],
         removed: vec![old],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
 
     // heading change in the same cell => in-place render patch
@@ -698,7 +692,7 @@ fn samey_location_with_lat_change_does_rerender() {
         created: vec![new],
         removed: vec![old],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
 
     assert!(
@@ -717,7 +711,7 @@ fn samey_tag_only_change_skips_render() {
         created: vec![new],
         removed: vec![old],
     };
-    let delta = apply_edit_forward(&mut store, &entry);
+    let delta = store.apply_edit_forward(&entry);
 
     assert_eq!(delta.added.len(), 0, "tag-only change should skip render");
     assert_eq!(delta.removed.len(), 0);
@@ -788,7 +782,7 @@ fn tag_counts_shipped_only_when_changed() {
     assert!(result.status.tag_counts.is_none());
 
     // A tag-touching edit ships fresh counts again.
-    let changes = apply_edit(&mut store, std::slice::from_ref(&l), &[]);
+    let changes = store.apply_edit(std::slice::from_ref(&l), &[]);
     let result = store.finish_mutation(changes);
     assert_eq!(
         result.status.tag_counts.as_ref().unwrap().get(&10),
@@ -1063,11 +1057,11 @@ fn readd_after_remove_through_undo() {
         created: vec![],
         removed: vec![l.clone()],
     };
-    apply_edit_forward(&mut store, &remove_entry);
+    store.apply_edit_forward(&remove_entry);
     assert_eq!(store.alive_count, 0);
 
     // undo the removal
-    apply_edit_reverse(&mut store, &remove_entry);
+    store.apply_edit_reverse(&remove_entry);
     assert_eq!(store.alive_count, 1);
     let got = store.get_loc_by_id(1).unwrap();
     assert_eq!(got.lat, 10.0);
@@ -1139,7 +1133,7 @@ fn undo_update_when_location_is_in_baked_batch() {
         created: vec![updated],
         removed: vec![l],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
 
     let got = store.get_loc_by_id(1).unwrap();
     assert_eq!(got.heading, 0.0, "undo should restore original heading");
@@ -1157,11 +1151,11 @@ fn multiple_undo_redo_cycles_consistent() {
     };
 
     for _ in 0..5 {
-        apply_edit_forward(&mut store, &entry);
+        store.apply_edit_forward(&entry);
         assert_eq!(store.get_loc_by_id(1).unwrap().tags, vec![20]);
         assert_eq!(store.tags.all.get(&20).map(|t| t.count), Some(1));
 
-        apply_edit_reverse(&mut store, &entry);
+        store.apply_edit_reverse(&entry);
         assert_eq!(store.get_loc_by_id(1).unwrap().tags, vec![10]);
         assert_eq!(store.tags.all.get(&10).map(|t| t.count), Some(1));
     }
@@ -1502,7 +1496,7 @@ fn alive_count_stays_correct_through_all_mutations() {
         created: vec![],
         removed: vec![loc(2, 1.0, 1.0), loc(3, 2.0, 2.0)],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.alive_count, 3);
 }
 
@@ -1743,13 +1737,13 @@ fn undo_delete_readds_render_entry() {
         created: vec![],
         removed: vec![l.clone()],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     let delta = store.derive_render_delta(&changes);
     assert_eq!(delta.removed.len(), 1);
     assert!(store.cell_lookup(1).is_none());
 
     // Undo delete
-    let changes = apply_edit_reverse(&mut store, &entry);
+    let changes = store.apply_edit_reverse(&entry);
     let delta = store.derive_render_delta(&changes);
     assert_eq!(delta.added.len(), 1);
     assert_eq!(delta.added[0].id, 1);
@@ -1771,14 +1765,14 @@ fn undo_delete_multiple_then_readd_renders_correctly() {
         created: vec![],
         removed: vec![l1.clone(), l2.clone()],
     };
-    let changes = apply_edit_forward(&mut store, &entry);
+    let changes = store.apply_edit_forward(&entry);
     store.derive_render_delta(&changes);
     assert!(store.cell_lookup(1).is_none());
     assert!(store.cell_lookup(2).is_none());
     assert!(store.cell_lookup(3).is_some());
 
     // Undo
-    let changes = apply_edit_reverse(&mut store, &entry);
+    let changes = store.apply_edit_reverse(&entry);
     let delta = store.derive_render_delta(&changes);
     assert_eq!(delta.added.len(), 2);
     assert!(store.cell_lookup(1).is_some());
@@ -1818,11 +1812,11 @@ fn tag_counts_correct_after_bulk_add_then_undo() {
         created: locs.clone(),
         removed: vec![],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.tags.all.get(&5).map(|t| t.count), Some(0));
     assert_eq!(store.alive_count, 0);
 
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert_eq!(store.tags.all.get(&5).map(|t| t.count), Some(10));
     assert_eq!(store.alive_count, 10);
 }
@@ -1844,7 +1838,7 @@ fn tag_counts_correct_after_tag_reassignment_undo() {
         created: vec![new],
         removed: vec![old],
     };
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(
         store.tags.all.get(&5).map(|t| t.count),
         Some(1),
@@ -1947,7 +1941,7 @@ fn active_id_should_be_clearable_when_location_removed() {
         created: vec![],
         removed: vec![l],
     };
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
 
     // The caller (JS) should clear active_id when the delta removes it.
     // Verify the location is actually gone so the caller can detect it.
@@ -2367,14 +2361,14 @@ fn manager_remove_preserves_other() {
 }
 
 // -----------------------------------------------------------------------
-// create_tags_inner: create-and-assign in one mutation
+// Store::create_tags: create-and-assign in one mutation
 // -----------------------------------------------------------------------
 
 #[test]
 fn create_tags_with_locations_never_leaves_the_tag_at_zero() {
     let mut store = setup_store_with(&[loc(1, 10.0, 20.0), loc(2, 10.1, 20.1)]);
 
-    let result = create_tags_inner(&mut store, &["field".to_string()], &[1, 2]);
+    let result = store.create_tags(&["field".to_string()], &[1, 2]);
 
     let tag = store
         .tags
@@ -2401,7 +2395,7 @@ fn create_tags_with_locations_never_leaves_the_tag_at_zero() {
 fn create_tags_without_locations_only_creates() {
     let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
 
-    create_tags_inner(&mut store, &["solo".to_string()], &[]);
+    store.create_tags(&["solo".to_string()], &[]);
 
     let tag = store.tags.all.values().find(|t| t.name == "solo").unwrap();
     assert_eq!(tag.count, 0);
@@ -2411,7 +2405,7 @@ fn create_tags_without_locations_only_creates() {
 #[test]
 fn an_empty_tag_survives_an_unrelated_mutation() {
     let mut store = setup_store_with(&[loc(1, 10.0, 20.0), loc(2, 30.0, 40.0)]);
-    create_tags_inner(&mut store, &["empty".to_string()], &[]);
+    store.create_tags(&["empty".to_string()], &[]);
     let tag_id = store
         .tags
         .all
@@ -2441,7 +2435,7 @@ fn an_empty_tag_survives_an_unrelated_mutation() {
 #[test]
 fn losing_its_last_location_still_hides_a_tag() {
     let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
-    create_tags_inner(&mut store, &["fading".to_string()], &[1]);
+    store.create_tags(&["fading".to_string()], &[1]);
     let tag_id = store
         .tags
         .all
@@ -2471,7 +2465,7 @@ fn losing_its_last_location_still_hides_a_tag() {
 #[test]
 fn create_tags_is_idempotent_against_locations_that_already_have_the_tag() {
     let mut store = setup_store_with(&[loc(1, 10.0, 20.0)]);
-    create_tags_inner(&mut store, &["dup".to_string()], &[1]);
+    store.create_tags(&["dup".to_string()], &[1]);
     let tag_id = store
         .tags
         .all
@@ -2481,7 +2475,7 @@ fn create_tags_is_idempotent_against_locations_that_already_have_the_tag() {
         .id;
 
     // Same name, same location: no second copy of the tag, no double count.
-    create_tags_inner(&mut store, &["DUP".to_string()], &[1]);
+    store.create_tags(&["DUP".to_string()], &[1]);
 
     assert_eq!(store.tags.all.values().filter(|t| t.count > 0).count(), 1);
     assert_eq!(store.tags.all[&tag_id].count, 1);
@@ -2850,12 +2844,12 @@ fn merge_group_applies_and_undo_restores() {
         removed: members,
     };
 
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert_eq!(store.alive_count, 1);
     assert_eq!(store.get_loc_by_id(1).unwrap().tags, vec![10, 20]);
     assert!(store.get_loc_by_id(2).is_none());
 
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(store.alive_count, 2);
     assert_eq!(store.get_loc_by_id(1).unwrap().tags, vec![10]);
     assert_eq!(store.get_loc_by_id(2).unwrap().tags, vec![20]);
@@ -2946,7 +2940,7 @@ fn history_max_id_spans_both_stacks_and_both_sides() {
     assert_eq!(history_max_id(&[], &[]), 0);
 }
 
-// Simulate "close map" (store_close_map + save_edit_history_inner) and "reopen"
+// Simulate "close map" (store_close_map + save_edit_history) and "reopen"
 // (store_open_map's delta/history load + next_id seeding) at the Store level,
 // using the same serialization roundtrips the app uses.
 fn close_and_reopen(store: &Store) -> Store {
@@ -3001,13 +2995,13 @@ fn delete_loc(store: &mut Store, id: u32) {
 // store_undo / store_redo replay.
 fn press_undo(store: &mut Store) {
     let entry = store.edits.undo.pop().unwrap();
-    apply_edit_reverse(store, &entry);
+    store.apply_edit_reverse(&entry);
     store.edits.redo.push(entry);
 }
 
 fn press_redo(store: &mut Store) {
     let entry = store.edits.redo.pop().unwrap();
-    apply_edit_forward(store, &entry);
+    store.apply_edit_forward(&entry);
     store.push_undo(entry);
 }
 
@@ -3242,13 +3236,13 @@ fn undo_to_base_clears_overlay_patch() {
         created: vec![edited],
         removed: vec![base],
     };
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert!(
         store.overlay.patches.contains_key(&1),
         "edit should create a patch"
     );
 
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert!(
         store.overlay.patches.is_empty(),
         "undo to base state should clear the patch"
@@ -3370,9 +3364,9 @@ fn spatial_survives_bake_and_undo_roundtrip() {
         created: vec![loc(3, 10.0, 10.0)],
         removed: vec![loc(1, 10.0, 10.0)],
     };
-    apply_edit_forward(&mut store, &entry);
+    store.apply_edit_forward(&entry);
     assert_eq!(indexed_nearby(&mut store, 10.0, 10.0, 5.0), vec![3]);
-    apply_edit_reverse(&mut store, &entry);
+    store.apply_edit_reverse(&entry);
     assert_eq!(indexed_nearby(&mut store, 10.0, 10.0, 5.0), vec![1]);
 }
 
@@ -3588,7 +3582,7 @@ fn delta_bytes_roundtrip_exact() {
 }
 
 // -----------------------------------------------------------------------
-// Crash-window double-apply: save_arrow_inner renames the base file, then
+// Crash-window double-apply: save_arrow renames the base file, then
 // deletes the delta sidecar non-atomically. A crash between the two leaves a
 // stale delta whose `adds` duplicate what the (now up to date) base already
 // holds. store_open_map applies the parsed delta unconditionally -- mirror

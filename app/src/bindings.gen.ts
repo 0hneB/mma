@@ -184,7 +184,7 @@ export const commands = {
 	 *  tag visible at count 0 for the round trip in between, and makes the caller fetch every
 	 *  location into JS just to append an id Rust already has.
 	 */
-	storeCreateTags: (names: string[], locationIds: number[] | null) => __TAURI_INVOKE<MutationResult>("store_create_tags", { names, locationIds }).then((v) => (({...v,delta:({...v.delta,added:v.delta.added.map(i=>i),updated:v.delta.updated.map(i=>({...i,lng:i.lng==null?i.lng:i.lng,lat:i.lat==null?i.lat:i.lat,heading:i.heading==null?i.heading:i.heading}))}),newFieldDefs:v.newFieldDefs==null?v.newFieldDefs:Object.fromEntries(Object.entries(v.newFieldDefs).map(([k,v])=>[k,({...v,comparison:v.comparison==null?v.comparison:v.comparison})]))}) as typeof v)),
+	storeCreateTags: (names: string[], locationIds: number[]) => __TAURI_INVOKE<MutationResult>("store_create_tags", { names, locationIds }).then((v) => (({...v,delta:({...v.delta,added:v.delta.added.map(i=>i),updated:v.delta.updated.map(i=>({...i,lng:i.lng==null?i.lng:i.lng,lat:i.lat==null?i.lat:i.lat,heading:i.heading==null?i.heading:i.heading}))}),newFieldDefs:v.newFieldDefs==null?v.newFieldDefs:Object.fromEntries(Object.entries(v.newFieldDefs).map(([k,v])=>[k,({...v,comparison:v.comparison==null?v.comparison:v.comparison})]))}) as typeof v)),
 	/**
 	 *  Rename and/or recolor tags in one batch. Renaming onto an existing name (case-insensitive)
 	 *  merges the two tags.

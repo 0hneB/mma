@@ -1028,6 +1028,133 @@ impl Store {
         }
     }
 
+    /// Core edit primitive: atomically remove then create locations, updating tags, overlay,
+    /// and render cells. Undo/redo swap the arguments. O(R + C) where R = removed, C = created.
+    fn apply_edit(&mut self, remove: &[Location], create: &[Location]) -> ChangeSet {
+        let t0 = std::time::Instant::now();
+        let create_ids: HashSet<u32> = create.iter().map(|l| l.id).collect();
+        let remove_by_id: HashMap<u32, &Location> = remove.iter().map(|l| (l.id, l)).collect();
+
+        self.remove_tag_counts(remove);
+        self.overlay_remove(remove);
+        self.add_tag_counts(create);
+        for loc in create {
+            self.overlay_add(loc.clone());
+        }
+
+        // Categorize: same-id remove+create is an update; the rest are pure add/remove.
+        let mut changes = ChangeSet::default();
+        for loc in remove {
+            if !create_ids.contains(&loc.id) {
+                changes.removed.push(loc.id);
+            }
+        }
+        for loc in create {
+            if let Some(old) = remove_by_id.get(&loc.id) {
+                changes.updated.push(((*old).clone(), loc.clone()));
+            } else {
+                changes.added.push(loc.clone());
+            }
+        }
+
+        log::debug!(
+            "[apply_edit] +{} ~{} -{} in {}ms",
+            changes.added.len(),
+            changes.updated.len(),
+            changes.removed.len(),
+            t0.elapsed().as_millis()
+        );
+        changes
+    }
+
+    /// Replay an edit forward: remove `entry.removed`, create `entry.created`.
+    fn apply_edit_forward(&mut self, entry: &EditEntry) -> ChangeSet {
+        self.apply_edit(&entry.removed, &entry.created)
+    }
+
+    /// Reverse an edit: remove `entry.created`, restore `entry.removed`.
+    fn apply_edit_reverse(&mut self, entry: &EditEntry) -> ChangeSet {
+        self.apply_edit(&entry.created, &entry.removed)
+    }
+
+    /// Apply an edit, record undo, clear redo, finish mutation. No-op when both sides empty.
+    fn apply_undoable(&mut self, remove: Vec<Location>, create: Vec<Location>) -> MutationResult {
+        if remove.is_empty() && create.is_empty() {
+            return self.finish_mutation(ChangeSet::default());
+        }
+        let changes = self.apply_edit(&remove, &create);
+        self.push_undo(EditEntry {
+            created: create,
+            removed: remove,
+        });
+        self.edits.redo.clear();
+        self.finish_mutation(changes)
+    }
+
+    /// Ensure `names` exist as tags and are on `location_ids`, in one mutation. Names match
+    /// case-insensitively, so an existing tag is reused (and un-hidden) rather than
+    /// duplicated. An empty `location_ids` just creates them.
+    pub(crate) fn create_tags(&mut self, names: &[String], location_ids: &[u32]) -> MutationResult {
+        let mut name_to_id: HashMap<String, u32> = HashMap::new();
+        for (&id, entry) in &self.tags.all {
+            name_to_id.insert(entry.name.to_lowercase(), id);
+        }
+
+        let mut tag_ids: Vec<u32> = Vec::with_capacity(names.len());
+        for name in names {
+            if let Some(&id) = name_to_id.get(&name.to_lowercase()) {
+                let tag = self.tags.all.get_mut(&id).unwrap();
+                tag.visible = true;
+                tag_ids.push(id);
+            } else {
+                let id = self.alloc_tag_id();
+                let order = self.tags.all.values().filter_map(|t| t.order).max();
+                self.tags.all.insert(
+                    id,
+                    Tag {
+                        id,
+                        name: name.clone(),
+                        color: util::color_for_name(name),
+                        visible: true,
+                        order: Some(order.map_or(1, |m| m + 1)),
+                        count: 0,
+                        doclinks: Vec::new(),
+                    },
+                );
+                name_to_id.insert(name.to_lowercase(), id);
+                tag_ids.push(id);
+            }
+        }
+
+        if !names.is_empty() {
+            self.tags.dirty = true;
+        }
+
+        let mut updated: Vec<(Location, Location)> = Vec::new();
+        for &id in location_ids {
+            let Some(old) = self.get_loc_by_id(id) else {
+                continue;
+            };
+            let mut tags = old.tags.clone();
+            for &t in &tag_ids {
+                if !tags.contains(&t) {
+                    tags.push(t);
+                }
+            }
+            if tags.len() == old.tags.len() {
+                continue; // already had all of them
+            }
+            let mut new_loc = old.clone();
+            new_loc.tags = tags;
+            updated.push((old, new_loc));
+        }
+
+        let changeset = self.commit_tag_update(updated);
+        let mut result = self.finish_mutation(changeset);
+        result.tags = Some(self.tags.all.clone());
+        result
+    }
+
     /// Grow `id_to_cell_idx` so it can index `id`. Fills new slots with 255 (sentinel = unmapped).
     fn ensure_id_to_cell_capacity(&mut self, id: u32) {
         let needed = id as usize + 1;
@@ -1985,7 +2112,7 @@ pub async fn store_open_map(
             0
         };
 
-        let (undo, redo) = load_edit_history_inner(&map_id2)?;
+        let (undo, redo) = load_edit_history(&map_id2)?;
 
         log::debug!("[store_open] TOTAL={}ms", t_total.elapsed().as_millis());
         Ok::<_, AppError>((batch, mmap_handle, max_id, undo, redo, delta))
@@ -2124,7 +2251,7 @@ pub fn store_close_map(
         if store.tags.dirty {
             write_tags_json(&conn, &map_id, &store.tags.all)?;
         }
-        save_edit_history_inner(&map_id, &store.edits.undo, &store.edits.redo)?;
+        save_edit_history(&map_id, &store.edits.undo, &store.edits.redo)?;
         log::debug!(
             "[close_map] {map_id} flushed: undo={} redo={}",
             store.edits.undo.len(),
@@ -2863,7 +2990,7 @@ pub fn store_copy_locations_to_map(
         }
 
         let t_hist = std::time::Instant::now();
-        let (undo, redo) = load_edit_history_inner(&target_map_id)?;
+        let (undo, redo) = load_edit_history(&target_map_id)?;
         let hist_ms = t_hist.elapsed().as_millis();
         let base_max = existing.iter().map(|l| l.id).max().unwrap_or(0);
         let next = seed_next_id(base_max, &[], &undo, &redo);
@@ -2884,7 +3011,7 @@ pub fn store_copy_locations_to_map(
         delta.adds.extend(fresh);
         let bytes = rmp_serde::to_vec_named(&delta)?;
         let alive = existing.len() + copied as usize;
-        persist_dirty_inner(
+        persist_dirty(
             &target_map_id,
             Some(bytes),
             alive,
@@ -2902,7 +3029,7 @@ pub fn store_copy_locations_to_map(
 
 /// Write a map's dirty state: delta sidecar (if any), location count, and tags
 /// JSON (if any). Sync core shared by `store_save_dirty` and cross-map copy.
-pub(crate) fn persist_dirty_inner(
+pub(crate) fn persist_dirty(
     map_id: &str,
     delta_data: Option<Vec<u8>>,
     alive: usize,
@@ -2971,10 +3098,8 @@ pub async fn store_save_dirty(
     let size = delta_data.as_ref().map_or(0, |d| d.len());
     let wrote_delta = delta_data.is_some();
     let map_id2 = map_id.clone();
-    tokio::task::spawn_blocking(move || {
-        persist_dirty_inner(&map_id2, delta_data, alive, tags_json)
-    })
-    .await??;
+    tokio::task::spawn_blocking(move || persist_dirty(&map_id2, delta_data, alive, tags_json))
+        .await??;
 
     if wrote_delta {
         let mut mgr = state.lock()?;
@@ -3019,7 +3144,7 @@ pub fn store_get_summary(
 }
 
 /// Persist undo/redo stacks to SQLite as msgpack blobs, capped at MAX_UNDO_ENTRIES.
-fn save_edit_history_inner(map_id: &str, undo: &[EditEntry], redo: &[EditEntry]) -> AppResult<()> {
+fn save_edit_history(map_id: &str, undo: &[EditEntry], redo: &[EditEntry]) -> AppResult<()> {
     let conn = storage::open_db()?;
     let undo_capped = if undo.len() > MAX_UNDO_ENTRIES {
         &undo[undo.len() - MAX_UNDO_ENTRIES..]
@@ -3066,7 +3191,7 @@ pub(crate) fn seed_next_id(
 }
 
 /// Load undo/redo stacks from SQLite. Returns empty stacks if no history exists.
-fn load_edit_history_inner(map_id: &str) -> AppResult<(Vec<EditEntry>, Vec<EditEntry>)> {
+fn load_edit_history(map_id: &str) -> AppResult<(Vec<EditEntry>, Vec<EditEntry>)> {
     let conn = storage::open_db()?;
     let result = conn.query_row(
         "SELECT undo_stack, redo_stack FROM edit_history WHERE map_id = ?1",
@@ -3099,7 +3224,7 @@ fn load_edit_history_inner(map_id: &str) -> AppResult<(Vec<EditEntry>, Vec<EditE
 }
 
 /// Write the current batch to disk as Arrow IPC and remove any stale delta file.
-pub(crate) fn save_arrow_inner(store: &Store, map_id: &str) -> AppResult<()> {
+pub(crate) fn save_arrow(store: &Store, map_id: &str) -> AppResult<()> {
     if let Some(ref batch) = store.batch {
         let path = storage::arrow_path(map_id)?;
         storage::write_arrow_ipc(&path, batch)?;
@@ -3116,12 +3241,12 @@ pub(crate) fn save_arrow_inner(store: &Store, map_id: &str) -> AppResult<()> {
 /// Bake the overlay into the base batch, write it to disk, re-mmap, and flush
 /// location count + dirty tags. Used by `store_commit` so a commit builds
 /// the batch only once.
-pub(crate) fn bake_and_save_inner(store: &mut Store, map_id: &str) -> AppResult<()> {
+pub(crate) fn bake_and_save(store: &mut Store, map_id: &str) -> AppResult<()> {
     let _t = std::time::Instant::now();
     store.bake_overlay();
     let t_bake = _t.elapsed();
     store.mmap_handle = None;
-    save_arrow_inner(store, map_id)?;
+    save_arrow(store, map_id)?;
     let t_write = _t.elapsed();
     let path = storage::arrow_path(map_id)?;
     if path.exists() {
@@ -3421,7 +3546,7 @@ pub fn store_undo(
             entry.created.len(),
             entry.removed.len()
         );
-        let changes = apply_edit_reverse(store, &entry);
+        let changes = store.apply_edit_reverse(&entry);
         log::debug!(
             "[UNDO] apply_edit={}ms changes: +{} ~{} -{}",
             _t.elapsed().as_millis(),
@@ -3450,7 +3575,7 @@ pub fn store_redo(
             entry.created.len(),
             entry.removed.len()
         );
-        let changes = apply_edit_forward(store, &entry);
+        let changes = store.apply_edit_forward(&entry);
         log::debug!(
             "[REDO] apply_edit={}ms changes: +{} ~{} -{}",
             _t.elapsed().as_millis(),
@@ -3487,45 +3612,6 @@ pub fn store_reset_undo(
         store.edits.redo.clear();
         Ok(())
     })
-}
-
-/// Core edit primitive: atomically remove then create locations, updating tags, overlay, and
-/// render cells. Undo/redo swap the arguments. O(R + C) where R = removed, C = created.
-fn apply_edit(store: &mut Store, remove: &[Location], create: &[Location]) -> ChangeSet {
-    let t0 = std::time::Instant::now();
-    let create_ids: HashSet<u32> = create.iter().map(|l| l.id).collect();
-    let remove_by_id: HashMap<u32, &Location> = remove.iter().map(|l| (l.id, l)).collect();
-
-    store.remove_tag_counts(remove);
-    store.overlay_remove(remove);
-    store.add_tag_counts(create);
-    for loc in create {
-        store.overlay_add(loc.clone());
-    }
-
-    // Categorize: same-id remove+create is an update; the rest are pure add/remove.
-    let mut changes = ChangeSet::default();
-    for loc in remove {
-        if !create_ids.contains(&loc.id) {
-            changes.removed.push(loc.id);
-        }
-    }
-    for loc in create {
-        if let Some(old) = remove_by_id.get(&loc.id) {
-            changes.updated.push(((*old).clone(), loc.clone()));
-        } else {
-            changes.added.push(loc.clone());
-        }
-    }
-
-    log::debug!(
-        "[apply_edit] +{} ~{} -{} in {}ms",
-        changes.added.len(),
-        changes.updated.len(),
-        changes.removed.len(),
-        t0.elapsed().as_millis()
-    );
-    changes
 }
 
 /// Fold a duplicate group into one survivor. Survivor = most tags, then earliest
@@ -3573,34 +3659,6 @@ fn merge_group(members: &[Location]) -> Location {
     new_survivor.extra = crate::types::RawExtra::from_map(&merged_extra);
     new_survivor.modified_at = Some(crate::util::now_unix());
     new_survivor
-}
-
-/// Replay an edit forward: remove `entry.removed`, create `entry.created`.
-fn apply_edit_forward(store: &mut Store, entry: &EditEntry) -> ChangeSet {
-    apply_edit(store, &entry.removed, &entry.created)
-}
-
-/// Reverse an edit: remove `entry.created`, restore `entry.removed`.
-fn apply_edit_reverse(store: &mut Store, entry: &EditEntry) -> ChangeSet {
-    apply_edit(store, &entry.created, &entry.removed)
-}
-
-/// Apply an edit, record undo, clear redo, finish mutation. No-op when both sides empty.
-fn apply_undoable(
-    store: &mut Store,
-    remove: Vec<Location>,
-    create: Vec<Location>,
-) -> MutationResult {
-    if remove.is_empty() && create.is_empty() {
-        return store.finish_mutation(ChangeSet::default());
-    }
-    let changes = apply_edit(store, &remove, &create);
-    store.push_undo(EditEntry {
-        created: create,
-        removed: remove,
-    });
-    store.edits.redo.clear();
-    store.finish_mutation(changes)
 }
 
 // ---------------------------------------------------------------------------
@@ -3656,84 +3714,8 @@ pub fn store_create_tags(
     location_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     with_store!(webview, state, |store| {
-        Ok(create_tags_inner(store, &names, &location_ids))
+        Ok(store.create_tags(&names, &location_ids))
     })
-}
-
-/// Ensure `names` exist as tags and are on `location_ids`, in one mutation. An empty
-/// `location_ids` just creates them.
-pub(crate) fn create_tags_inner(
-    store: &mut Store,
-    names: &[String],
-    location_ids: &[u32],
-) -> MutationResult {
-    let mut name_to_id: HashMap<String, u32> = HashMap::new();
-    for (&id, entry) in &store.tags.all {
-        name_to_id.insert(entry.name.to_lowercase(), id);
-    }
-
-    let mut tag_ids: Vec<u32> = Vec::with_capacity(names.len());
-    for name in names {
-        if let Some(&id) = name_to_id.get(&name.to_lowercase()) {
-            let tag = store.tags.all.get_mut(&id).unwrap();
-            if !tag.visible {
-                tag.visible = true;
-            }
-            tag_ids.push(id);
-        } else {
-            let id = store.alloc_tag_id();
-            let color = util::color_for_name(name);
-            let order = Some(
-                store
-                    .tags
-                    .all
-                    .values()
-                    .filter_map(|t| t.order)
-                    .max()
-                    .map_or(1, |m| m + 1),
-            );
-            let tag = Tag {
-                id,
-                name: name.clone(),
-                color,
-                visible: true,
-                order,
-                count: 0,
-                doclinks: Vec::new(),
-            };
-            store.tags.all.insert(id, tag.clone());
-            name_to_id.insert(name.to_lowercase(), id);
-            tag_ids.push(id);
-        }
-    }
-
-    if !names.is_empty() {
-        store.tags.dirty = true;
-    }
-
-    let mut updated: Vec<(Location, Location)> = Vec::new();
-    for &id in location_ids {
-        let Some(old) = store.get_loc_by_id(id) else {
-            continue;
-        };
-        let mut tags = old.tags.clone();
-        for &t in &tag_ids {
-            if !tags.contains(&t) {
-                tags.push(t);
-            }
-        }
-        if tags.len() == old.tags.len() {
-            continue; // already had all of them
-        }
-        let mut new_loc = old.clone();
-        new_loc.tags = tags;
-        updated.push((old, new_loc));
-    }
-
-    let changeset = store.commit_tag_update(updated);
-    let mut result = store.finish_mutation(changeset);
-    result.tags = Some(store.tags.all.clone());
-    result
 }
 
 /// Persist tag ordering. `ordered_ids` specifies the desired order; each tag's
@@ -4065,7 +4047,7 @@ pub async fn store_merge_duplicates(
             remove.len().saturating_sub(create.len()),
             _t.elapsed().as_millis()
         );
-        Ok(apply_undoable(store, remove, create))
+        Ok(store.apply_undoable(remove, create))
     })
 }
 
@@ -4103,7 +4085,7 @@ pub async fn store_prune_duplicates(
             ids.len(),
             _t.elapsed().as_millis()
         );
-        Ok(apply_undoable(store, remove, Vec::new()))
+        Ok(store.apply_undoable(remove, Vec::new()))
     })
 }
 
