@@ -17,7 +17,7 @@ import { usePanoViewer } from "./PanoViewerContext";
 import { useHoverExpand } from "@/lib/hooks/useHoverExpand";
 
 const MINIMAP_SCALE = range([0.5, 2]);
-const MINIMAP_SCALE_STEP = 0.5;
+const MINIMAP_SCALE_STEP = 0.25;
 const MINIMAP_BASE_W = 800;
 const MINIMAP_BASE_H = 600;
 
