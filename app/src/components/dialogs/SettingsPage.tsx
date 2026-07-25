@@ -431,6 +431,23 @@ function StreetViewBody() {
 
 			<GroupHeading>Fullscreen</GroupHeading>
 			<SettingRow setting="showFullscreenMinimap" label="Show minimap in fullscreen" />
+			<SettingRow
+				sub
+				disabled={!s.showFullscreenMinimap}
+				label="Minimap close delay"
+				description="How long the minimap stays expanded after the pointer leaves it."
+				control={
+					<SettingSlider
+						value={s.fullscreenMinimapCloseDelay}
+						min={0}
+						max={1000}
+						step={50}
+						disabled={!s.showFullscreenMinimap}
+						onChange={(v) => setSetting("fullscreenMinimapCloseDelay", v)}
+						format={(v) => `${v}ms`}
+					/>
+				}
+			/>
 			<SettingRow setting="showFullscreenTagbar" label="Show tag bar in fullscreen" />
 			<SettingRow setting="showFullscreenDatePicker" label="Show date picker in fullscreen" />
 			<SettingRow setting="showFullscreenReviewBar" label="Show review bar in fullscreen" />

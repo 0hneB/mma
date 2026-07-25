@@ -20,7 +20,6 @@ const MINIMAP_SCALE = range([0.5, 2]);
 const MINIMAP_SCALE_STEP = 0.5;
 const MINIMAP_BASE_W = 800;
 const MINIMAP_BASE_H = 600;
-const MINIMAP_CLOSE_DELAY = 250;
 
 // Singleton host + overlay reused across mounts (opening/closing the pano viewer),
 // rebuilt only when the basemap kind changes.
@@ -64,7 +63,8 @@ export function FullscreenMiniMap() {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const scale = useSetting("fullscreenMinimapScale");
-	const { expanded, hoverProps } = useHoverExpand(rootRef, MINIMAP_CLOSE_DELAY);
+	const closeDelay = useSetting("fullscreenMinimapCloseDelay");
+	const { expanded, hoverProps } = useHoverExpand(rootRef, closeDelay);
 	const [prefs] = useLocalStorage<MapEmbedPrefs>("mapEmbedPrefs", DEFAULT_PREFS);
 	const [surface, setSurface] = useState<{
 		host: MapHost;

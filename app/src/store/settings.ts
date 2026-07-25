@@ -123,6 +123,8 @@ const DEFAULTS = {
 	fullscreenMiniLocationScale: 1,
 	showFullscreenMinimap: true,
 	fullscreenMinimapScale: 1,
+	/** Milliseconds the fullscreen minimap stays expanded after the pointer leaves it. */
+	fullscreenMinimapCloseDelay: 250,
 	showFullscreenTagbar: true,
 	showFullscreenDatePicker: true,
 	showFullscreenReviewBar: true,
