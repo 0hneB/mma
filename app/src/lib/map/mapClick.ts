@@ -36,7 +36,7 @@ export const isLocationLayer = (id?: string) =>
 export async function resolvePickedId(cm: CellManager, info: PickingInfo): Promise<number | null> {
 	if (typeof info.index !== "number" || info.index < 0) return null;
 	const layerId = info.layer?.id ?? "";
-	if (layerId === "sel-overlay") return cm.selOverlayIds[info.index] ?? null;
+	if (layerId === "sel-overlay") return cm.overlay.ids[info.index] ?? null;
 	if (layerId.startsWith("cell:")) {
 		const cellKey = layerId.split(":")[1];
 		const local = cm.resolvePickFromCell(cellKey, info.index);
@@ -111,7 +111,7 @@ export async function createLocationAtLatLng(
 		return null;
 	}
 	t.step("lookup");
-	await addLocations([loc], { hideInDelta: true });
+	await addLocations([loc]);
 	t.step("addLocations");
 	setActiveLocation(loc);
 	t.step("setActive");

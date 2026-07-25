@@ -597,20 +597,26 @@ fn delta_has_removed_entry_for_deleted_location() {
 }
 
 #[test]
-fn delta_has_both_for_moved_location() {
+fn delta_has_one_move_entry_for_moved_location() {
     let old = loc(1, 10.0, 20.0);
     let new = loc(1, -80.0, -170.0); // far enough to cross render cells
     let mut store = setup_store_with(&[old.clone()]);
 
+    // A same-id remove+create is an update, so this is a move, not a delete plus a create.
     let entry = EditEntry {
         created: vec![new],
         removed: vec![old],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
-    // cross-cell move => remove old + add new
-    assert_eq!(delta.removed.len(), 1);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
+
+    assert!(delta.removed.is_empty(), "a move is not a removal");
     assert_eq!(delta.added.len(), 1);
+    let from = delta.added[0]
+        .moved_from
+        .as_ref()
+        .expect("carries the slot it vacated");
+    assert_eq!(from.id, 1);
 }
 
 #[test]
@@ -623,11 +629,13 @@ fn delta_add_uses_configured_marker_color() {
         removed: vec![],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
 
     assert_eq!(delta.added.len(), 1);
-    let e = &delta.added[0];
-    assert_eq!((e.r, e.g, e.b, e.a), (10, 20, 30, 255));
+    assert_eq!(
+        delta.added[0].sel, None,
+        "unselected, so the base layer draws it"
+    );
 }
 
 // -----------------------------------------------------------------------
@@ -648,7 +656,7 @@ fn samey_location_skips_render_delta() {
         removed: vec![old],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
 
     assert_eq!(
         delta.added.len(),
@@ -670,7 +678,7 @@ fn samey_location_with_heading_change_does_rerender() {
         removed: vec![old],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
 
     // heading change in the same cell => in-place render patch
     assert_eq!(
@@ -693,7 +701,7 @@ fn samey_location_with_lat_change_does_rerender() {
         removed: vec![old],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
 
     assert!(
         delta.added.len() + delta.removed.len() + delta.updated.len() > 0,
@@ -1169,10 +1177,13 @@ fn render_delta_for_update(store: &mut Store, id: u32, patch: LocationPatch) -> 
     let old = store.get_loc_by_id(id).unwrap();
     store.overlay_update(id, &patch);
     let new_loc = store.get_loc_by_id(id).unwrap();
-    store.derive_render_delta(&ChangeSet {
-        updated: vec![(old, new_loc)],
-        ..Default::default()
-    })
+    store.derive_render_delta(
+        &ChangeSet {
+            updated: vec![(old, new_loc)],
+            ..Default::default()
+        },
+        &HashSet::new(),
+    )
 }
 
 #[test]
@@ -1213,7 +1224,7 @@ fn update_delta_same_cell_position_produces_patch() {
 }
 
 #[test]
-fn update_delta_cross_cell_position_produces_remove_and_add() {
+fn update_delta_cross_cell_position_produces_one_move() {
     let l = loc(1, 10.0, 20.0);
     let mut store = setup_store_with(&[l]);
     // large position change that crosses render cells
@@ -1226,9 +1237,17 @@ fn update_delta_cross_cell_position_produces_remove_and_add() {
             ..patch()
         },
     );
-    assert_eq!(delta.removed.len(), 1, "old cell entry removed");
+    assert!(delta.removed.is_empty(), "a move is not a removal");
     assert_eq!(delta.added.len(), 1, "new cell entry added");
     assert!(delta.updated.is_empty());
+
+    let e = &delta.added[0];
+    let from = e.moved_from.as_ref().expect("carries the slot it vacated");
+    assert_eq!(from.id, 1);
+    assert_ne!(
+        from.cell, e.cell,
+        "the vacated slot is in the cell it left, not the one it joined"
+    );
 }
 
 #[test]
@@ -1738,13 +1757,13 @@ fn undo_delete_readds_render_entry() {
         removed: vec![l.clone()],
     };
     let changes = store.apply_edit_forward(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
     assert_eq!(delta.removed.len(), 1);
     assert!(store.cell_lookup(1).is_none());
 
     // Undo delete
     let changes = store.apply_edit_reverse(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
     assert_eq!(delta.added.len(), 1);
     assert_eq!(delta.added[0].id, 1);
     assert!(
@@ -1766,14 +1785,14 @@ fn undo_delete_multiple_then_readd_renders_correctly() {
         removed: vec![l1.clone(), l2.clone()],
     };
     let changes = store.apply_edit_forward(&entry);
-    store.derive_render_delta(&changes);
+    store.derive_render_delta(&changes, &HashSet::new());
     assert!(store.cell_lookup(1).is_none());
     assert!(store.cell_lookup(2).is_none());
     assert!(store.cell_lookup(3).is_some());
 
     // Undo
     let changes = store.apply_edit_reverse(&entry);
-    let delta = store.derive_render_delta(&changes);
+    let delta = store.derive_render_delta(&changes, &HashSet::new());
     assert_eq!(delta.added.len(), 2);
     assert!(store.cell_lookup(1).is_some());
     assert!(store.cell_lookup(2).is_some());
@@ -2603,7 +2622,12 @@ fn incremental_membership_change_ships_no_bitmask() {
         "the incremental path carries membership on the render delta, not a bitmask"
     );
     assert_eq!(sync.selected_count, 1);
-    assert_eq!(result.delta.color_patches.len(), 1);
+    assert_eq!(
+        result.delta.updated.len(),
+        1,
+        "membership rides on a patch for the row that changed"
+    );
+    assert_eq!(result.delta.updated[0].sel, Some([255, 0, 0]));
 }
 
 #[test]
@@ -2663,16 +2687,18 @@ fn membership_delta_reports_gained_on_tag_add() {
         ..Default::default()
     });
 
-    // Should have a colorPatch for the gained selection
-    assert!(
-        !result.delta.color_patches.is_empty(),
-        "should emit colorPatch for gained selection"
-    );
-    let cp = &result.delta.color_patches[0];
-    assert_eq!([cp.r, cp.g, cp.b], [255, 0, 0], "the selection colour");
+    // The row gained a selection without moving, so it ships as a coordinate-free patch.
+    let p = result
+        .delta
+        .updated
+        .iter()
+        .find(|p| p.sel.is_some())
+        .expect("a row that joins a selection must state it");
+    assert_eq!(p.sel, Some([255, 0, 0]), "the selection colour");
     assert_eq!(
-        cp.a, 0,
-        "a selected row is transparent in the base layer; the overlay draws it"
+        (p.lng, p.lat, p.heading),
+        (None, None, None),
+        "nothing moved, so only the selection state is stated"
     );
 }
 
@@ -2693,23 +2719,20 @@ fn membership_delta_reports_lost_on_tag_remove() {
 
     assert!(!store.selections.ids.contains(1), "left the selection");
     assert_eq!(
-        result.delta.color_patches.len(),
+        result.delta.updated.len(),
         1,
-        "a row that leaves a selection must be restored in the base layer"
+        "a row that leaves a selection must be restored to the base layer"
     );
-    let cp = &result.delta.color_patches[0];
     assert_eq!(
-        [cp.r, cp.g, cp.b],
-        store.render.marker_color,
-        "restored to the default marker colour"
+        result.delta.updated[0].sel, None,
+        "no selection, so the base layer draws it again"
     );
-    assert_eq!(cp.a, 255, "and made opaque again, or it stays invisible");
 }
 
 #[test]
-fn removed_selected_location_leaves_no_colorpatch() {
+fn removed_selected_location_leaves_no_patch() {
     // A deleted row has no cell left to patch; JS drops it from the overlay via
-    // `delta.removed`, so emitting a colorPatch for it would dangle.
+    // `delta.removed`, so emitting a patch for it would dangle.
     let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
     let l2 = loc_with_tags(2, 10.001, 20.001, vec![1]);
     let mut store = setup_store_with(&[l1, l2]);
@@ -2723,8 +2746,8 @@ fn removed_selected_location_leaves_no_colorpatch() {
     });
 
     assert!(
-        result.delta.color_patches.is_empty(),
-        "no colorPatch for a row that no longer has a cell"
+        result.delta.updated.is_empty(),
+        "no patch for a row that no longer has a cell"
     );
     assert!(
         result.delta.removed.iter().any(|r| r.id == 1),
@@ -2734,7 +2757,7 @@ fn removed_selected_location_leaves_no_colorpatch() {
 }
 
 #[test]
-fn membership_delta_no_colorpatch_when_membership_unchanged() {
+fn membership_delta_no_patch_when_nothing_changed() {
     let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
     let mut store = setup_store_with(&[l1.clone()]);
     store.tags.all.insert(
@@ -2763,18 +2786,19 @@ fn membership_delta_no_colorpatch_when_membership_unchanged() {
         ..Default::default()
     });
 
-    // No colorPatch — membership unchanged
-    assert!(
-        result.delta.color_patches.is_empty(),
-        "no colorPatch when membership unchanged"
+    // The heading moved, so a patch ships — but it restates the unchanged selection.
+    assert_eq!(result.delta.updated.len(), 1);
+    assert_eq!(
+        result.delta.updated[0].sel,
+        Some([255, 0, 0]),
+        "a patch always states the row's current selection state"
     );
 }
 
 #[test]
-fn selected_row_moving_across_cells_ships_hidden() {
-    // A cross-cell move ships as removed + added with no membership change or colorPatch.
-    // The added row's a=0 is what tells JS the row is still selected, so it moves the
-    // existing overlay entry instead of dropping it; a=255 here would double the marker.
+fn selected_row_moving_across_cells_ships_as_one_move() {
+    // A cross-cell move ships as a single added entry carrying the slot it vacated, so JS
+    // can move the overlay entry with the row instead of guessing from a removed/added pair.
     let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
     let mut store = setup_store_with(&[l1.clone()]);
     insert_tag(&mut store, 1, 1);
@@ -2797,18 +2821,19 @@ fn selected_row_moving_across_cells_ships_hidden() {
         ..Default::default()
     });
 
-    assert!(result.delta.removed.iter().any(|r| r.id == 1));
+    assert!(
+        !result.delta.removed.iter().any(|r| r.id == 1),
+        "a move is not a removal"
+    );
     let added = result
         .delta
         .added
         .iter()
         .find(|e| e.id == 1)
         .expect("re-added in the new cell");
-    assert_eq!(added.a, 0, "still selected, so hidden in the base layer");
-    assert!(
-        result.delta.color_patches.is_empty(),
-        "membership did not change"
-    );
+    assert_eq!(added.sel, Some([255, 0, 0]), "still selected");
+    let from = added.moved_from.as_ref().expect("carries the vacated slot");
+    assert_eq!(from.id, 1);
 }
 
 #[test]

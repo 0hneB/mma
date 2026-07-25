@@ -183,19 +183,19 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 	// Selection overlay rides on top as its own pickable layer — otherwise clicks fall through to
 	// the cell layer where selected markers have no z-priority, and an overlapping neighbor gets
 	// picked instead of the marker on top.
-	if (cm.selOverlayCount > 0) {
+	if (cm.overlay.count > 0) {
 		layers.push(
 			buildMarkerLayer(
 				ctx.markerStyle,
 				"sel-overlay",
-				cm.selOverlayCount,
+				cm.overlay.count,
 				{
-					positions: cm.selOverlayPositions,
-					angles: cm.selOverlayAngles,
-					color: { kind: "perMarker", colors: cm.selOverlayColors },
+					positions: cm.overlay.positions,
+					angles: cm.overlay.angles,
+					color: { kind: "perMarker", colors: cm.overlay.colors },
 				},
-				cm.selOverlayVersion,
-				cm.selOverlayVersion,
+				cm.overlay.version,
+				cm.overlay.version,
 				undefined,
 				ctx.markerSize,
 			),
