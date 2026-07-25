@@ -174,7 +174,7 @@ describe("CellManager", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex: 0, r: 255, g: 0, b: 0, a: 0, selected: true }],
+			colorPatches: [{ cell: "s", cellIndex: 0, r: 255, g: 0, b: 0, a: 0 }],
 		});
 		const cb = mgr.cells.get("s")!;
 		expect(cb.visible[0]).toBe(0);

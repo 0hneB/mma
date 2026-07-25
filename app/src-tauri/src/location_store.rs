@@ -577,7 +577,6 @@ impl Store {
                         g: color[1],
                         b: color[2],
                         a: 0,
-                        selected: true,
                     });
                 }
             }
@@ -590,7 +589,6 @@ impl Store {
                         g: mg,
                         b: mb,
                         a: 255,
-                        selected: false,
                     });
                 }
             }
@@ -1935,9 +1933,9 @@ pub struct CellRemoval {
 }
 
 /// One location's selection-membership change, projected onto the render buffers.
-/// `selected` says which way it went, and the RGBA is the base-layer color: a gained
-/// row is transparent there and drawn by the overlay in `r,g,b`; a lost row gets the
-/// opaque marker color back and drops out of the overlay.
+/// The RGBA is the base-layer color, and `a` says which way it went: a gained row is
+/// transparent there (a=0) and drawn by the overlay in `r,g,b`; a lost row (a=255) gets
+/// the opaque marker color back and drops out of the overlay.
 #[derive(serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ColorPatchEntry {
@@ -1947,7 +1945,6 @@ pub struct ColorPatchEntry {
     pub g: u8,
     pub b: u8,
     pub a: u8,
-    pub selected: bool,
 }
 
 /// Selection bitmask sync payload. `bitmask` carries the packed per-cell bitmask bytes

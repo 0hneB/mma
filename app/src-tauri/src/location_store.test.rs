@@ -2669,7 +2669,6 @@ fn membership_delta_reports_gained_on_tag_add() {
         "should emit colorPatch for gained selection"
     );
     let cp = &result.delta.color_patches[0];
-    assert!(cp.selected, "gained membership");
     assert_eq!([cp.r, cp.g, cp.b], [255, 0, 0], "the selection colour");
     assert_eq!(
         cp.a, 0,
@@ -2699,7 +2698,6 @@ fn membership_delta_reports_lost_on_tag_remove() {
         "a row that leaves a selection must be restored in the base layer"
     );
     let cp = &result.delta.color_patches[0];
-    assert!(!cp.selected, "lost membership");
     assert_eq!(
         [cp.r, cp.g, cp.b],
         store.render.marker_color,

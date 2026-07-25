@@ -582,7 +582,7 @@ describe("Deltas during active selections", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex: 9999, r: 1, g: 2, b: 3, a: 0, selected: true }],
+			colorPatches: [{ cell: "s", cellIndex: 9999, r: 1, g: 2, b: 3, a: 0 }],
 		});
 
 		expect(mgr.selOverlayCount).toBe(before);
@@ -605,7 +605,6 @@ describe("Deltas during active selections", () => {
 					g: 100,
 					b: 50,
 					a: 255,
-					selected: false,
 				},
 			],
 		});
@@ -623,7 +622,7 @@ describe("Deltas during active selections", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex, r: 42, g: 42, b: 42, a: 255, selected: false }],
+			colorPatches: [{ cell: "s", cellIndex, r: 42, g: 42, b: 42, a: 255 }],
 		});
 
 		expect(mgr.selOverlayCount).toBe(1);
@@ -645,7 +644,6 @@ describe("Deltas during active selections", () => {
 			g: 200,
 			b: 0,
 			a: 0,
-			selected: true,
 		};
 		mgr.applyDelta({ added: [], updated: [], removed: [], colorPatches: [patch] });
 		mgr.applyDelta({ added: [], updated: [], removed: [], colorPatches: [patch] });
@@ -680,8 +678,8 @@ describe("Membership propagation via colorPatches", () => {
 			updated: [],
 			removed: [],
 			colorPatches: [
-				{ cell: "s", cellIndex: 0, r: 50, g: 200, b: 50, a: 0, selected: true },
-				{ cell: "s", cellIndex: 1, r: 50, g: 200, b: 50, a: 0, selected: true },
+				{ cell: "s", cellIndex: 0, r: 50, g: 200, b: 50, a: 0 },
+				{ cell: "s", cellIndex: 1, r: 50, g: 200, b: 50, a: 0 },
 			],
 		});
 
@@ -704,7 +702,7 @@ describe("Membership propagation via colorPatches", () => {
 			added: [],
 			updated: [],
 			removed: [],
-			colorPatches: [{ cell: "s", cellIndex: 0, r: 0, g: 255, b: 0, a: 0, selected: true }],
+			colorPatches: [{ cell: "s", cellIndex: 0, r: 0, g: 255, b: 0, a: 0 }],
 		});
 
 		expect(cb.ids[0]).toBe(3);

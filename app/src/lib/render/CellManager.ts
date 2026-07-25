@@ -401,9 +401,10 @@ export class CellManager {
 		}
 		if (overlayMoved) this.selOverlayVersion++;
 
-		// Membership changes. The RGBA is the base layer's (a selected row is transparent
-		// there); `selected` says which way the overlay entry goes. Dropping first means a
-		// row that re-enters a selection never doubles up.
+		// Membership changes. The RGBA is the base layer's, and `a` says which way the
+		// overlay entry goes: a gained row is transparent there (the overlay draws it), a
+		// lost row is opaque again. Dropping first means a row that re-enters a selection
+		// never doubles up.
 		const gained: ColorPatchEntry[] = [];
 		for (const cp of delta.colorPatches) {
 			const cb = this.cells.get(cp.cell);
@@ -411,7 +412,7 @@ export class CellManager {
 			cb.patchVisible(cp.cellIndex, cp.a);
 			affected.add(cp.cell);
 			dropped.add(cb.ids[cp.cellIndex]);
-			if (cp.selected) gained.push(cp);
+			if (cp.a === 0) gained.push(cp);
 		}
 		this.dropOverlayEntries(dropped);
 		this.appendToSelectionOverlay(gained);
