@@ -2813,6 +2813,27 @@ fn selected_row_moving_across_cells_ships_hidden() {
     );
 }
 
+#[test]
+fn touched_zero_member_tag_is_hidden_by_finish_mutation() {
+    // A tag with no members produces an empty changeset, so update_tag_counts never marks
+    // it touched; store_delete_tags marks it directly. This pins the mechanism it relies
+    // on: a touched count-0 tag gets visible=false and the result ships tags.
+    let mut store = setup_store_with(&[]);
+    insert_tag(&mut store, 1, 0);
+    store.tags.touched.insert(1);
+
+    let result = store.finish_mutation(ChangeSet::default());
+
+    assert!(
+        !store.tags.all[&1].visible,
+        "touched zero-member tag must be hidden"
+    );
+    assert!(
+        result.tags.is_some(),
+        "the visibility flip must ship tags so JS sees it"
+    );
+}
+
 // -----------------------------------------------------------------------
 // merge_group (duplicate merge policy)
 // -----------------------------------------------------------------------

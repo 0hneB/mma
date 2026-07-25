@@ -2573,6 +2573,9 @@ pub async fn store_delete_tags(
             affected_ids.len(),
             _t.elapsed().as_millis()
         );
+        // A zero-member tag never passes through update_tag_counts, so mark it touched
+        // directly or finish_mutation skips the visible=false flip and the delete no-ops.
+        store.tags.touched.extend(tag_set.iter().copied());
         let changeset = store.commit_tag_update(updated);
         Ok(store.finish_mutation(changeset))
     })
