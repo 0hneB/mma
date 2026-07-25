@@ -5511,6 +5511,7 @@ body {
 	flex-direction: column;
 	gap: 0.5rem;
 	pointer-events: none;
+	user-select: none;
 }
 :has(> .page-map-editor) > .toast-container {
 	left: 75%;
