@@ -2268,6 +2268,10 @@ declare const TAG_FOLDER_COLOR_MODES: {
     readonly direct: "Fixed color";
     readonly firstChild: "Inherit first child";
 };
+declare const OPACITY_TOGGLE_MODES: {
+    readonly previous: "Last used opacity";
+    readonly full: "Full opacity";
+};
 declare const POLYGON_COLOR_MODES: {
     readonly random: "Random";
     readonly fixed: "Fixed color";
@@ -2298,6 +2302,7 @@ export type DiscordPresenceMode = keyof typeof DISCORD_PRESENCE_MODES;
 export type GeocodeProvider = keyof typeof GEOCODE_PROVIDERS;
 export type TagViewMode = keyof typeof TAG_VIEW_MODES;
 export type TagFolderColorMode = keyof typeof TAG_FOLDER_COLOR_MODES;
+export type OpacityToggleMode = keyof typeof OPACITY_TOGGLE_MODES;
 export type PolygonColorMode = keyof typeof POLYGON_COLOR_MODES;
 export type BorderDetail = keyof typeof BORDER_DETAILS;
 export type SubdivisionDetail = keyof typeof SUBDIVISION_DETAILS;
@@ -2330,6 +2335,8 @@ declare const DEFAULTS: {
     fullscreenMiniLocationScale: number;
     showFullscreenMinimap: boolean;
     fullscreenMinimapScale: number;
+    /** Milliseconds the fullscreen minimap stays expanded after the pointer leaves it. */
+    fullscreenMinimapCloseDelay: number;
     showFullscreenTagbar: boolean;
     showFullscreenDatePicker: boolean;
     showFullscreenReviewBar: boolean;
@@ -2362,6 +2369,8 @@ declare const DEFAULTS: {
     /** Color a newly drawn polygon selection starts with. `random` hashes it from the polygon's
      *  key; `fixed` uses polygonColor. Either way it's only the initial value -- recoloring a
      *  polygon by hand still wins. */
+    /** What the layer opacity hotkeys restore a layer to when toggling it back on. */
+    opacityToggleMode: OpacityToggleMode;
     polygonColorMode: PolygonColorMode;
     polygonColor: RGB;
     panoDotScaled: boolean;
@@ -3133,6 +3142,7 @@ declare const surface: {
         fullscreenMiniLocationScale: number;
         showFullscreenMinimap: boolean;
         fullscreenMinimapScale: number;
+        fullscreenMinimapCloseDelay: number;
         showFullscreenTagbar: boolean;
         showFullscreenDatePicker: boolean;
         showFullscreenReviewBar: boolean;
@@ -3158,6 +3168,7 @@ declare const surface: {
         activeLocationColor: RGB;
         importPreviewColor: RGB;
         panoDotColor: RGB;
+        opacityToggleMode: OpacityToggleMode;
         polygonColorMode: PolygonColorMode;
         polygonColor: RGB;
         panoDotScaled: boolean;
