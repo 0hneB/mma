@@ -126,10 +126,17 @@ function keyForProps(props: SelectionProps, locations: number[]): string {
 }
 
 /** Overlay color for a selection. Reviewed is green (145), unreviewed is violet (280): both stay
- *  well clear of the red active-location marker so the cursor never blends in — everything else is hashed from its key. */
+ *  well clear of the red active-location marker so the cursor never blends in. Polygons follow the
+ *  polygonColorMode setting — everything else is hashed from its key. */
 function selectionColor(props: SelectionProps, key: string): [number, number, number] {
-	if (props.type !== "Reviewed") return colorForKey(key);
-	return props.mode === "unreviewed" ? hslToRgb(280, 0.6, 0.5) : hslToRgb(145, 0.6, 0.5);
+	if (props.type === "Reviewed") {
+		return props.mode === "unreviewed" ? hslToRgb(280, 0.6, 0.5) : hslToRgb(145, 0.6, 0.5);
+	}
+	if (props.type === "Polygon") {
+		const { polygonColorMode, polygonColor } = getSettings();
+		if (polygonColorMode === "fixed") return [polygonColor.r, polygonColor.g, polygonColor.b];
+	}
+	return colorForKey(key);
 }
 
 /** Create a Selection with a deterministic key and overlay color from its props. */

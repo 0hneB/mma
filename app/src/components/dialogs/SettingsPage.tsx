@@ -44,6 +44,7 @@ import {
 	DISCORD_PRESENCE_MODES,
 	TAG_VIEW_MODES,
 	TAG_FOLDER_COLOR_MODES,
+	POLYGON_COLOR_MODES,
 	TAG_SUGGESTION_LIMITS,
 	BORDER_DETAILS,
 	SUBDIVISION_DETAILS,
@@ -561,6 +562,23 @@ function MarkersBody() {
 						<option value="constant">Constant on screen</option>
 						<option value="scaled">Grow when zoomed in</option>
 					</NSelect>
+				}
+			/>
+
+			<GroupHeading>Selections</GroupHeading>
+			<SettingRow
+				label="Polygon color"
+				control={
+					<span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+						<SettingSelect setting="polygonColorMode" options={POLYGON_COLOR_MODES} />
+						{s.polygonColorMode === "fixed" && (
+							<ColorPicker
+								color={s.polygonColor}
+								onChange={(color) => setSetting("polygonColor", color)}
+								ariaLabel="Default polygon color"
+							/>
+						)}
+					</span>
 				}
 			/>
 

@@ -75,6 +75,44 @@ describe("colorForKey", () => {
 	});
 });
 
+describe("polygon color mode", () => {
+	const polygon = {
+		coordinates: [
+			[
+				[0, 0],
+				[1, 0],
+				[1, 1],
+				[0, 0],
+			],
+		],
+	};
+	const build = () => buildSelection({ type: "Polygon", polygon, includeInformational: false });
+
+	afterEach(() => setSetting("polygonColorMode", "random"));
+
+	it("random gives each polygon its own key-hashed color", () => {
+		setSetting("polygonColorMode", "random");
+		const a = build();
+		const b = build();
+		expect(a.color).toEqual(colorForKey(a.key));
+		expect(b.color).toEqual(colorForKey(b.key));
+		expect(a.key).not.toBe(b.key);
+	});
+
+	it("fixed gives every polygon the configured color", () => {
+		setSetting("polygonColorMode", "fixed");
+		setSetting("polygonColor", { r: 1, g: 2, b: 3 });
+		expect(build().color).toEqual([1, 2, 3]);
+		expect(build().color).toEqual([1, 2, 3]);
+	});
+
+	it("fixed does not affect non-polygon selections", () => {
+		setSetting("polygonColorMode", "fixed");
+		setSetting("polygonColor", { r: 1, g: 2, b: 3 });
+		expect(buildSelection({ type: "Untagged" }).color).toEqual(colorForKey("untagged"));
+	});
+});
+
 describe("review overlay colors stay clear of the active marker", () => {
 	// The active-location marker is red (hue 0 by default). The reviewed/unreviewed overlays must
 	// not blend into it, or into each other, or the cursor gets lost in a field of queued markers.
