@@ -243,14 +243,19 @@ export function LocationPreview() {
 
 	const chipMode = appSettings.fullscreenMap && appSettings.showFullscreenMiniLocationPreview;
 	const bottomTrayRef = useRef<HTMLDivElement>(null);
-	const [bottomTrayHeight, setBottomTrayHeight] = useState(0);
+	// Written straight to the CSS var, not through state: the tray animates its height, so
+	// this fires every frame and a re-render per frame would leave the chrome lagging behind.
 	useLayoutEffect(() => {
+		const root = fullscreenContainerRef.current;
 		const el = bottomTrayRef.current;
+		if (!root) return;
 		if (!el) {
-			setBottomTrayHeight(0);
+			root.style.setProperty("--fs-tray-h", "0px");
 			return;
 		}
-		const obs = new ResizeObserver(() => setBottomTrayHeight(el.offsetHeight));
+		const obs = new ResizeObserver(() =>
+			root.style.setProperty("--fs-tray-h", `${el.offsetHeight}px`),
+		);
 		obs.observe(el);
 		return () => obs.disconnect();
 	}, [isFullscreen, appSettings.showFullscreenTagbar, appSettings.showFullscreenDatePicker]);
@@ -632,7 +637,7 @@ export function LocationPreview() {
 					ref={fullscreenContainerRef}
 					style={
 						isFullscreen
-							? ({ "--fs-tray-h": `${bottomTrayHeight}px` } as React.CSSProperties)
+							? undefined
 							: appSettings.previewAspectRatio === "free"
 								? undefined
 								: { aspectRatio: appSettings.previewAspectRatio }

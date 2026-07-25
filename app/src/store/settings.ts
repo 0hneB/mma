@@ -126,6 +126,8 @@ const DEFAULTS = {
 	/** Milliseconds the fullscreen minimap stays expanded after the pointer leaves it. */
 	fullscreenMinimapCloseDelay: 250,
 	showFullscreenTagbar: true,
+	/** Tag bar dropped down to a thin strip. Toggled from the bar itself, not Settings. */
+	fullscreenTagbarCollapsed: false,
 	showFullscreenDatePicker: true,
 	showFullscreenReviewBar: true,
 	showFullscreenGeocode: true,
