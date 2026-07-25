@@ -37,6 +37,7 @@ afterEach(() => {
 
 const enter = () => act(() => api.hoverProps.onPointerEnter());
 const leave = () => act(() => api.hoverProps.onPointerLeave());
+const pointerDown = () => act(() => api.hoverProps.onPointerDown());
 const pointerUpAt = (clientX: number, clientY: number) =>
 	act(() => {
 		document.dispatchEvent(new MouseEvent("pointerup", { clientX, clientY }));
@@ -63,6 +64,19 @@ describe("useHoverExpand", () => {
 
 	it("collapses when a drag releases outside, with no leave event", () => {
 		enter();
+		pointerDown();
+		pointerUpAt(500, 500);
+		act(() => vi.advanceTimersByTime(DELAY));
+		expect(api.expanded).toBe(false);
+	});
+
+	it("stays open for the whole drag, however far it wanders", () => {
+		enter();
+		pointerDown();
+		leave();
+		act(() => vi.advanceTimersByTime(DELAY * 4));
+		expect(api.expanded).toBe(true);
+
 		pointerUpAt(500, 500);
 		act(() => vi.advanceTimersByTime(DELAY));
 		expect(api.expanded).toBe(false);
@@ -70,6 +84,7 @@ describe("useHoverExpand", () => {
 
 	it("stays open when a drag releases inside", () => {
 		enter();
+		pointerDown();
 		pointerUpAt(50, 50);
 		act(() => vi.advanceTimersByTime(DELAY));
 		expect(api.expanded).toBe(true);

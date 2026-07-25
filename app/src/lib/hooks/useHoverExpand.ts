@@ -2,13 +2,15 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useDomEvent } from "./useDomEvent";
 
 /**
- * Hover-to-expand panel state. Dragging inside the panel captures the pointer, so leaving
- * it mid-drag never fires pointerleave and the panel stays open under a pointer that has
- * long since moved away; the release decides instead.
+ * Hover-to-expand panel state. A drag that starts inside the panel holds it open until the
+ * release, which then decides: still inside stays open, outside closes after the usual
+ * delay. Leaving mid-drag can't be trusted either way -- the dragged surface captures the
+ * pointer, so pointerleave fires late, or never.
  */
 export function useHoverExpand(ref: RefObject<HTMLElement | null>, closeDelay: number) {
 	const [expanded, setExpanded] = useState(false);
 	const closeTimer = useRef<number | null>(null);
+	const dragging = useRef(false);
 
 	const open = () => {
 		if (closeTimer.current !== null) {
@@ -19,6 +21,7 @@ export function useHoverExpand(ref: RefObject<HTMLElement | null>, closeDelay: n
 	};
 
 	const scheduleClose = () => {
+		if (dragging.current) return;
 		if (closeTimer.current !== null) clearTimeout(closeTimer.current);
 		closeTimer.current = window.setTimeout(() => {
 			setExpanded(false);
@@ -27,11 +30,13 @@ export function useHoverExpand(ref: RefObject<HTMLElement | null>, closeDelay: n
 	};
 
 	useDomEvent("pointerup", (e) => {
+		dragging.current = false;
 		const el = ref.current;
 		if (!expanded || !el) return;
 		const { clientX, clientY } = e as PointerEvent;
 		const r = el.getBoundingClientRect();
-		const inside = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+		const inside =
+			clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
 		if (!inside) scheduleClose();
 	});
 
@@ -41,5 +46,14 @@ export function useHoverExpand(ref: RefObject<HTMLElement | null>, closeDelay: n
 		};
 	}, []);
 
-	return { expanded, hoverProps: { onPointerEnter: open, onPointerLeave: scheduleClose } };
+	return {
+		expanded,
+		hoverProps: {
+			onPointerEnter: open,
+			onPointerLeave: scheduleClose,
+			onPointerDown: () => {
+				dragging.current = true;
+			},
+		},
+	};
 }
