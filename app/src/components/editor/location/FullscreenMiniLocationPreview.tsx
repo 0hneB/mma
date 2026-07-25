@@ -1,18 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-	createContext,
-	useContext,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState,
-	type ReactNode,
-} from "react";
+import { createContext, useContext, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiMinus, mdiPlus } from "@mdi/js";
 import { useSetting, setSetting } from "@/store/settings";
 import { range, clamp } from "@/types/util";
+import { useHoverExpand } from "@/lib/hooks/useHoverExpand";
 
 const PREVIEW_SCALE = range([0.5, 2]);
 const PREVIEW_SCALE_STEP = 0.5;
@@ -28,9 +21,8 @@ export const ChipHostContext = createContext<HTMLElement | null>(null);
 export function FullscreenMiniLocationPreview({ children }: { children: ReactNode }) {
 	const host = useContext(ChipHostContext);
 	const scale = useSetting("fullscreenMiniLocationScale");
-	const [expanded, setExpanded] = useState(false);
-	const closeTimer = useRef<number | null>(null);
 	const boxRef = useRef<HTMLDivElement>(null);
+	const { expanded, hoverProps } = useHoverExpand(boxRef, PREVIEW_CLOSE_DELAY);
 	const width = Math.round(PREVIEW_BASE_W * scale);
 
 	const prevWidth = useRef(width);
@@ -51,27 +43,6 @@ export function FullscreenMiniLocationPreview({ children }: { children: ReactNod
 		setSetting("fullscreenMiniLocationScale", Math.round(clamped * 100) / 100);
 	};
 
-	const open = () => {
-		if (closeTimer.current !== null) {
-			clearTimeout(closeTimer.current);
-			closeTimer.current = null;
-		}
-		setExpanded(true);
-	};
-	const scheduleClose = () => {
-		if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-		closeTimer.current = window.setTimeout(() => {
-			setExpanded(false);
-			closeTimer.current = null;
-		}, PREVIEW_CLOSE_DELAY);
-	};
-
-	useEffect(() => {
-		return () => {
-			if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-		};
-	}, []);
-
 	if (!host) return null;
 
 	const sizeVars = {
@@ -87,8 +58,7 @@ export function FullscreenMiniLocationPreview({ children }: { children: ReactNod
 			ref={boxRef}
 			className={`fullscreen-mini-location${expanded ? " is-expanded" : ""}`}
 			style={sizeVars}
-			onPointerEnter={open}
-			onPointerLeave={scheduleClose}
+			{...hoverProps}
 		>
 			{children}
 			<div className="fullscreen-mini-location__size">
