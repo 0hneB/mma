@@ -118,7 +118,7 @@ export function MapEmbed({
 		keyboardNav: true,
 	});
 
-	useMeasureInteraction(host, requestUpdate);
+	useMeasureInteraction(host);
 
 	useEffect(() => {
 		if (!host || !showSearchRadiusCursor) return;

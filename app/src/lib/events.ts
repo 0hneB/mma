@@ -144,6 +144,19 @@ const eventsWithPrefix = <P extends string>(
 ): EventsWithPrefix<P>[] =>
 	ALL_EVENTS.filter((e): e is EventsWithPrefix<P> => e.startsWith(`${prefix}:`));
 
+/** Signals that change what the map overlay draws. A module whose state reaches
+ *  `buildSceneLayers` belongs here; every map surface repaints on all of them, so such a
+ *  module emits its own event and never calls back into the surface. Not prefix-derived:
+ *  the members share a consequence, not a namespace. */
+export const OVERLAY_REPAINT_EVENTS = [
+	"store:changed",
+	"scene:changed",
+	"trail:changed",
+	"seen:changed",
+	"anchor:changed",
+	"measure:changed",
+] as const satisfies readonly EditorEvent[];
+
 /** The events that fire whenever location data changes. */
 export const LOCATION_DATA_EVENTS = eventsWithPrefix("location");
 /** Selection-related events. */

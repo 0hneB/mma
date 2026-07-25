@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent } from "react";
+import { useEffect } from "react";
 import type { LatLng } from "@/types";
 import type { MapHost } from "@/lib/map/host";
 import { addClickInterceptor } from "@/lib/map/mapState";
@@ -123,21 +123,15 @@ export function useMeasure(): boolean {
 
 /** Binds the drawing interaction while a measurement is running: click to place a node,
  *  drag a node to move it, Escape to finish. */
-export function useMeasureInteraction(host: MapHost | null, requestOverlayUpdate: () => void) {
+export function useMeasureInteraction(host: MapHost | null) {
 	const isMeasuring = useIsMeasuring();
-	// Identity-stable: the caller's rebuild callback changes every render, and this effect
-	// tearing down mid-gesture drops the drag.
-	const emitUpdate = useEffectEvent(() => requestOverlayUpdate());
 
 	useEffect(() => {
 		if (!host || !isMeasuring) return;
 
 		const offClick = addClickInterceptor((lat, lng) => {
 			if (suppressClick) suppressClick = false;
-			else {
-				addMeasurePoint({ lat, lng });
-				emitUpdate();
-			}
+			else addMeasurePoint({ lat, lng });
 			return true;
 		});
 
@@ -173,7 +167,6 @@ export function useMeasureInteraction(host: MapHost | null, requestOverlayUpdate
 				return;
 			}
 			moveMeasureNode(dragIndex, ll);
-			emitUpdate();
 		};
 
 		const onUp = () => {
@@ -203,11 +196,6 @@ export function useMeasureInteraction(host: MapHost | null, requestOverlayUpdate
 			host.setCursor(null);
 		};
 	}, [host, isMeasuring]);
-
-	// The overlay rebuilds off React state; starting and ending change neither.
-	useEffect(() => {
-		emitUpdate();
-	}, [isMeasuring]);
 }
 
 // --- Lat/lng anchor state ---

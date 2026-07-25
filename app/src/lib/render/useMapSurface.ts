@@ -8,7 +8,7 @@ import { useSetting, getSettings } from "@/store/settings";
 import { useScoreMaxError } from "@/lib/geo/scoring";
 import { handleMapClick, handleMapHover } from "@/lib/map/mapClick";
 import { getMapState } from "@/store/useMapStore";
-import { subscribe, subscribeMany } from "@/lib/events";
+import { subscribe, subscribeMany, OVERLAY_REPAINT_EVENTS } from "@/lib/events";
 import { getReviewSession } from "@/lib/review/review";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
@@ -118,14 +118,7 @@ export function useMapSurface(
 		});
 	});
 
-	useEffect(
-		() =>
-			subscribeMany(
-				["store:changed", "scene:changed", "trail:changed", "seen:changed", "anchor:changed"],
-				scheduleRebuild,
-			),
-		[],
-	);
+	useEffect(() => subscribeMany(OVERLAY_REPAINT_EVENTS, scheduleRebuild), []);
 
 	const externalOverlay = opts.overlay ?? null;
 
