@@ -79,6 +79,7 @@ export const PREVIEW_ASPECT_RATIOS = {
 } as const;
 
 export type MovementMode = keyof typeof MOVEMENT_MODES;
+export const MOVEMENT_CYCLE = Object.keys(MOVEMENT_MODES) as MovementMode[];
 export type ExactDateFormat = keyof typeof EXACT_DATE_FORMATS;
 export type DateTimezone = keyof typeof DATE_TIMEZONES;
 export type SeenResolution = keyof typeof SEEN_RESOLUTIONS;
