@@ -45,6 +45,7 @@ import {
 	TAG_VIEW_MODES,
 	TAG_FOLDER_COLOR_MODES,
 	POLYGON_COLOR_MODES,
+	OPACITY_TOGGLE_MODES,
 	TAG_SUGGESTION_LIMITS,
 	BORDER_DETAILS,
 	SUBDIVISION_DETAILS,
@@ -503,6 +504,12 @@ function MarkersBody() {
 						format={(v) => `${v}x`}
 					/>
 				}
+			/>
+
+			<SettingRow
+				label="Layer opacity toggle"
+				description="What the Street View and marker opacity hotkeys restore a hidden layer to."
+				control={<SettingSelect setting="opacityToggleMode" options={OPACITY_TOGGLE_MODES} />}
 			/>
 
 			<GroupHeading>Markers</GroupHeading>
