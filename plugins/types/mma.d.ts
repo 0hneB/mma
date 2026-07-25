@@ -2338,6 +2338,8 @@ declare const DEFAULTS: {
     /** Milliseconds the fullscreen minimap stays expanded after the pointer leaves it. */
     fullscreenMinimapCloseDelay: number;
     showFullscreenTagbar: boolean;
+    /** Tag bar dropped down to a thin strip. Toggled from the bar itself, not Settings. */
+    fullscreenTagbarCollapsed: boolean;
     showFullscreenDatePicker: boolean;
     showFullscreenReviewBar: boolean;
     showFullscreenGeocode: boolean;
@@ -3144,6 +3146,7 @@ declare const surface: {
         fullscreenMinimapScale: number;
         fullscreenMinimapCloseDelay: number;
         showFullscreenTagbar: boolean;
+        fullscreenTagbarCollapsed: boolean;
         showFullscreenDatePicker: boolean;
         showFullscreenReviewBar: boolean;
         showFullscreenGeocode: boolean;
