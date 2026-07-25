@@ -8,7 +8,7 @@ import { fmt } from "@/lib/util/format";
  *  temporarily replace the regular markers; this panel labels them. The back
  *  arrow restores the regular markers. */
 export function DiffSidebar() {
-	const diff = useEventValue("store:changed", getCommitDiffPreview);
+	const diff = useEventValue("diff-markers:changed", getCommitDiffPreview);
 	if (!diff) return null;
 	const { counts } = diff;
 

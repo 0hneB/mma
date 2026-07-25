@@ -35,6 +35,7 @@ const EVENT_DEFS = {
 	"store:changed": event<void>(),
 	"render:delta": event<RenderDelta>(),
 	"render:selection": event<SelectionBitmaskPayload>(),
+	"map-list:changed": event<void>(),
 	"settings:changed": event<void>(),
 	"fullscreen:changed": event<void>(),
 	"plugins:changed": event<void>(),
