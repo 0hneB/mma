@@ -2772,6 +2772,47 @@ fn membership_delta_no_colorpatch_when_membership_unchanged() {
     );
 }
 
+#[test]
+fn selected_row_moving_across_cells_ships_hidden() {
+    // A cross-cell move ships as removed + added with no membership change or colorPatch.
+    // The added row's a=0 is what tells JS the row is still selected, so it moves the
+    // existing overlay entry instead of dropping it; a=255 here would double the marker.
+    let l1 = loc_with_tags(1, 10.0, 20.0, vec![1]);
+    let mut store = setup_store_with(&[l1.clone()]);
+    insert_tag(&mut store, 1, 1);
+    add_tag_selection(&mut store, 1, [255, 0, 0]);
+    store.resolve_selection_membership();
+    assert!(store.selections.ids.contains(1), "starts selected");
+
+    let moved = Location {
+        lat: -30.0,
+        lng: -40.0,
+        ..l1.clone()
+    };
+    assert_ne!(
+        render_cell_idx(10.0, 20.0),
+        render_cell_idx(-30.0, -40.0),
+        "test requires a cross-cell move"
+    );
+    let result = store.finish_mutation(ChangeSet {
+        updated: vec![(l1, moved)],
+        ..Default::default()
+    });
+
+    assert!(result.delta.removed.iter().any(|r| r.id == 1));
+    let added = result
+        .delta
+        .added
+        .iter()
+        .find(|e| e.id == 1)
+        .expect("re-added in the new cell");
+    assert_eq!(added.a, 0, "still selected, so hidden in the base layer");
+    assert!(
+        result.delta.color_patches.is_empty(),
+        "membership did not change"
+    );
+}
+
 // -----------------------------------------------------------------------
 // merge_group (duplicate merge policy)
 // -----------------------------------------------------------------------

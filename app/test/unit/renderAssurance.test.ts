@@ -528,6 +528,52 @@ describe("Deltas during active selections", () => {
 		expect(mgr.selOverlayPositions[oi * 2 + 1]).toBeCloseTo(888);
 	});
 
+	it("position patch moves the overlay entry with the marker, without a re-select", () => {
+		selectAll(mgr);
+		const cb = mgr.cells.get("s")!;
+		const idx = cb.idToIndex.get(3)!;
+		const vBefore = mgr.selOverlayVersion;
+
+		mgr.applyDelta({
+			added: [],
+			updated: [{ cell: "s", cellIndex: idx, lng: 999, lat: 888, heading: 45 }],
+			removed: [],
+			colorPatches: [],
+		});
+
+		const oi = mgr.selOverlayIds.indexOf(3);
+		expect(mgr.selOverlayPositions[oi * 2]).toBeCloseTo(999);
+		expect(mgr.selOverlayPositions[oi * 2 + 1]).toBeCloseTo(888);
+		expect(mgr.selOverlayAngles[oi]).toBeCloseTo(45);
+		expect(mgr.selOverlayVersion).toBeGreaterThan(vBefore);
+		assertOverlayPositionsMatch(mgr);
+	});
+
+	it("cross-cell move keeps the overlay entry, at the new position", () => {
+		selectIds(mgr, new Set([1, 2]));
+		const cb = mgr.cells.get("s")!;
+		const idx = cb.idToIndex.get(2)!;
+
+		// A selected row moving to another cell arrives as removed + added, hidden in the
+		// base layer (a=0); the overlay entry must follow it or the marker vanishes.
+		mgr.applyDelta({
+			added: [entry("t", 2, 7, 8, 0, DEFAULT_R, DEFAULT_G, DEFAULT_B, 0)],
+			updated: [],
+			removed: [{ cell: "s", cellIndex: idx, id: 2 }],
+			colorPatches: [],
+		});
+
+		expect(mgr.selectedIds().has(2)).toBe(true);
+		const oi = mgr.selOverlayIds.slice(0, mgr.selOverlayCount).indexOf(2);
+		expect(oi).toBeGreaterThanOrEqual(0);
+		expect(mgr.selOverlayPositions[oi * 2]).toBeCloseTo(7);
+		expect(mgr.selOverlayPositions[oi * 2 + 1]).toBeCloseTo(8);
+		// The entry keeps its selection colour; nothing re-sends it.
+		expect(mgr.selOverlayColors[oi * 4]).toBe(255);
+		assertNoDoubleMarkers(mgr);
+		assertNoVanishedMarkers(mgr);
+	});
+
 	it("deselect patch on an unselected entry leaves the overlay untouched", () => {
 		selectIds(mgr, new Set([1, 2]));
 		const vBefore = mgr.selOverlayVersion;

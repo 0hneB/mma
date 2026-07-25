@@ -354,6 +354,7 @@ export class CellManager {
 			dropped.add(rem.id);
 		}
 
+		let overlayMoved = false;
 		for (const entry of delta.added) {
 			let cb = this.cells.get(entry.cell);
 			if (!cb) {
@@ -364,20 +365,41 @@ export class CellManager {
 			if (entry.id > this.maxId) this.maxId = entry.id;
 			this.totalCount++;
 			affected.add(entry.cell);
-		}
-
-		for (const patch of delta.updated) {
-			const cb = this.cells.get(patch.cell);
-			if (cb) {
-				cb.patchPosition(
-					patch.cellIndex,
-					patch.lng ?? undefined,
-					patch.lat ?? undefined,
-					patch.heading ?? undefined,
-				);
-				affected.add(patch.cell);
+			// A selected row moving across cells arrives as removed + added, hidden in the
+			// base layer. Its overlay entry already has the right colour: move it with the
+			// row instead of letting the removal drop it, or the marker vanishes.
+			if (entry.a === 0) {
+				const oi = this.overlayIndexOf(entry.id);
+				if (oi >= 0) {
+					this.selOverlayPositions[oi * 2] = entry.lng;
+					this.selOverlayPositions[oi * 2 + 1] = entry.lat;
+					this.selOverlayAngles[oi] = entry.heading;
+					dropped.delete(entry.id);
+					overlayMoved = true;
+				}
 			}
 		}
+		for (const patch of delta.updated) {
+			const cb = this.cells.get(patch.cell);
+			if (!cb) continue;
+			cb.patchPosition(
+				patch.cellIndex,
+				patch.lng ?? undefined,
+				patch.lat ?? undefined,
+				patch.heading ?? undefined,
+			);
+			affected.add(patch.cell);
+			// A selected row's base marker is hidden; its overlay entry must follow the move
+			// or the visible marker stays at the old position.
+			const oi = this.overlayIndexOf(cb.ids[patch.cellIndex]);
+			if (oi >= 0) {
+				if (patch.lng != null) this.selOverlayPositions[oi * 2] = patch.lng;
+				if (patch.lat != null) this.selOverlayPositions[oi * 2 + 1] = patch.lat;
+				if (patch.heading != null) this.selOverlayAngles[oi] = patch.heading;
+				overlayMoved = true;
+			}
+		}
+		if (overlayMoved) this.selOverlayVersion++;
 
 		// Membership changes. The RGBA is the base layer's (a selected row is transparent
 		// there); `selected` says which way the overlay entry goes. Dropping first means a
@@ -396,6 +418,16 @@ export class CellManager {
 
 		this.version++;
 		return affected;
+	}
+
+	/** Index of `id` in the live overlay entries, or -1. Linear over the overlay, but capped
+	 *  at `selOverlayCount` — the arrays can carry a stale tail past it. */
+	private overlayIndexOf(id: number): number {
+		const ids = this.selOverlayIds;
+		for (let i = 0; i < this.selOverlayCount; i++) {
+			if (ids[i] === id) return i;
+		}
+		return -1;
 	}
 
 	/** Map a deck.gl pick (cell + index) back to a location ID. */
