@@ -5,36 +5,38 @@ import { cmd } from "@/lib/commands";
 import { useHeldHotkeyClick } from "@/lib/map/useHeldHotkeyClick";
 import { toast } from "@/lib/util/toast";
 
+/** Select the country (or subdivision) containing a point, fetching the border file on
+ *  first use. Shared by the hold-key gesture and the map context menu. */
+export async function selectBorderAt(lat: number, lng: number, subdivision: boolean) {
+	const { borderDetail, subdivisionDetail } = getSettings();
+	if (subdivision && subdivisionDetail === "off") {
+		toast("Subdivision borders are off — enable them in Settings");
+		return;
+	}
+	const level = subdivision ? subdivisionDetail : borderDetail;
+	const lookup = () => cmd.borderLookup(lat, lng, level);
+	let geometry;
+	try {
+		geometry = await lookup();
+	} catch (e) {
+		if (level === "light" || (await cmd.checkBorderFile(level))) throw e;
+		toast("Border data missing -- downloading...");
+		try {
+			await cmd.downloadBorderFile(level);
+		} catch {
+			toast("Couldn't download border data -- check your connection");
+			return;
+		}
+		geometry = await lookup();
+	}
+	if (geometry)
+		addSelections([{ type: "Polygon", polygon: geometry, includeInformational: false }]);
+}
+
 export function useCountrySelect() {
 	useHeldHotkeyClick(
 		"countrySelect",
-		useCallback((lat, lng, shiftKey) => {
-			const { borderDetail, subdivisionDetail } = getSettings();
-			if (shiftKey && subdivisionDetail === "off") {
-				toast("Subdivision borders are off — enable them in Settings");
-				return;
-			}
-			const level = shiftKey ? subdivisionDetail : borderDetail;
-			void (async () => {
-				const lookup = () => cmd.borderLookup(lat, lng, level);
-				let geometry;
-				try {
-					geometry = await lookup();
-				} catch (e) {
-					if (level === "light" || (await cmd.checkBorderFile(level))) throw e;
-					toast("Border data missing -- downloading...");
-					try {
-						await cmd.downloadBorderFile(level);
-					} catch {
-						toast("Couldn't download border data -- check your connection");
-						return;
-					}
-					geometry = await lookup();
-				}
-				if (geometry)
-					addSelections([{ type: "Polygon", polygon: geometry, includeInformational: false }]);
-			})();
-		}, []),
+		useCallback((lat, lng, shiftKey) => void selectBorderAt(lat, lng, shiftKey), []),
 		{ ignoreShift: true },
 	);
 }

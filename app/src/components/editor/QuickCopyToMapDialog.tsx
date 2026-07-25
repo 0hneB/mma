@@ -8,7 +8,13 @@ import { getMapState } from "@/store/useMapStore";
 import { isVirtualLocation } from "@/types";
 import { toast } from "@/lib/util/toast";
 
-export function QuickCopyToMapDialog({ onClose }: { onClose: () => void }) {
+export function QuickCopyToMapDialog({
+	locationId,
+	onClose,
+}: {
+	locationId: number;
+	onClose: () => void;
+}) {
 	const [maps, setMaps] = useState<MapMeta[] | null>(null);
 	const [query, setQuery] = useState("");
 	const contentRef = useRef<HTMLDivElement>(null);
@@ -33,13 +39,12 @@ export function QuickCopyToMapDialog({ onClose }: { onClose: () => void }) {
 	);
 
 	const doCopy = (targetMapId: string) => {
-		const loc = getMapState().activeLocation;
-		if (!loc || isVirtualLocation(loc)) {
+		if (isVirtualLocation({ id: locationId })) {
 			onClose();
 			return;
 		}
 		cmd
-			.storeCopyLocationsToMap(targetMapId, [loc.id])
+			.storeCopyLocationsToMap(targetMapId, [locationId])
 			.then((res) => {
 				const container = contentRef.current;
 				if (container)
