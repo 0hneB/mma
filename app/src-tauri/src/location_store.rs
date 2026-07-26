@@ -96,14 +96,12 @@ fn assemble_selection_bitmask<'a>(
 /// is O(min(set size, render size)) rather than O(render size) per selection: sparse sets
 /// walk their members and probe `id_to_cell_idx`/`id_to_index`; dense sets (where
 /// member-walking would do the same work anyway) scan the cell arrays directly.
-fn selection_cell_indices(render: &RenderState, set: &RoaringBitmap) -> [Vec<u32>; 32] {
+fn selection_cell_indices(
+    render: &RenderState,
+    render_size: usize,
+    set: &RoaringBitmap,
+) -> [Vec<u32>; 32] {
     let mut out: [Vec<u32>; 32] = std::array::from_fn(|_| Vec::new());
-    let render_size: usize = render
-        .cells
-        .iter()
-        .filter_map(|o| o.as_ref())
-        .map(|cr| cr.id_order.len())
-        .sum();
     if (set.len() as usize) <= render_size {
         for id in set {
             let Some(&ci) = render.id_to_cell_idx.get(id as usize) else {
@@ -240,6 +238,17 @@ pub(crate) struct RenderState {
     pub id_to_cell_idx: Vec<u8>,
     pub arrow_style: bool,
     pub marker_color: [u8; 3],
+}
+
+impl RenderState {
+    /// Total rendered marker count across all cells.
+    fn total_len(&self) -> usize {
+        self.cells
+            .iter()
+            .filter_map(|o| o.as_ref())
+            .map(|cr| cr.id_order.len())
+            .sum()
+    }
 }
 
 /// A selection together with its resolved membership. One value rather than two parallel
@@ -820,11 +829,12 @@ impl Store {
         // Route selections to per-cell indices (parallel over selections, O(selected)),
         // then serialize the cells in parallel; segments are self-describing so
         // order is irrelevant.
+        let render_total = self.render.total_len();
         let routed: Vec<[Vec<u32>; 32]> = self
             .selections
             .resolved
             .par_iter()
-            .map(|r| selection_cell_indices(&self.render, &r.set))
+            .map(|r| selection_cell_indices(&self.render, render_total, &r.set))
             .collect();
         let segments: Vec<Vec<u8>> = self
             .render
@@ -3780,9 +3790,10 @@ pub async fn store_sync_selections(
 
         // 3. Route selections to per-cell indices (O(selected), not O(S*N)), then
         //    serialize the per-cell bitmask binary. Cells are independent → parallel.
+        let render_total = store.render.total_len();
         let routed: Vec<[Vec<u32>; 32]> = live
             .par_iter()
-            .map(|r| selection_cell_indices(&store.render, &r.set))
+            .map(|r| selection_cell_indices(&store.render, render_total, &r.set))
             .collect();
         let segments: Vec<Vec<u8>> = store
             .render
@@ -3803,13 +3814,6 @@ pub async fn store_sync_selections(
         store.selections.node_counts = counts.clone();
         store.selections.version += 1;
 
-        let render_total: usize = store
-            .render
-            .cells
-            .iter()
-            .filter_map(|o| o.as_ref())
-            .map(|cr| cr.id_order.len())
-            .sum();
         log::debug!("[cmd] store_sync_selections total={}ms sels={} selected={} cells={} buf_size={} batch_rows={} overlay_adds={} dead={} alive={} render_total={} first_set_len={} counts={:?}",
             _t.elapsed().as_millis(), sels.len(), selected_count, num_cells, buf.len(),
             store.batch.as_ref().map_or(0, |b| b.num_rows()), store.overlay.adds.len(),

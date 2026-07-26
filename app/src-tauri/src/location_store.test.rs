@@ -2967,7 +2967,7 @@ fn selection_cell_segment_adapts_format() {
     // Sparse (one selected id) -> routed member-walk -> index-list (format byte 1).
     let mut sparse = RoaringBitmap::new();
     sparse.insert(5);
-    let routed = vec![selection_cell_indices(&render, &sparse)];
+    let routed = vec![selection_cell_indices(&render, render.total_len(), &sparse)];
     let seg = serialize_cell_segment(0, cr, &routed);
     assert_eq!(parse_header(&seg), n as u32);
     assert_eq!(
@@ -2987,7 +2987,7 @@ fn selection_cell_segment_adapts_format() {
 
     // Dense (select all) -> cell scan -> bitmask (format byte 0), all bits set.
     let dense: RoaringBitmap = (0..n as u32).collect();
-    let routed = vec![selection_cell_indices(&render, &dense)];
+    let routed = vec![selection_cell_indices(&render, render.total_len(), &dense)];
     let seg = serialize_cell_segment(0, cr, &routed);
     let mask_bytes = n.div_ceil(8);
     assert_eq!(seg[5], 0, "select-all should use the dense bitmask format");
@@ -2997,7 +2997,7 @@ fn selection_cell_segment_adapts_format() {
     // Ids in no render cell route nowhere rather than panicking.
     let mut absent = RoaringBitmap::new();
     absent.insert(n as u32 + 10);
-    let routed = selection_cell_indices(&render, &absent);
+    let routed = selection_cell_indices(&render, render.total_len(), &absent);
     assert!(routed.iter().all(|v| v.is_empty()));
 }
 
