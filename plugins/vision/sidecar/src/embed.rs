@@ -228,9 +228,12 @@ impl EmbedCache {
             let mut crops = Vec::with_capacity(NUM_CROPS);
             for c in 0..NUM_CROPS {
                 let mut emb = [0f32; EMBED_DIM];
-                for (i, val) in emb.iter_mut().enumerate() {
-                    let off = pos + (c * EMBED_DIM + i) * 4;
-                    *val = f32::from_le_bytes(data[off..off + 4].try_into().unwrap());
+                let off = pos + c * EMBED_DIM * 4;
+                for (val, chunk) in emb
+                    .iter_mut()
+                    .zip(data[off..off + EMBED_DIM * 4].chunks_exact(4))
+                {
+                    *val = f32::from_le_bytes(chunk.try_into().unwrap());
                 }
                 crops.push(emb);
             }

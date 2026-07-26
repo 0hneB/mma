@@ -70,24 +70,33 @@ fn search(
     k: Option<usize>,
     threshold: Option<f32>,
     exclude: Option<&str>,
-    score_fn: impl Fn(f32) -> f32,
+    score_fn: impl Fn(f32) -> f32 + Sync,
 ) -> Vec<SearchHit> {
-    let mut results: Vec<SearchHit> = cache.entries.iter()
+    use rayon::prelude::*;
+    if k == Some(0) {
+        return vec![];
+    }
+    let desc = |a: &(&String, f32), b: &(&String, f32)| {
+        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+    };
+    // Score borrowing the ids; only the k winners get cloned into SearchHits.
+    let mut scored: Vec<(&String, f32)> = cache.entries.par_iter()
         .filter(|(pid, _)| exclude.is_none_or(|ex| pid.as_str() != ex))
-        .map(|(pid, crops)| SearchHit {
-            pano_id: pid.clone(),
-            score: (score_fn(max_crop_score(query, crops)) * 10000.0).round() / 10000.0,
+        .map(|(pid, crops)| {
+            (pid, (score_fn(max_crop_score(query, crops)) * 10000.0).round() / 10000.0)
         })
+        .filter(|(_, s)| threshold.is_none_or(|t| *s >= t))
         .collect();
-
-    if let Some(t) = threshold {
-        results.retain(|r| r.score >= t);
-    }
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     if let Some(k) = k {
-        results.truncate(k);
+        if k < scored.len() {
+            scored.select_nth_unstable_by(k - 1, desc);
+            scored.truncate(k);
+        }
     }
-    results
+    scored.sort_by(desc);
+    scored.into_iter()
+        .map(|(pid, score)| SearchHit { pano_id: pid.clone(), score })
+        .collect()
 }
 
 pub fn text_search(input: &TextSearchInput, model_dir: &str, cache_dir: &str) -> SearchResults {
