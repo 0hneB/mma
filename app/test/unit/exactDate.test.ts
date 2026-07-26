@@ -25,15 +25,21 @@ afterEach(() => {
 });
 
 describe("resolveExactTimestamp", () => {
-	it("bisects to the true capture timestamp", async () => {
+	it("searches down to the true capture timestamp", async () => {
 		// Ground truth: 2021-06-15 12:34:56 UTC, inside the 2021-06 window.
 		const truth = Date.UTC(2021, 5, 15, 12, 34, 56) / 1000;
-		stubFetch((start, end) => ({
-			status: 200,
-			body: start <= truth && truth <= end ? FOUND : EMPTY,
-		}));
+		let calls = 0;
+		stubFetch((start, end) => {
+			calls++;
+			return {
+				status: 200,
+				body: start <= truth && truth <= end ? FOUND : EMPTY,
+			};
+		});
 		const ts = await resolveExactTimestamp(1, 2, "2021-06");
 		expect(Math.abs(ts - truth)).toBeLessThanOrEqual(1);
+		// k-ary rounds: ~10 rounds of BRANCH probes + guard. Catches accidental blowups.
+		expect(calls).toBeLessThanOrEqual(50);
 	});
 
 	it("throws when the pano is not in the window at all", async () => {
