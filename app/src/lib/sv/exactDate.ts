@@ -3,8 +3,10 @@ const RPC_URL =
 
 const MAX_RETRIES = 3;
 
+// A failed probe must throw, never read as "no images": the bisection treats a
+// negative as evidence and would silently converge on a wrong timestamp.
 async function singleImageSearch(body: string, signal?: AbortSignal): Promise<string> {
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+	for (let attempt = 0; ; attempt++) {
 		const res = await fetch(RPC_URL, {
 			method: "POST",
 			headers: { "content-type": "application/json+protobuf" },
@@ -16,12 +18,11 @@ async function singleImageSearch(body: string, signal?: AbortSignal): Promise<st
 				await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
 				continue;
 			}
-			return "Search returned no images.";
+			throw new Error(`SingleImageSearch unavailable (HTTP ${res.status})`);
 		}
-		if (!res.ok) return "Search returned no images.";
+		if (!res.ok) throw new Error(`SingleImageSearch failed (HTTP ${res.status})`);
 		return await res.text();
 	}
-	return "Search returned no images.";
 }
 
 async function checkTimestamp(
