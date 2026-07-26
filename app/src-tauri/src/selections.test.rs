@@ -1313,6 +1313,54 @@ fn duplicates_finds_nearby() {
     assert!(!ids.contains(&3));
 }
 
+// Chain A~B~C at ~1.1m steps, 2m threshold, A-C out of range: every point with a
+// within-distance neighbour is a duplicate. C's only witness pair (B, C) fires from
+// anchor B, so B must not be skipped just because an earlier anchor grouped it.
+#[test]
+fn duplicates_chain_marks_all_members() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let adds = vec![
+        loc(1, 0.00000, 0.0),
+        loc(2, 0.00001, 0.0),
+        loc(3, 0.00002, 0.0),
+    ];
+    let view = make_view(None, &dead, &patches, &adds);
+    let ids = resolve(&view, &SelectionProps::Duplicates { distance: 2.0 });
+    assert_eq!(ids, vec![1, 2, 3]);
+}
+
+// The Duplicates selection and the merge dialog's groups are two views of the same
+// relation: "has a neighbour within d" == "member of a component of size >= 2".
+#[test]
+fn duplicates_bitmask_matches_flattened_groups() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let adds = vec![
+        // chain of three
+        loc(1, 0.00000, 0.0),
+        loc(2, 0.00001, 0.0),
+        loc(3, 0.00002, 0.0),
+        // tight pair
+        loc(4, 10.0, 10.0),
+        loc(5, 10.000005, 10.0),
+        // singletons
+        loc(6, 20.0, 20.0),
+        loc(7, -30.0, 40.0),
+        // coincident stack
+        loc(8, 50.0, 50.0),
+        loc(9, 50.0, 50.0),
+        loc(10, 50.0, 50.0),
+    ];
+    let view = make_view(None, &dead, &patches, &adds);
+    for d in [0.5, 2.0, 25.0] {
+        let selected = resolve(&view, &SelectionProps::Duplicates { distance: d });
+        let mut grouped: Vec<u32> = find_duplicate_groups(&view, d).into_iter().flatten().collect();
+        grouped.sort_unstable();
+        assert_eq!(selected, grouped, "bitmask != groups at d={d}");
+    }
+}
+
 // distance == 0 means exact-coordinate duplicates. Must not overflow (debug) and must
 // match only locations at the identical coordinate. (#69)
 #[test]

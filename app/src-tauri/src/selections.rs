@@ -1116,9 +1116,13 @@ impl SpatialHash {
 
 /// Grid broad-phase pair sweep shared by the duplicate bitmask/groups/prune paths.
 /// Calls `pair(state, pi, pj)` (pi < pj) for every index pair within `distance_m` metres.
-/// `skip_anchor(state, pi)` short-circuits a whole anchor scan — the bitmask path relies
-/// on it to stay near-linear when many points share one cell. O(N) average with uniform
-/// distribution, O(N^2) worst case if all points fall in one grid cell.
+/// `skip_anchor(state, pi)` prunes anchor scans on the exact-equality path only: a
+/// coincident bucket is a clique, so a grouped anchor's remaining pairs are all implied.
+/// The grid path never skips — within-d is not transitive, and a grouped anchor can be
+/// the only witness for an ungrouped neighbour further along a chain (each pair fires
+/// from its lower-indexed anchor exactly once, so skipping that anchor loses the pair).
+/// O(N) average with uniform distribution, O(N^2) worst case if all points fall in one
+/// grid cell.
 fn for_pairs_within<S>(
     n: usize,
     pos: impl Fn(usize) -> (f64, f64),
@@ -1171,9 +1175,6 @@ fn for_pairs_within<S>(
     let grid = SpatialHash::build(&cells);
     let thresh_m2 = distance_m * distance_m;
     for pi in 0..n {
-        if skip_anchor(state, pi) {
-            continue;
-        }
         let (lat, lng) = pos(pi);
         let (cx, cy) = cells[pi];
         let cos_lat = lat.to_radians().cos();
@@ -1246,12 +1247,15 @@ fn find_duplicates_bitmask(view: &LocView, distance_m: f64, mask: &mut [bool]) {
         &mut state,
         |s, pi| s.0[pi],
         |s, pi, pj| {
+            // The anchor provably has a neighbour, so it is always marked — even when
+            // pj is already grouped. Without this, a chain endpoint whose only
+            // neighbour was grouped by an earlier anchor was silently missed.
+            s.1[points[pi].global_idx] = true;
             if s.0[pj] {
                 return;
             }
             s.0[pj] = true;
             s.1[points[pj].global_idx] = true;
-            s.1[points[pi].global_idx] = true;
         },
     );
 }
