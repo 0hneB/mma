@@ -119,9 +119,6 @@ fn selection_cell_indices(render: &RenderState, set: &RoaringBitmap) -> [Vec<u32
                 out[ci as usize].push(li as u32);
             }
         }
-        for v in &mut out {
-            v.sort_unstable();
-        }
     } else {
         for (ci, opt) in render.cells.iter().enumerate() {
             let Some(cr) = opt.as_ref() else { continue };
@@ -145,7 +142,7 @@ fn serialize_cell_segment(ci: usize, cr: &CellRender, per_sel: &[[Vec<u32>; 32]]
     seg.push(BASE32[ci]);
     seg.extend_from_slice(&(n as u32).to_le_bytes());
     // Per selection, emit one of two self-describing formats (format byte first):
-    //   1 = index-list: u32 count + count*u32 selected local indices (sparse → O(selected))
+    //   1 = index-list: u32 count + count*u32 selected local indices, unordered (sparse → O(selected))
     //   0 = bitmask:    mask_bytes raw bits (dense → smaller than an index list)
     // The index-list lets JS rebuild the overlay in O(selected) instead of scanning N bits.
     for sel_cells in per_sel {
