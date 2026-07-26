@@ -1425,36 +1425,32 @@ fn prune_thinning(locs: &[&Location], distance_m: f64) -> Vec<u32> {
     let neighbors = neighbor_lists(locs, distance_m);
     let mut deg: Vec<u32> = neighbors.iter().map(|v| v.len() as u32).collect();
     let mut removed = vec![false; n];
-    // Stack with O(1) membership removal: all nodes at the current max degree are
-    // processed before recounting; a neighbour of a removed node leaves the stack
-    // even if it still sits at max degree.
-    let mut stack: Vec<usize> = Vec::new();
-    let mut pos: HashMap<usize, usize> = HashMap::new();
-    loop {
-        let max = deg.iter().copied().max().unwrap_or(0);
-        if max == 0 {
-            break;
+    // Bucket queue by degree: O(n + m) total instead of an O(n) max-scan per round.
+    // A degree drop re-files the node; the entry left in the old bucket goes stale
+    // and is skipped on pop (deg mismatch), so no in-place removal is needed.
+    let max_deg = deg.iter().copied().max().unwrap_or(0) as usize;
+    let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); max_deg + 1];
+    for i in 0..n {
+        if deg[i] > 0 {
+            buckets[deg[i] as usize].push(i);
         }
-        for i in 0..n {
-            if deg[i] == max {
-                pos.insert(i, stack.len());
-                stack.push(i);
-            }
+    }
+    let mut cur = max_deg;
+    while cur > 0 {
+        let Some(i) = buckets[cur].pop() else {
+            cur -= 1;
+            continue;
+        };
+        if removed[i] || deg[i] as usize != cur {
+            continue;
         }
-        while let Some(t) = stack.pop() {
-            pos.remove(&t);
-            deg[t] = 0;
-            removed[t] = true;
-            for &u in &neighbors[t] {
+        removed[i] = true;
+        deg[i] = 0;
+        for &u in &neighbors[i] {
+            if !removed[u] && deg[u] > 0 {
+                deg[u] -= 1;
                 if deg[u] > 0 {
-                    deg[u] -= 1;
-                }
-                if let Some(p) = pos.remove(&u) {
-                    let last = stack.pop().unwrap();
-                    if p < stack.len() {
-                        stack[p] = last;
-                        pos.insert(last, p);
-                    }
+                    buckets[deg[u] as usize].push(u);
                 }
             }
         }
