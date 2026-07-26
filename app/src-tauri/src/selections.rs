@@ -750,18 +750,23 @@ fn resolve_leaf_mask(view: &LocView, props: &SelectionProps) -> Vec<bool> {
                     entries.push((view.batch_rows + j, v));
                 }
             }
-            if *ascending {
-                entries.sort_unstable_by(|a, b| {
-                    a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-                });
-            } else {
-                entries.sort_unstable_by(|a, b| {
-                    b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-                });
+            let k = *k as usize;
+            let asc = |a: &(usize, f64), b: &(usize, f64)| {
+                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+            };
+            if k > 0 && k < entries.len() {
+                if *ascending {
+                    entries.select_nth_unstable_by(k - 1, asc);
+                } else {
+                    entries.select_nth_unstable_by(k - 1, |a, b| asc(b, a));
+                }
+                entries.truncate(k);
             }
             let mut mask = vec![false; n];
-            for &(i, _) in entries.iter().take(*k as usize) {
-                mask[i] = true;
+            if k > 0 {
+                for &(i, _) in &entries {
+                    mask[i] = true;
+                }
             }
             mask
         }

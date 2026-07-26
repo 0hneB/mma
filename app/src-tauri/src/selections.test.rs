@@ -1710,6 +1710,47 @@ fn topk_works_on_base_batch() {
 }
 
 #[test]
+fn topk_zero_k_selects_nothing() {
+    let locs = vec![
+        loc_extra(1, serde_json::json!({"alt": 100})),
+        loc_extra(2, serde_json::json!({"alt": 200})),
+    ];
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let view = make_view(None, &dead, &patches, &locs);
+    let ids = resolve(
+        &view,
+        &SelectionProps::TopK {
+            field: "alt".into(),
+            k: 0,
+            ascending: false,
+        },
+    );
+    assert_eq!(ids, Vec::<u32>::new());
+}
+
+#[test]
+fn topk_k_equals_len_selects_all() {
+    let locs = vec![
+        loc_extra(1, serde_json::json!({"alt": 100})),
+        loc_extra(2, serde_json::json!({"alt": 300})),
+        loc_extra(3, serde_json::json!({"alt": 200})),
+    ];
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let view = make_view(None, &dead, &patches, &locs);
+    let ids = resolve(
+        &view,
+        &SelectionProps::TopK {
+            field: "alt".into(),
+            k: 3,
+            ascending: false,
+        },
+    );
+    assert_eq!(ids, vec![1, 2, 3]);
+}
+
+#[test]
 fn partition_numeric_count_matches_js() {
     let adds = vec![
         loc_extra(1, serde_json::json!({"alt": 0})),
