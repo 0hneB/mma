@@ -1361,6 +1361,17 @@ fn duplicates_bitmask_matches_flattened_groups() {
     }
 }
 
+// Dense cluster: every member of a same-cell stack is a duplicate at d > 0.
+#[test]
+fn duplicates_dense_cluster_marks_every_member() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let adds: Vec<Location> = (0..50).map(|i| loc(i + 1, 12.0, 34.0)).collect();
+    let view = make_view(None, &dead, &patches, &adds);
+    let ids = resolve(&view, &SelectionProps::Duplicates { distance: 5.0 });
+    assert_eq!(ids.len(), 50);
+}
+
 // distance == 0 means exact-coordinate duplicates. Must not overflow (debug) and must
 // match only locations at the identical coordinate. (#69)
 #[test]

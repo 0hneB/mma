@@ -1114,21 +1114,15 @@ impl SpatialHash {
     }
 }
 
-/// Grid broad-phase pair sweep shared by the duplicate bitmask/groups/prune paths.
-/// Calls `pair(state, pi, pj)` (pi < pj) for every index pair within `distance_m` metres.
-/// `skip_anchor(state, pi)` prunes anchor scans on the exact-equality path only: a
-/// coincident bucket is a clique, so a grouped anchor's remaining pairs are all implied.
-/// The grid path never skips — within-d is not transitive, and a grouped anchor can be
-/// the only witness for an ungrouped neighbour further along a chain (each pair fires
-/// from its lower-indexed anchor exactly once, so skipping that anchor loses the pair).
-/// O(N) average with uniform distribution, O(N^2) worst case if all points fall in one
-/// grid cell.
+/// Grid broad-phase pair sweep shared by the duplicate groups/prune paths.
+/// Calls `pair(state, pi, pj)` (pi < pj) for every index pair within `distance_m`
+/// metres. O(N) average with uniform distribution, O(N^2) worst case if all points
+/// fall in one grid cell.
 fn for_pairs_within<S>(
     n: usize,
     pos: impl Fn(usize) -> (f64, f64),
     distance_m: f64,
     state: &mut S,
-    skip_anchor: impl Fn(&S, usize) -> bool,
     mut pair: impl FnMut(&mut S, usize, usize),
 ) {
     if n < 2 {
@@ -1153,9 +1147,6 @@ fn for_pairs_within<S>(
         }
         for idxs in groups.values() {
             for (a, &pi) in idxs.iter().enumerate() {
-                if skip_anchor(state, pi) {
-                    continue;
-                }
                 for &pj in &idxs[a + 1..] {
                     pair(state, pi, pj);
                 }
@@ -1203,8 +1194,13 @@ fn for_pairs_within<S>(
     }
 }
 
-/// Grid-accelerated spatial duplicate detection.
+/// Grid-accelerated spatial duplicate detection: `mask[global_idx] = true` for every
+/// location with at least one other location within `distance_m`. A per-point
+/// predicate rather than a pair sweep: the grid is read-only after build, so points
+/// are tested in parallel, and each test early-exits on its first neighbour — a
+/// dense cluster costs O(1) per member instead of O(members) pair callbacks.
 fn find_duplicates_bitmask(view: &LocView, distance_m: f64, mask: &mut [bool]) {
+    use rayon::prelude::*;
     struct Pt {
         lat: f64,
         lng: f64,
@@ -1239,25 +1235,77 @@ fn find_duplicates_bitmask(view: &LocView, distance_m: f64, mask: &mut [bool]) {
     }
 
     let n = points.len();
-    let mut state = (vec![false; n], mask); // (in_group, mask)
-    for_pairs_within(
-        n,
-        |i| (points[i].lat, points[i].lng),
-        distance_m,
-        &mut state,
-        |s, pi| s.0[pi],
-        |s, pi, pj| {
-            // The anchor provably has a neighbour, so it is always marked — even when
-            // pj is already grouped. Without this, a chain endpoint whose only
-            // neighbour was grouped by an earlier anchor was silently missed.
-            s.1[points[pi].global_idx] = true;
-            if s.0[pj] {
-                return;
+    if n < 2 {
+        return;
+    }
+
+    let cell_deg = distance_m / 111_000.0 * 1.5;
+    // Degenerate radius: "within 0 m" means exact-coordinate equality — count
+    // occupancy per exact coordinate; every member of a bucket of >= 2 is a dup. (#69)
+    if !(cell_deg > 0.0) {
+        let key = |p: &Pt| -> Option<(u64, u64)> {
+            if !p.lat.is_finite() || !p.lng.is_finite() {
+                return None;
             }
-            s.0[pj] = true;
-            s.1[points[pj].global_idx] = true;
-        },
-    );
+            // `+ 0.0` folds -0.0 into +0.0 so the two compare equal.
+            Some(((p.lat + 0.0).to_bits(), (p.lng + 0.0).to_bits()))
+        };
+        let mut counts: HashMap<(u64, u64), u32> = HashMap::new();
+        for p in &points {
+            if let Some(k) = key(p) {
+                *counts.entry(k).or_insert(0) += 1;
+            }
+        }
+        for p in &points {
+            if key(p).is_some_and(|k| counts[&k] >= 2) {
+                mask[p.global_idx] = true;
+            }
+        }
+        return;
+    }
+
+    let cells: Vec<(i32, i32)> = points
+        .iter()
+        .map(|p| {
+            (
+                (p.lng / cell_deg).floor() as i32,
+                (p.lat / cell_deg).floor() as i32,
+            )
+        })
+        .collect();
+    let grid = SpatialHash::build(&cells);
+    let thresh_m2 = distance_m * distance_m;
+
+    let has_neighbor = |pi: usize| -> bool {
+        let (lat, lng) = (points[pi].lat, points[pi].lng);
+        let (cx, cy) = cells[pi];
+        let cos_lat = lat.to_radians().cos();
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                let (nx, ny) = (cx.saturating_add(dx), cy.saturating_add(dy));
+                for &pj in grid.bucket(nx, ny) {
+                    let pj = pj as usize;
+                    if pj == pi || cells[pj] != (nx, ny) {
+                        continue;
+                    }
+                    if equirect_m2(lat, lng, points[pj].lat, points[pj].lng, cos_lat) <= thresh_m2 {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    };
+    let marks: Vec<bool> = (0..n)
+        .into_par_iter()
+        .with_min_len(4096)
+        .map(has_neighbor)
+        .collect();
+    for (i, p) in points.iter().enumerate() {
+        if marks[i] {
+            mask[p.global_idx] = true;
+        }
+    }
 }
 
 /// Transitive (connected-component) spatial grouping. Two locations are linked when within
@@ -1301,7 +1349,6 @@ pub fn find_duplicate_groups(view: &LocView, distance_m: f64) -> Vec<Vec<u32>> {
         |i| (points[i].lat, points[i].lng),
         distance_m,
         &mut uf,
-        |_, _| false,
         |uf, pi, pj| {
             let ra = find(&mut uf.0, pi);
             let rb = find(&mut uf.0, pj);
@@ -1383,7 +1430,6 @@ fn neighbor_lists(locs: &[&Location], distance_m: f64) -> Vec<Vec<usize>> {
         |i| (locs[i].lat, locs[i].lng),
         distance_m,
         &mut out,
-        |_, _| false,
         |out, pi, pj| {
             out[pi].push(pj);
             out[pj].push(pi);
