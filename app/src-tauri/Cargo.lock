@@ -3320,6 +3320,7 @@ dependencies = [
  "arrow-schema",
  "arrow-select",
  "bitflags 2.11.1",
+ "bytemuck",
  "bytes",
  "chrono",
  "chrono-tz",

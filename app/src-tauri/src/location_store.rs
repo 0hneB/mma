@@ -3375,32 +3375,21 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         let count = out.ids.len() as u32;
         buf.push(BASE32[ci]);
         buf.extend_from_slice(&count.to_le_bytes());
-        for &id in &out.ids {
-            buf.extend_from_slice(&id.to_le_bytes());
-        }
-        for &v in &out.positions {
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
+        // cast_slice = native-endian; all supported targets are little-endian like the JS side.
+        buf.extend_from_slice(bytemuck::cast_slice(&out.ids));
+        buf.extend_from_slice(bytemuck::cast_slice(&out.positions));
         buf.extend_from_slice(&out.visible);
-        for &v in &out.angles {
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
+        buf.extend_from_slice(bytemuck::cast_slice(&out.angles));
     }
 
     // Selection overlay: [u32 count][f32[] positions][u8[] colors][f32[] angles][u32[] ids]
     let sel_count = sel_ov.ids.len() as u32;
     buf.extend_from_slice(&sel_count.to_le_bytes());
     if sel_count > 0 {
-        for &v in &sel_ov.positions {
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
+        buf.extend_from_slice(bytemuck::cast_slice(&sel_ov.positions));
         buf.extend_from_slice(&sel_ov.colors);
-        for &v in &sel_ov.angles {
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
-        for &id in &sel_ov.ids {
-            buf.extend_from_slice(&id.to_le_bytes());
-        }
+        buf.extend_from_slice(bytemuck::cast_slice(&sel_ov.angles));
+        buf.extend_from_slice(bytemuck::cast_slice(&sel_ov.ids));
     }
 
     log::debug!(
