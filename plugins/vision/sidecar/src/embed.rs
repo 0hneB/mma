@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use ndarray::Array3;
-use ort::session::Session;
+pub use ort::session::Session;
 use ort::value::Tensor;
 use serde::{Deserialize, Serialize};
 
@@ -202,6 +202,14 @@ pub fn embed_text(session: &mut Session, tokenizer: &tokenizers::Tokenizer, text
 
 const CACHE_VERSION: u32 = 6;
 const CACHE_FILE: &str = "embeddings_v6.bin";
+
+/// Modification time of the on-disk cache; `None` when absent. Lets a resident
+/// process detect that a concurrent `embed` run rewrote the cache.
+pub fn cache_mtime(cache_dir: &str) -> Option<std::time::SystemTime> {
+    fs::metadata(Path::new(cache_dir).join(CACHE_FILE))
+        .and_then(|m| m.modified())
+        .ok()
+}
 
 #[derive(Default)]
 pub struct EmbedCache {
