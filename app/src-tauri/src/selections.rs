@@ -1188,7 +1188,7 @@ pub fn find_duplicate_groups(view: &LocView, distance_m: f64) -> Vec<Vec<u32>> {
         return Vec::new();
     }
 
-    // Union-find with path halving.
+    // Union-find with path halving and union by size.
     fn find(parent: &mut [usize], mut x: usize) -> usize {
         while parent[x] != x {
             parent[x] = parent[parent[x]];
@@ -1196,22 +1196,25 @@ pub fn find_duplicate_groups(view: &LocView, distance_m: f64) -> Vec<Vec<u32>> {
         }
         x
     }
-    let mut parent: Vec<usize> = (0..n).collect();
+    let mut uf: (Vec<usize>, Vec<u32>) = ((0..n).collect(), vec![1; n]);
 
     for_pairs_within(
         n,
         |i| (points[i].lat, points[i].lng),
         distance_m,
-        &mut parent,
+        &mut uf,
         |_, _| false,
-        |parent, pi, pj| {
-            let ra = find(parent, pi);
-            let rb = find(parent, pj);
+        |uf, pi, pj| {
+            let ra = find(&mut uf.0, pi);
+            let rb = find(&mut uf.0, pj);
             if ra != rb {
-                parent[ra] = rb;
+                let (small, big) = if uf.1[ra] < uf.1[rb] { (ra, rb) } else { (rb, ra) };
+                uf.0[small] = big;
+                uf.1[big] += uf.1[small];
             }
         },
     );
+    let mut parent = uf.0;
 
     let mut comps: HashMap<usize, Vec<u32>> = HashMap::new();
     for pi in 0..n {
