@@ -1588,6 +1588,43 @@ fn extra_filter_eq_on_adds() {
     assert_eq!(ids, vec![1]);
 }
 
+// Base-batch extras go through the byte-scan path (no full JSON parse per row):
+// top-level keys resolve; the same key nested inside another value must not.
+#[test]
+fn extra_filter_scans_base_batch_top_level_only() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let mut l1 = loc(1, 0.0, 0.0);
+    l1.extra = Some(serde_json::from_str(r#"{"alt":100,"note":"a\"b}","wrap":{"alt":999}}"#).unwrap());
+    let mut l2 = loc(2, 0.0, 0.0);
+    l2.extra = Some(serde_json::from_str(r#"{"wrap":{"alt":100}}"#).unwrap());
+    let batch = locations_to_batch(&[l1, l2]);
+    let adds: Vec<Location> = vec![];
+    let view = make_view(Some(&batch), &dead, &patches, &adds);
+
+    let filter = |field: &str, op: FilterOp, value: serde_json::Value| SelectionProps::Filter {
+        field: field.into(),
+        op,
+        value,
+        value2: None,
+        tz_local: false,
+    };
+    // l1 matches on its top-level alt; l2's nested alt must not count.
+    assert_eq!(
+        resolve(&view, &filter("alt", FilterOp::Eq, serde_json::json!(100))),
+        vec![1]
+    );
+    assert_eq!(
+        resolve(&view, &filter("alt", FilterOp::Has, serde_json::Value::Null)),
+        vec![1]
+    );
+    // Escaped quote and brace inside a string value must not derail the scan.
+    assert_eq!(
+        resolve(&view, &filter("note", FilterOp::Eq, serde_json::json!("a\"b}"))),
+        vec![1]
+    );
+}
+
 // -----------------------------------------------------------------------
 // tz_local filters: bucket each location's absolute `datetime` into its own
 // timezone before comparing. Same instant, different zones -> different days.

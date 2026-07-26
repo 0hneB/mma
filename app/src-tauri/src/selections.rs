@@ -288,23 +288,33 @@ impl<'a, 'v> RowRef<'a, 'v> {
                     .and_then(|v| v.as_str().map(str::to_owned)),
             ),
             RowInner::Base(v, i) => {
-                let extras: Option<serde_json::Map<String, serde_json::Value>> =
-                    v.extras.and_then(|c| {
-                        if c.is_null(*i) {
-                            return None;
+                // One byte-scan collects both members; only their value slices parse.
+                let mut fv_extra: Option<serde_json::Value> = None;
+                let mut tz: Option<String> = None;
+                if let Some(s) = v
+                    .extras
+                    .and_then(|c| (!c.is_null(*i)).then(|| c.value(*i)))
+                {
+                    let b = s.as_bytes();
+                    crate::types::scan_fields(b, |fs| {
+                        let k = &b[fs.key.clone()];
+                        // Not else-if: `field` may itself be "timezone".
+                        if tz.is_none() && k == b"timezone" {
+                            tz = serde_json::from_str::<serde_json::Value>(&s[fs.value.clone()])
+                                .ok()
+                                .and_then(|v| v.as_str().map(str::to_owned));
                         }
-                        serde_json::from_str(c.value(*i)).ok()
+                        if fv_extra.is_none() && k == field.as_bytes() {
+                            fv_extra = serde_json::from_str(&s[fs.value.clone()]).ok();
+                        }
+                        tz.is_some() && fv_extra.is_some()
                     });
-                let tz = extras
-                    .as_ref()
-                    .and_then(|m| m.get("timezone"))
-                    .and_then(|v| v.as_str())
-                    .map(str::to_owned);
+                }
                 // Built-in names come from their columns; keep in sync with resolve_field_arrow.
                 let fv = match field {
                     "lat" | "lng" | "heading" | "pitch" | "zoom" | "id" | "createdAt"
                     | "modifiedAt" => resolve_field_arrow(v, *i, field),
-                    _ => extras.as_ref().and_then(|m| m.get(field).cloned()),
+                    _ => fv_extra,
                 };
                 (fv, tz)
             }
@@ -1576,9 +1586,9 @@ fn resolve_field_arrow(view: &LocView, idx: usize, field: &str) -> Option<serde_
             if extras.is_null(idx) {
                 return None;
             }
-            let map: serde_json::Map<String, serde_json::Value> =
-                serde_json::from_str(extras.value(idx)).ok()?;
-            map.get(field).cloned()
+            // Byte-scan for the one key; parses only its value slice instead of the
+            // whole extras document per row.
+            crate::types::json_field(extras.value(idx), field)
         }
     }
 }
