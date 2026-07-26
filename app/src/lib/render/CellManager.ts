@@ -388,19 +388,15 @@ export class CellManager {
 			const gh0 = dv.getUint8(offset);
 			const cellKey = String.fromCharCode(gh0);
 			const count = dv.getUint32(offset + 1, true);
-			offset += 5;
+			// 5-byte header + 3 pad; the arrays sit 4-byte aligned so the views below are legal.
+			offset += 8;
 
 			const cb = new CellBuffer(count);
 			cb.count = count;
 
-			const idBytes = count * 4;
-			const posBytes = count * 2 * 4;
-			const visBytes = count;
-			const angBytes = count * 4;
-
-			const idBuf = new Uint32Array(buf.slice(offset, offset + idBytes));
-			offset += idBytes;
-			cb.ids = Array.from(idBuf);
+			const idView = new Uint32Array(buf, offset, count);
+			offset += count * 4;
+			cb.ids = Array.from(idView);
 			cb.idToIndex.clear();
 			for (let i = 0; i < count; i++) {
 				const id = cb.ids[i];
@@ -408,12 +404,12 @@ export class CellManager {
 				if (id > this.maxId) this.maxId = id;
 			}
 
-			cb.positions = new Float32Array(buf.slice(offset, offset + posBytes));
-			offset += posBytes;
-			cb.visible = new Uint8Array(buf.slice(offset, offset + visBytes));
-			offset += visBytes;
-			cb.angles = new Float32Array(buf.slice(offset, offset + angBytes));
-			offset += angBytes;
+			cb.positions = new Float32Array(buf, offset, count * 2);
+			offset += count * 8;
+			cb.visible = new Uint8Array(buf, offset, count);
+			offset += count + ((4 - (count & 3)) & 3);
+			cb.angles = new Float32Array(buf, offset, count);
+			offset += count * 4;
 
 			cb.capacity = count;
 
@@ -426,13 +422,13 @@ export class CellManager {
 			const selCount = dv.getUint32(offset, true);
 			offset += 4;
 			if (selCount > 0) {
-				const pos = new Float32Array(buf.slice(offset, offset + selCount * 8));
+				const pos = new Float32Array(buf, offset, selCount * 2);
 				offset += selCount * 8;
-				const col = new Uint8Array(buf.slice(offset, offset + selCount * 4));
+				const col = new Uint8Array(buf, offset, selCount * 4);
 				offset += selCount * 4;
-				const ang = new Float32Array(buf.slice(offset, offset + selCount * 4));
+				const ang = new Float32Array(buf, offset, selCount);
 				offset += selCount * 4;
-				const ids = new Uint32Array(buf.slice(offset, offset + selCount * 4));
+				const ids = new Uint32Array(buf, offset, selCount);
 				this.overlay.load(pos, col, ang, ids, this.maxId);
 			}
 		}

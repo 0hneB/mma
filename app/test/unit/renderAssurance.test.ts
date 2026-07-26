@@ -1428,7 +1428,8 @@ function buildMultiCellBinary(cells: { cell: string; entries: BinaryEntry[] }[])
 	let size = 4; // u32 cell_count
 	for (const c of cells) {
 		const n = c.entries.length;
-		size += 5 + n * 4 + n * 2 * 4 + n + n * 4; // header + ids + positions + visible + angles
+		// header+pad + ids + positions + visible+pad + angles
+		size += 8 + n * 4 + n * 2 * 4 + n + ((4 - (n & 3)) & 3) + n * 4;
 	}
 	size += 4; // sel_count
 
@@ -1445,6 +1446,7 @@ function buildMultiCellBinary(cells: { cell: string; entries: BinaryEntry[] }[])
 		off += 1;
 		dv.setUint32(off, n, true);
 		off += 4;
+		off += 3; // alignment pad
 		for (const e of c.entries) {
 			dv.setUint32(off, e.id, true);
 			off += 4;
@@ -1459,6 +1461,7 @@ function buildMultiCellBinary(cells: { cell: string; entries: BinaryEntry[] }[])
 			dv.setUint8(off, e.visible);
 			off += 1;
 		}
+		off += (4 - (n & 3)) & 3; // pad visible to 4
 		for (const e of c.entries) {
 			dv.setFloat32(off, e.heading, true);
 			off += 4;

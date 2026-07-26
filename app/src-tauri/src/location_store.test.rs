@@ -1655,13 +1655,14 @@ fn render_buffer_format_matches_js_parser() {
     for _ in 0..cell_count {
         let _cell_char = buf[offset];
         let count = u32::from_le_bytes(buf[offset + 1..offset + 5].try_into().unwrap());
-        offset += 5;
+        // header + 3 alignment pad bytes
+        offset += 8;
         // ids: count * 4 bytes
         offset += count as usize * 4;
         // positions: count * 2 * 4 bytes
         offset += count as usize * 2 * 4;
-        // visible: count * 1 byte
-        offset += count as usize;
+        // visible: count bytes + pad to 4
+        offset += count as usize + (4 - count as usize % 4) % 4;
         // angles: count * 4 bytes
         offset += count as usize * 4;
         total_locs += count;
@@ -1692,16 +1693,17 @@ fn arrow_render_angle_is_negated_heading() {
     };
     let buf = build_cell_render_buffers(&mut store, &req);
 
-    // Walk to the single cell's angles segment: [u32 cells][u8 char][u32 count][ids][positions][visible][angles]
+    // Walk to the single cell's angles segment:
+    // [u32 cells][u8 char][u32 count][3 pad][ids][positions][visible][pad to 4][angles]
     let cell_count = u32::from_le_bytes(buf[0..4].try_into().unwrap());
     assert_eq!(cell_count, 1);
     let mut offset = 4usize;
     let count = u32::from_le_bytes(buf[offset + 1..offset + 5].try_into().unwrap()) as usize;
     assert_eq!(count, 1);
-    offset += 5;
+    offset += 8;
     offset += count * 4; // ids
     offset += count * 2 * 4; // positions
-    offset += count; // visible
+    offset += count + (4 - count % 4) % 4; // visible + pad
     let angle = f32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap());
     assert_eq!(angle, -90.0, "arrow angle must be the negated heading");
 }
@@ -2022,8 +2024,8 @@ fn render_buffer_with_selection_overlay() {
     let mut offset = 4usize;
     for _ in 0..cell_count {
         let count = u32::from_le_bytes(buf[offset + 1..offset + 5].try_into().unwrap()) as usize;
-        // ids + positions + visible + angles
-        offset += 5 + count * 4 + count * 2 * 4 + count + count * 4;
+        // header+pad + ids + positions + visible+pad + angles
+        offset += 8 + count * 4 + count * 2 * 4 + count + (4 - count % 4) % 4 + count * 4;
     }
     let sel_count = u32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap());
     assert_eq!(sel_count, 1, "one selected location");

@@ -3352,10 +3352,13 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
     }
 
     // Serialize: u32 cell_count, per cell:
-    //   [1 byte geohash char][u32 count][u32[] ids][f32[] positions][u8[] visible][f32[] angles]
+    //   [1 byte geohash char][u32 count][3 pad][u32[] ids][f32[] positions][u8[] visible][pad to 4][f32[] angles]
+    // Arrays sit 4-byte aligned within the buffer so JS wraps them as views without copying.
     let body_cap: usize = (0..32)
         .filter_map(|ci| cells[ci].as_ref())
-        .map(|o| 5 + o.ids.len() * 4 + o.positions.len() * 4 + o.visible.len() + o.angles.len() * 4)
+        .map(|o| {
+            8 + o.ids.len() * 4 + o.positions.len() * 4 + o.visible.len() + 3 + o.angles.len() * 4
+        })
         .sum();
     let sel_cap = if sel_ov.ids.is_empty() {
         0
@@ -3375,10 +3378,12 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         let count = out.ids.len() as u32;
         buf.push(BASE32[ci]);
         buf.extend_from_slice(&count.to_le_bytes());
+        buf.extend_from_slice(&[0u8; 3]);
         // cast_slice = native-endian; all supported targets are little-endian like the JS side.
         buf.extend_from_slice(bytemuck::cast_slice(&out.ids));
         buf.extend_from_slice(bytemuck::cast_slice(&out.positions));
         buf.extend_from_slice(&out.visible);
+        buf.extend_from_slice(&[0u8; 3][..(4 - out.visible.len() % 4) % 4]);
         buf.extend_from_slice(bytemuck::cast_slice(&out.angles));
     }
 
