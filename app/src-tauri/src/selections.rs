@@ -717,12 +717,15 @@ fn resolve_leaf_mask(view: &LocView, props: &SelectionProps) -> Vec<bool> {
             let inc = *include_informational;
             match geometry_bbox(polygon) {
                 None => vec![false; n],
-                Some(bb) => view.resolve_mask(|r| {
-                    if !inc && r.flags().contains(LocationFlags::INFORMATIONAL) {
-                        return false;
-                    }
-                    in_bbox(r.lng(), r.lat(), &bb) && point_in_geometry(r.lng(), r.lat(), polygon)
-                }),
+                Some(bb) => {
+                    let prepared = PreparedGeometry::new(polygon);
+                    view.resolve_mask(|r| {
+                        if !inc && r.flags().contains(LocationFlags::INFORMATIONAL) {
+                            return false;
+                        }
+                        in_bbox(r.lng(), r.lat(), &bb) && prepared.contains(r.lng(), r.lat())
+                    })
+                }
             }
         }
         SelectionProps::TopK {
@@ -838,6 +841,97 @@ pub(crate) fn point_in_ring(lng: f64, lat: f64, ring: &[[f64; 2]]) -> bool {
         j = i;
     }
     inside
+}
+
+/// Crossing-number loop with no per-edge normalization; callers pre-normalize.
+#[inline]
+fn ring_test_raw(lng: f64, lat: f64, ring: &[[f64; 2]]) -> bool {
+    let mut inside = false;
+    let n = ring.len();
+    let mut j = n.wrapping_sub(1);
+    for i in 0..n {
+        let [xi, yi] = ring[i];
+        let [xj, yj] = ring[j];
+        if ((yi > lat) != (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
+}
+
+/// One ring preprocessed for repeated point tests: the antimeridian flag and bbox are
+/// computed once here instead of once per tested point, and a crossing ring stores a
+/// pre-normalized copy so the crossing-number loop runs branch-free.
+pub(crate) struct PreparedRing<'a> {
+    ring: std::borrow::Cow<'a, [[f64; 2]]>,
+    crosses: bool,
+    /// `[min_lng, min_lat, max_lng, max_lat]`, in [0,360) space when `crosses`.
+    bb: [f64; 4],
+}
+
+impl<'a> PreparedRing<'a> {
+    pub(crate) fn new(ring: &'a [[f64; 2]]) -> Self {
+        let crosses = ring_crosses_antimeridian(ring);
+        let ring: std::borrow::Cow<'a, [[f64; 2]]> = if crosses {
+            std::borrow::Cow::Owned(
+                ring.iter()
+                    .map(|&[lng, lat]| [normalize_lng(lng), lat])
+                    .collect(),
+            )
+        } else {
+            std::borrow::Cow::Borrowed(ring)
+        };
+        let mut bb = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
+        let mut any = false;
+        extend_bbox_with_ring(&mut bb, &mut any, false, &ring);
+        Self { ring, crosses, bb }
+    }
+
+    /// Bbox reject, then the raw crossing test. Equivalent to `point_in_ring`.
+    #[inline]
+    pub(crate) fn contains(&self, lng: f64, lat: f64) -> bool {
+        let lng = if self.crosses { normalize_lng(lng) } else { lng };
+        lng >= self.bb[0]
+            && lng <= self.bb[2]
+            && lat >= self.bb[1]
+            && lat <= self.bb[3]
+            && ring_test_raw(lng, lat, &self.ring)
+    }
+}
+
+/// A whole geometry (primary polygon + extras) preprocessed with per-ring bboxes and
+/// antimeridian flags. Build once per resolve; `contains` is then bbox-rejected per
+/// polygon and per hole instead of paying the O(V) antimeridian pre-scan per point.
+pub(crate) struct PreparedGeometry<'a> {
+    /// Each entry is one polygon: outer ring first, then holes.
+    polys: Vec<Vec<PreparedRing<'a>>>,
+}
+
+impl<'a> PreparedGeometry<'a> {
+    pub(crate) fn new(geom: &'a PolygonGeometry) -> Self {
+        let prep = |rings: &'a [Vec<[f64; 2]>]| -> Vec<PreparedRing<'a>> {
+            rings.iter().map(|r| PreparedRing::new(r)).collect()
+        };
+        let mut polys = vec![prep(&geom.coordinates)];
+        if let Some(extras) = &geom.extra_polygons {
+            for p in extras {
+                polys.push(prep(p));
+            }
+        }
+        Self { polys }
+    }
+
+    /// Equivalent to `point_in_geometry`.
+    #[inline]
+    pub(crate) fn contains(&self, lng: f64, lat: f64) -> bool {
+        self.polys.iter().any(|rings| match rings.split_first() {
+            Some((outer, holes)) => {
+                outer.contains(lng, lat) && !holes.iter().any(|h| h.contains(lng, lat))
+            }
+            None => false,
+        })
+    }
 }
 
 /// Test point-in-polygon with holes over rings yielded as slices: inside the outer

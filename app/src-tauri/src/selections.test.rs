@@ -275,6 +275,69 @@ fn geometry_bbox_antimeridian() {
 }
 
 #[test]
+fn prepared_geometry_matches_point_in_geometry() {
+    // PreparedGeometry (per-ring bbox + cached antimeridian flag) must agree with the
+    // per-point path everywhere, or polygon selections change under the optimization.
+    let square = |x0: f64, y0: f64, x1: f64, y1: f64| {
+        vec![[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]
+    };
+    let geoms = vec![
+        // plain polygon
+        PolygonGeometry {
+            coordinates: vec![square(0.0, 0.0, 10.0, 10.0)],
+            extra_polygons: None,
+            properties: None,
+        },
+        // polygon with a hole
+        PolygonGeometry {
+            coordinates: vec![square(0.0, 0.0, 10.0, 10.0), square(4.0, 4.0, 6.0, 6.0)],
+            extra_polygons: None,
+            properties: None,
+        },
+        // antimeridian-crossing (wrapped coords)
+        PolygonGeometry {
+            coordinates: vec![vec![
+                [170.0, -10.0],
+                [-170.0, -10.0],
+                [-170.0, 10.0],
+                [170.0, 10.0],
+                [170.0, -10.0],
+            ]],
+            extra_polygons: None,
+            properties: None,
+        },
+        // antimeridian-crossing (unwrapped coords, lng > 180)
+        PolygonGeometry {
+            coordinates: vec![square(170.0, -10.0, 190.0, 10.0)],
+            extra_polygons: None,
+            properties: None,
+        },
+        // multipolygon: island near the origin + island past the dateline
+        PolygonGeometry {
+            coordinates: vec![square(0.0, 0.0, 10.0, 10.0)],
+            extra_polygons: Some(vec![vec![square(175.0, -5.0, 185.0, 5.0)]]),
+            properties: None,
+        },
+    ];
+    for geom in &geoms {
+        let prepared = PreparedGeometry::new(geom);
+        let mut lat = -20.0;
+        while lat <= 20.0 {
+            let mut lng = -180.0;
+            while lng < 180.0 {
+                assert_eq!(
+                    prepared.contains(lng, lat),
+                    point_in_geometry(lng, lat, geom),
+                    "divergence at ({lng}, {lat})"
+                );
+                lng += 0.5;
+            }
+            lat += 0.5;
+        }
+    }
+}
+
+#[test]
 fn polygon_resolve_across_antimeridian() {
     let ring = vec![
         [170.0, -10.0],
