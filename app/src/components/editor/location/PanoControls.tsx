@@ -14,9 +14,14 @@ import { useHotkeyRef } from "@/lib/hooks/useHotkey";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { open } from "@tauri-apps/plugin-shell";
 import { tweenPov } from "@/lib/sv/tweenPov";
+import { capturePanoScreenshot } from "@/lib/sv/panoScreenshot";
+import { downloadBlob } from "@/lib/util/util";
+import { toast } from "@/lib/util/toast";
+import { log } from "@/lib/util/log";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Icon } from "@/components/primitives/Icon";
 import {
+	mdiCameraOutline,
 	mdiFullscreenExit,
 	mdiFullscreen,
 	mdiChevronUp,
@@ -461,6 +466,8 @@ export const PanoControls = memo(function PanoControls({
 	const jumpForwardKey = useBinding("jumpForward");
 	const jumpBackwardKey = useBinding("jumpBackward");
 	const [copyState, setCopyState] = useState<"idle" | "loading" | "done">("idle");
+	const [screenshotState, setScreenshotState] = useState<"idle" | "loading" | "done">("idle");
+	const screenshotPending = useRef(false);
 
 	// Built from the LIVE pano, not the saved location: the link shares what you're looking at.
 	const buildMapsUrl = useCallback(() => {
@@ -554,28 +561,68 @@ export const PanoControls = memo(function PanoControls({
 		jumpPending.current = jump(180);
 	}, [jump]);
 
+	const takeScreenshot = useCallback(async () => {
+		if (screenshotPending.current) return;
+		screenshotPending.current = true;
+		setScreenshotState("loading");
+		try {
+			const { blob, panoId } = await capturePanoScreenshot(panorama);
+			downloadBlob(blob, `${panoId}.png`);
+			setScreenshotState("done");
+			setTimeout(() => setScreenshotState("idle"), 500);
+		} catch (error) {
+			log.warn("[pano-screenshot] capture failed", error);
+			setScreenshotState("idle");
+			toast("Screenshot failed");
+		} finally {
+			screenshotPending.current = false;
+		}
+	}, [panorama]);
+
 	return (
 		<div className="embed-controls">
-			{vis.showFullscreenButton && (
+			{(vis.showScreenshotButton || vis.showFullscreenButton) && (
 				<div
 					className="embed-controls__control"
 					data-position="top-right"
-					style={{ inset: "0px 0px auto auto" }}
+					style={{ inset: "0px 0px auto auto", display: "flex" }}
 				>
-					<div className="map-control map-control--button">
-						<Tooltip
-							content={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
-							side="bottom"
-							align="end"
-						>
-							<button
-								onClick={onFullscreen}
-								aria-label={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
+					{vis.showScreenshotButton && (
+						<div className="map-control map-control--button">
+							<Tooltip content="Download 1920x1080 screenshot" side="bottom" align="end">
+								<button
+									onClick={takeScreenshot}
+									disabled={screenshotState !== "idle"}
+									aria-label="Download 1920x1080 screenshot"
+									data-qa="pano-screenshot"
+								>
+									{screenshotState === "loading" ? (
+										<Icon path={mdiLoading} className="spin" />
+									) : screenshotState === "done" ? (
+										<Icon path={mdiCheck} />
+									) : (
+										<Icon path={mdiCameraOutline} />
+									)}
+								</button>
+							</Tooltip>
+						</div>
+					)}
+					{vis.showFullscreenButton && (
+						<div className="map-control map-control--button">
+							<Tooltip
+								content={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
+								side="bottom"
+								align="end"
 							>
-								{isFullscreen ? <Icon path={mdiFullscreenExit} /> : <Icon path={mdiFullscreen} />}
-							</button>
-						</Tooltip>
-					</div>
+								<button
+									onClick={onFullscreen}
+									aria-label={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
+								>
+									{isFullscreen ? <Icon path={mdiFullscreenExit} /> : <Icon path={mdiFullscreen} />}
+								</button>
+							</Tooltip>
+						</div>
+					)}
 				</div>
 			)}
 

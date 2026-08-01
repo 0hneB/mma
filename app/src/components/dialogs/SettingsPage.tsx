@@ -379,6 +379,7 @@ function StreetViewBody() {
 	const s = useSettings();
 	const controls: { key: keyof typeof s; label: string }[] = [
 		{ key: "showFullscreenButton", label: "Fullscreen button" },
+		{ key: "showScreenshotButton", label: "Screenshot button" },
 		{ key: "showJumpButtons", label: "Jump forward/backward buttons" },
 		{ key: "showCompass", label: "Compass (wind rose)" },
 		{ key: "showCompassTape", label: "Compass (heading tape)" },

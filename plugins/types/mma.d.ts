@@ -2316,6 +2316,7 @@ declare const DEFAULTS: {
     showMapLinks: boolean;
     showCoordinateDisplay: boolean;
     showFullscreenButton: boolean;
+    showScreenshotButton: boolean;
     showPanoMetadata: boolean;
     exactDateFormat: ExactDateFormat;
     dateTimezone: DateTimezone;
@@ -3127,6 +3128,7 @@ declare const surface: {
         showMapLinks: boolean;
         showCoordinateDisplay: boolean;
         showFullscreenButton: boolean;
+        showScreenshotButton: boolean;
         showPanoMetadata: boolean;
         exactDateFormat: ExactDateFormat;
         dateTimezone: DateTimezone;
