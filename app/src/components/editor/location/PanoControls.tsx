@@ -454,12 +454,14 @@ function PanoMetadataControl() {
 export const PanoControls = memo(function PanoControls({
 	panorama,
 	geo,
+	tag,
 	isFullscreen,
 	onFullscreen,
 	onReturnToSpawn,
 }: {
 	panorama: google.maps.StreetViewPanorama;
 	geo: GeoDisplay | null;
+	tag: string | null;
 	isFullscreen: boolean;
 	onFullscreen: () => void;
 	onReturnToSpawn: () => void;
@@ -573,7 +575,12 @@ export const PanoControls = memo(function PanoControls({
 			const { blob, panoId } = await capturePanoScreenshot(panorama);
 			downloadBlob(
 				blob,
-				panoScreenshotFileName(geo?.address ?? "", geo?.countryCode ?? null, panoId, capturedAt),
+				panoScreenshotFileName(
+					[geo?.place, geo?.region, geo?.countryCode],
+					tag,
+					panoId,
+					capturedAt,
+				),
 			);
 			setScreenshotState("done");
 			setTimeout(() => setScreenshotState("idle"), 500);
@@ -584,7 +591,7 @@ export const PanoControls = memo(function PanoControls({
 		} finally {
 			screenshotPending.current = false;
 		}
-	}, [geo, panorama]);
+	}, [geo, panorama, tag]);
 
 	return (
 		<div className="embed-controls">

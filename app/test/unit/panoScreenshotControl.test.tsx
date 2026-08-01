@@ -52,7 +52,8 @@ function renderControls() {
 		root.render(
 			<PanoControls
 				panorama={panorama}
-				geo={{ address: "Berlin, Berlin", countryCode: "DE" }}
+				geo={{ address: "Berlin, Berlin", countryCode: "DE", place: "Berlin", region: "Berlin" }}
+				tag="Urban"
 				isFullscreen={false}
 				onFullscreen={vi.fn()}
 				onReturnToSpawn={vi.fn()}
@@ -64,7 +65,7 @@ function renderControls() {
 beforeEach(() => {
 	vi.useFakeTimers();
 	mocks.capture.mockReset();
-	mocks.fileName.mockReset().mockReturnValue("Berlin-DE_2026-08-01_21-31-04.png");
+	mocks.fileName.mockReset().mockReturnValue("Berlin-DE-Urban_2026-08-01_21-31-04.png");
 	mocks.download.mockReset();
 	mocks.toast.mockReset();
 	mocks.settings.showScreenshotButton = true;
@@ -105,7 +106,13 @@ describe("PanoControls screenshot button", () => {
 
 		const blob = new Blob(["png"], { type: "image/png" });
 		await act(async () => finish({ blob, panoId: "pano-id" }));
-		expect(mocks.download).toHaveBeenCalledWith(blob, "Berlin-DE_2026-08-01_21-31-04.png");
+		expect(mocks.fileName).toHaveBeenCalledWith(
+			["Berlin", "Berlin", "DE"],
+			"Urban",
+			"pano-id",
+			expect.any(Date),
+		);
+		expect(mocks.download).toHaveBeenCalledWith(blob, "Berlin-DE-Urban_2026-08-01_21-31-04.png");
 		expect(mocks.download).toHaveBeenCalledOnce();
 
 		act(() => vi.advanceTimersByTime(500));

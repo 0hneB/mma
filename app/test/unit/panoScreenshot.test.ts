@@ -11,10 +11,10 @@ import { getSettings } from "@/store/settings";
 describe("pano screenshot", () => {
 	it("builds a compact location filename with a safe pano fallback", () => {
 		const capturedAt = new Date(2026, 7, 1, 21, 31, 4);
-		expect(panoScreenshotFileName("Berlin, Berlin", "de", "pano-id", capturedAt)).toBe(
-			"Berlin-DE_2026-08-01_21-31-04.png",
+		expect(panoScreenshotFileName(["Berlin", "Berlin", "DE"], "Urban", "pano-id", capturedAt)).toBe(
+			"Berlin-DE-Urban_2026-08-01_21-31-04.png",
 		);
-		expect(panoScreenshotFileName("", null, "pano/id", capturedAt)).toBe(
+		expect(panoScreenshotFileName([], null, "pano/id", capturedAt)).toBe(
 			"pano-id_2026-08-01_21-31-04.png",
 		);
 	});

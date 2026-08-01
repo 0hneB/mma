@@ -19,13 +19,17 @@ export interface PanoScreenshotResult {
 }
 
 export function panoScreenshotFileName(
-	address: string,
-	countryCode: string | null,
+	locationParts: (string | null | undefined)[],
+	tag: string | null,
 	panoId: string,
 	capturedAt = new Date(),
 ): string {
-	const place = address.split(",", 1)[0]?.trim();
-	const label = [place, countryCode?.toUpperCase()].filter(Boolean).join("-") || panoId;
+	const location = [
+		...new Set(
+			locationParts.map((part) => part?.trim()).filter((part): part is string => Boolean(part)),
+		),
+	].join("-");
+	const label = [...new Set([location || panoId, tag?.trim()].filter(Boolean))].join("-");
 	const safeLabel = label.replace(/[<>:"/\\|?*\s]+/g, "-").replace(/^-+|-+$/g, "");
 	const localTime = new Date(capturedAt.getTime() - capturedAt.getTimezoneOffset() * 60_000);
 	const stamp = localTime.toISOString().slice(0, 19).replace("T", "_").replaceAll(":", "-");

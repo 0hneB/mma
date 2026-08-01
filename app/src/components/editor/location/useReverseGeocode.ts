@@ -6,6 +6,8 @@ import { useAsync } from "@/lib/hooks/useAsync";
 export interface GeoDisplay {
 	address: string;
 	countryCode: string | null;
+	place?: string;
+	region?: string;
 }
 
 async function geocodeLocal(lat: number, lng: number): Promise<GeoDisplay | null> {
@@ -15,6 +17,8 @@ async function geocodeLocal(lat: number, lng: number): Promise<GeoDisplay | null
 	return {
 		address: parts.join(", "),
 		countryCode: result.country_code?.toUpperCase() ?? null,
+		place: result.city || undefined,
+		region: result.admin || undefined,
 	};
 }
 
@@ -31,12 +35,14 @@ async function geocodeNominatim(lat: number, lng: number): Promise<GeoDisplay | 
 	const data = await res.json();
 	if (!data?.address) return null;
 	const a = data.address;
-	const parts = [a.road, a.suburb || a.town || a.city || a.village, a.state || a.county].filter(
-		Boolean,
-	);
+	const place = a.city || a.town || a.village || a.municipality || a.hamlet || a.suburb;
+	const region = a.state || a.county;
+	const parts = [...new Set([a.road, a.suburb, place, region].filter(Boolean))];
 	return {
 		address: parts.join(", "),
 		countryCode: (a.country_code as string)?.toUpperCase() ?? null,
+		place,
+		region,
 	};
 }
 
@@ -46,18 +52,19 @@ export function useReverseGeocode(
 	panoGeo?: GeoDisplay | null,
 ): GeoDisplay | null {
 	const provider = getSettings().geocodeProvider;
+	const key = `${provider}:${lat}:${lng}`;
 
 	const asyncResult = useAsync(async () => {
 		if (provider === "google") return null;
 		const fn = provider === "nominatim" ? geocodeNominatim : geocodeLocal;
 		try {
-			return await fn(lat, lng);
+			return { key, geo: await fn(lat, lng) };
 		} catch (e) {
 			log.warn("[geocode] reverse geocode failed:", e);
-			return null;
+			return { key, geo: null };
 		}
 	}, [lat, lng, provider]).data;
 
 	if (provider === "google") return panoGeo ?? null;
-	return asyncResult;
+	return asyncResult?.key === key ? asyncResult.geo : null;
 }
