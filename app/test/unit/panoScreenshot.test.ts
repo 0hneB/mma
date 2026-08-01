@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
+	panoScreenshotFileName,
 	screenshotFrameFingerprint,
 	screenshotHostSize,
 	snapshotPanoScreenshotView,
@@ -8,6 +9,16 @@ import {
 import { getSettings } from "@/store/settings";
 
 describe("pano screenshot", () => {
+	it("builds a compact location filename with a safe pano fallback", () => {
+		const capturedAt = new Date(2026, 7, 1, 21, 31, 4);
+		expect(panoScreenshotFileName("Berlin, Berlin", "de", "pano-id", capturedAt)).toBe(
+			"Berlin-DE_2026-08-01_21-31-04.png",
+		);
+		expect(panoScreenshotFileName("", null, "pano/id", capturedAt)).toBe(
+			"pano-id_2026-08-01_21-31-04.png",
+		);
+	});
+
 	it.each([
 		[1, 1920, 1080],
 		[1.25, 1536, 864],

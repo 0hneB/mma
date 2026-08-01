@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	capture: vi.fn(),
+	fileName: vi.fn(),
 	download: vi.fn(),
 	toast: vi.fn(),
 	settings: {
@@ -22,7 +23,10 @@ const mocks = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock("@/lib/sv/panoScreenshot", () => ({ capturePanoScreenshot: mocks.capture }));
+vi.mock("@/lib/sv/panoScreenshot", () => ({
+	capturePanoScreenshot: mocks.capture,
+	panoScreenshotFileName: mocks.fileName,
+}));
 vi.mock("@/lib/util/util", () => ({ downloadBlob: mocks.download, schemeBase: () => "" }));
 vi.mock("@/lib/util/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/lib/util/log", () => ({ log: { warn: vi.fn() } }));
@@ -48,6 +52,7 @@ function renderControls() {
 		root.render(
 			<PanoControls
 				panorama={panorama}
+				geo={{ address: "Berlin, Berlin", countryCode: "DE" }}
 				isFullscreen={false}
 				onFullscreen={vi.fn()}
 				onReturnToSpawn={vi.fn()}
@@ -59,6 +64,7 @@ function renderControls() {
 beforeEach(() => {
 	vi.useFakeTimers();
 	mocks.capture.mockReset();
+	mocks.fileName.mockReset().mockReturnValue("Berlin-DE_2026-08-01_21-31-04.png");
 	mocks.download.mockReset();
 	mocks.toast.mockReset();
 	mocks.settings.showScreenshotButton = true;
@@ -98,7 +104,7 @@ describe("PanoControls screenshot button", () => {
 
 		const blob = new Blob(["png"], { type: "image/png" });
 		await act(async () => finish({ blob, panoId: "pano-id" }));
-		expect(mocks.download).toHaveBeenCalledWith(blob, "pano-id.png");
+		expect(mocks.download).toHaveBeenCalledWith(blob, "Berlin-DE_2026-08-01_21-31-04.png");
 		expect(mocks.download).toHaveBeenCalledOnce();
 
 		act(() => vi.advanceTimersByTime(500));

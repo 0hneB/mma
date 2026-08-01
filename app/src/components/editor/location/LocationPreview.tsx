@@ -651,6 +651,7 @@ export function LocationPreview() {
 						{panoReady && singletonPano && (
 							<PanoControls
 								panorama={singletonPano}
+								geo={geoResult}
 								isFullscreen={isFullscreen}
 								onFullscreen={handleFullscreen}
 								onReturnToSpawn={handleReturnToSpawn}

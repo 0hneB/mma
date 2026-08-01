@@ -18,6 +18,20 @@ export interface PanoScreenshotResult {
 	panoId: string;
 }
 
+export function panoScreenshotFileName(
+	address: string,
+	countryCode: string | null,
+	panoId: string,
+	capturedAt = new Date(),
+): string {
+	const place = address.split(",", 1)[0]?.trim();
+	const label = [place, countryCode?.toUpperCase()].filter(Boolean).join("-") || panoId;
+	const safeLabel = label.replace(/[<>:"/\\|?*\s]+/g, "-").replace(/^-+|-+$/g, "");
+	const localTime = new Date(capturedAt.getTime() - capturedAt.getTimezoneOffset() * 60_000);
+	const stamp = localTime.toISOString().slice(0, 19).replace("T", "_").replaceAll(":", "-");
+	return `${safeLabel || "street-view"}_${stamp}.png`;
+}
+
 interface CaptureViewer {
 	container: HTMLDivElement;
 	host: HTMLDivElement;

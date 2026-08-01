@@ -14,7 +14,7 @@ import { useHotkeyRef } from "@/lib/hooks/useHotkey";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { open } from "@tauri-apps/plugin-shell";
 import { tweenPov } from "@/lib/sv/tweenPov";
-import { capturePanoScreenshot } from "@/lib/sv/panoScreenshot";
+import { capturePanoScreenshot, panoScreenshotFileName } from "@/lib/sv/panoScreenshot";
 import { downloadBlob } from "@/lib/util/util";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
@@ -35,6 +35,7 @@ import {
 	mdiContentCopy,
 	mdiImageFilterHdrOutline,
 } from "@mdi/js";
+import type { GeoDisplay } from "./useReverseGeocode";
 
 // --- Compass ---
 
@@ -452,11 +453,13 @@ function PanoMetadataControl() {
 
 export const PanoControls = memo(function PanoControls({
 	panorama,
+	geo,
 	isFullscreen,
 	onFullscreen,
 	onReturnToSpawn,
 }: {
 	panorama: google.maps.StreetViewPanorama;
+	geo: GeoDisplay | null;
 	isFullscreen: boolean;
 	onFullscreen: () => void;
 	onReturnToSpawn: () => void;
@@ -565,9 +568,13 @@ export const PanoControls = memo(function PanoControls({
 		if (screenshotPending.current) return;
 		screenshotPending.current = true;
 		setScreenshotState("loading");
+		const capturedAt = new Date();
 		try {
 			const { blob, panoId } = await capturePanoScreenshot(panorama);
-			downloadBlob(blob, `${panoId}.png`);
+			downloadBlob(
+				blob,
+				panoScreenshotFileName(geo?.address ?? "", geo?.countryCode ?? null, panoId, capturedAt),
+			);
 			setScreenshotState("done");
 			setTimeout(() => setScreenshotState("idle"), 500);
 		} catch (error) {
@@ -577,7 +584,7 @@ export const PanoControls = memo(function PanoControls({
 		} finally {
 			screenshotPending.current = false;
 		}
-	}, [panorama]);
+	}, [geo, panorama]);
 
 	return (
 		<div className="embed-controls">
