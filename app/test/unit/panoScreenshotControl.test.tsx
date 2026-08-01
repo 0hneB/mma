@@ -85,6 +85,7 @@ describe("PanoControls screenshot button", () => {
 		renderControls();
 		const screenshot = container.querySelector("[data-qa='pano-screenshot']")!;
 		expect(screenshot).not.toBeNull();
+		expect(screenshot.getAttribute("aria-label")).toBe("Download screenshot");
 		expect(screenshot.closest(".map-control")?.querySelectorAll("button")).toHaveLength(1);
 
 		mocks.settings.showScreenshotButton = false;

@@ -596,11 +596,11 @@ export const PanoControls = memo(function PanoControls({
 				>
 					{vis.showScreenshotButton && (
 						<div className="map-control map-control--button">
-							<Tooltip content="Download 1920x1080 screenshot" side="bottom" align="end">
+							<Tooltip content="Download screenshot" side="bottom" align="end">
 								<button
 									onClick={takeScreenshot}
 									disabled={screenshotState !== "idle"}
-									aria-label="Download 1920x1080 screenshot"
+									aria-label="Download screenshot"
 									data-qa="pano-screenshot"
 								>
 									{screenshotState === "loading" ? (
