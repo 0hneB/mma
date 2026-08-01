@@ -6,7 +6,6 @@ const CAPTURE_TIMEOUT_MS = 15_000;
 const CANVAS_SETTLE_TIMEOUT_MS = 3_000;
 const CANVAS_QUIET_MS = 400;
 const CANVAS_SAMPLE_INTERVAL_MS = 100;
-const MAX_SIZE_ATTEMPTS = 3;
 
 export interface PanoScreenshotView {
 	panoId: string;
@@ -25,12 +24,7 @@ interface CaptureViewer {
 	panorama: google.maps.StreetViewPanorama;
 }
 
-type OpenSvPanorama = google.maps.StreetViewPanorama & {
-	getStatus?: () => string;
-};
-
 let captureViewer: CaptureViewer | null = null;
-let activeCapture: Promise<PanoScreenshotResult> | null = null;
 
 /** CSS dimensions that ask OpenSV for the requested backing-buffer size at a given DPR. */
 export function screenshotHostSize(dpr: number, scale = 1): { width: number; height: number } {
@@ -129,51 +123,30 @@ function discardCaptureViewer(viewer: CaptureViewer) {
 	if (captureViewer === viewer) captureViewer = null;
 }
 
-function remaining(deadline: number): number {
-	return Math.max(0, deadline - Date.now());
-}
-
-function waitForEvent(
+function waitForPanoReady(
 	panorama: google.maps.StreetViewPanorama,
-	eventName: string,
+	panoId: string,
 	deadline: number,
-	ready?: () => boolean,
 ): Promise<void> {
+	const timeout = deadline - Date.now();
+	if (timeout <= 0) {
+		return Promise.reject(new Error("Street View screenshot timed out waiting for status_changed"));
+	}
+
 	return new Promise((resolve, reject) => {
-		const delay = remaining(deadline);
-		if (delay === 0) {
-			reject(new Error(`Street View screenshot timed out waiting for ${eventName}`));
-			return;
-		}
-
-		let settled = false;
-		let listener: google.maps.MapsEventListener | null = null;
-		const timer = window.setTimeout(
-			() => finish(new Error(`Street View screenshot timed out waiting for ${eventName}`)),
-			delay,
-		);
-
-		const finish = (error?: Error) => {
-			if (settled) return;
-			settled = true;
+		const finish = () => {
+			if (panorama.getPano() !== panoId || panorama.getStatus() !== "OK") return;
 			window.clearTimeout(timer);
-			listener?.remove();
-			if (error) reject(error);
-			else resolve();
+			listener.remove();
+			resolve();
 		};
-
-		listener = panorama.addListener(eventName, () => {
-			if (!ready || ready()) finish();
-		});
-		if (ready?.()) finish();
+		const listener = panorama.addListener("status_changed", finish);
+		const timer = window.setTimeout(() => {
+			listener.remove();
+			reject(new Error("Street View screenshot timed out waiting for status_changed"));
+		}, timeout);
+		finish();
 	});
-}
-
-function isPanoReady(panorama: google.maps.StreetViewPanorama, panoId: string): boolean {
-	return (
-		panorama.getPano() === panoId &&
-		String((panorama as OpenSvPanorama).getStatus?.() ?? "") === "OK"
-	);
 }
 
 function nextFrame(): Promise<void> {
@@ -320,7 +293,10 @@ async function encodeScreenshot(source: HTMLCanvasElement): Promise<Blob> {
 	return canvasToPng(output);
 }
 
-async function runCapture(source: google.maps.StreetViewPanorama): Promise<PanoScreenshotResult> {
+/** Capture one imagery-only 1920x1080 PNG. */
+export async function capturePanoScreenshot(
+	source: google.maps.StreetViewPanorama,
+): Promise<PanoScreenshotResult> {
 	const view = snapshotPanoScreenshotView(source);
 	const viewer = getCaptureViewer();
 	const deadline = Date.now() + CAPTURE_TIMEOUT_MS;
@@ -330,11 +306,8 @@ async function runCapture(source: google.maps.StreetViewPanorama): Promise<PanoS
 			: 1;
 
 	try {
-		let scale = 1;
-		setHostSize(viewer.host, dpr, scale);
-		const ready = waitForEvent(viewer.panorama, "status_changed", deadline, () =>
-			isPanoReady(viewer.panorama, view.panoId),
-		);
+		setHostSize(viewer.host, dpr, 1);
+		const ready = waitForPanoReady(viewer.panorama, view.panoId, deadline);
 		viewer.panorama.setVisible(true);
 		viewer.panorama.setPano(view.panoId);
 		viewer.panorama.setPov({ ...view.pov });
@@ -343,11 +316,9 @@ async function runCapture(source: google.maps.StreetViewPanorama): Promise<PanoS
 		await ready;
 
 		let canvas = await waitForStableCanvas(viewer.host, deadline);
-		for (let attempt = 1; attempt < MAX_SIZE_ATTEMPTS; attempt++) {
-			if (canvas.width >= OUTPUT_WIDTH && canvas.height >= OUTPUT_HEIGHT) break;
+		if (canvas.width < OUTPUT_WIDTH || canvas.height < OUTPUT_HEIGHT) {
 			const increase = Math.max(OUTPUT_WIDTH / canvas.width, OUTPUT_HEIGHT / canvas.height);
-			scale *= increase * 1.01;
-			setHostSize(viewer.host, dpr, scale);
+			setHostSize(viewer.host, dpr, increase * 1.01);
 			canvas = await settleCaptureViewer(viewer, view, deadline);
 		}
 
@@ -355,7 +326,7 @@ async function runCapture(source: google.maps.StreetViewPanorama): Promise<PanoS
 			throw new Error("WebGL could not provide a 1920x1080 drawing buffer");
 		}
 		if (!hasExpectedView(viewer.panorama, view)) {
-			await settleCaptureViewer(viewer, view, deadline);
+			canvas = await settleCaptureViewer(viewer, view, deadline);
 			if (!hasExpectedView(viewer.panorama, view)) {
 				throw new Error("OpenSV did not preserve the requested camera");
 			}
@@ -372,15 +343,4 @@ async function runCapture(source: google.maps.StreetViewPanorama): Promise<PanoS
 			// ignored
 		}
 	}
-}
-
-/** Capture one clean 1920x1080 PNG. Concurrent callers share the same in-flight result. */
-export function capturePanoScreenshot(
-	panorama: google.maps.StreetViewPanorama,
-): Promise<PanoScreenshotResult> {
-	if (activeCapture) return activeCapture;
-	activeCapture = runCapture(panorama).finally(() => {
-		activeCapture = null;
-	});
-	return activeCapture;
 }
