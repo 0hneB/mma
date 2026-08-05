@@ -65,7 +65,7 @@ import { enrich } from "@/lib/sv/enrich";
 import { FullscreenMiniMap } from "@/components/editor/location/FullscreenMiniMap";
 import { FullscreenTagBar } from "@/components/editor/location/FullscreenTagBar";
 import { PanoControls, CrosshairOverlay, sendHideCar } from "./PanoControls";
-import { seenPanoChanged, seenFlush, seenSetCanvas, seenUpdateGeo } from "@/lib/seen/seen";
+import { seenPanoChanged, seenFlush, seenUpdateGeo } from "@/lib/seen/seen";
 import { useReverseGeocode, type GeoDisplay } from "@/components/editor/location/useReverseGeocode";
 import { usePanoViewer, setPanoAltitude } from "./PanoViewerContext";
 import {
@@ -220,16 +220,13 @@ export function LocationPreview() {
 		panoReady,
 		setPanoReady,
 		selectedPanoId,
-		lat,
-		lng,
 	} = usePanoViewer();
 	const isFullscreen = usePanoFullscreen();
 	const [pendingTags, setPendingTags] = useState<string[]>(() => idsToNames(location?.tags ?? []));
 	const visibleTags = useMapState(getVisibleTags);
-	const [panoGeo, setPanoGeo] = useState<(GeoDisplay & { panoId: string }) | null>(null);
+	const [panoGeo, setPanoGeo] = useState<GeoDisplay | null>(null);
 	const geocodeProvider = useSetting("geocodeProvider");
-	const currentPanoId = currentPano?.location?.pano;
-	const geoResult = useReverseGeocode(lat, lng, panoGeo?.panoId === currentPanoId ? panoGeo : null);
+	const geoResult = useReverseGeocode(location?.lat ?? 0, location?.lng ?? 0, panoGeo);
 	const cancelTweenRef = useRef<(() => void) | null>(null);
 	const getGeoResult = useEffectEvent(() => geoResult);
 	useEffect(() => {
@@ -380,7 +377,6 @@ export function LocationPreview() {
 				setCurrentPano(result.pano);
 			}
 			setPanoReady(true);
-			seenSetCanvas(() => singletonDiv.querySelector("canvas"));
 		});
 
 		return () => {
@@ -447,15 +443,12 @@ export function LocationPreview() {
 		fetchSvMetadata([loc.pano]).then(([data]) => {
 			if (cancelled || !data) return;
 			setPanoAltitude(data.extra?.altitude ?? 0);
-			const address = data.location.description || "";
 			setPanoGeo({
-				panoId: loc.pano,
-				address,
+				address: data.location.description || "",
 				countryCode: data.extra?.countryCode?.toUpperCase() ?? null,
-				place: address.split(",", 1)[0]?.trim() || undefined,
 			});
-			const activeLocation = getMapState().activeLocation;
-			if (activeLocation) enrich(activeLocation, data);
+			const loc = getMapState().activeLocation;
+			if (loc) enrich(loc, data);
 		});
 
 		return () => {
@@ -657,8 +650,6 @@ export function LocationPreview() {
 						{panoReady && singletonPano && (
 							<PanoControls
 								panorama={singletonPano}
-								geo={geoResult}
-								tag={pendingTags[0] ?? null}
 								isFullscreen={isFullscreen}
 								onFullscreen={handleFullscreen}
 								onReturnToSpawn={handleReturnToSpawn}

@@ -14,7 +14,7 @@ import { useHotkeyRef } from "@/lib/hooks/useHotkey";
 import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { open } from "@tauri-apps/plugin-shell";
 import { tweenPov } from "@/lib/sv/tweenPov";
-import { capturePanoScreenshot, panoScreenshotFileName } from "@/lib/sv/panoScreenshot";
+import { snapshotPanoView, renderPanoView, canvasToBlob } from "@/lib/sv/panoCapture";
 import { downloadBlob } from "@/lib/util/util";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
@@ -35,7 +35,6 @@ import {
 	mdiContentCopy,
 	mdiImageFilterHdrOutline,
 } from "@mdi/js";
-import type { GeoDisplay } from "./useReverseGeocode";
 
 // --- Compass ---
 
@@ -453,15 +452,11 @@ function PanoMetadataControl() {
 
 export const PanoControls = memo(function PanoControls({
 	panorama,
-	geo,
-	tag,
 	isFullscreen,
 	onFullscreen,
 	onReturnToSpawn,
 }: {
 	panorama: google.maps.StreetViewPanorama;
-	geo: GeoDisplay | null;
-	tag: string | null;
 	isFullscreen: boolean;
 	onFullscreen: () => void;
 	onReturnToSpawn: () => void;
@@ -472,7 +467,6 @@ export const PanoControls = memo(function PanoControls({
 	const jumpBackwardKey = useBinding("jumpBackward");
 	const [copyState, setCopyState] = useState<"idle" | "loading" | "done">("idle");
 	const [screenshotState, setScreenshotState] = useState<"idle" | "loading" | "done">("idle");
-	const screenshotPending = useRef(false);
 
 	// Built from the LIVE pano, not the saved location: the link shares what you're looking at.
 	const buildMapsUrl = useCallback(() => {
@@ -567,31 +561,20 @@ export const PanoControls = memo(function PanoControls({
 	}, [jump]);
 
 	const takeScreenshot = useCallback(async () => {
-		if (screenshotPending.current) return;
-		screenshotPending.current = true;
 		setScreenshotState("loading");
-		const capturedAt = new Date();
 		try {
-			const { blob, panoId } = await capturePanoScreenshot(panorama);
-			downloadBlob(
-				blob,
-				panoScreenshotFileName(
-					[geo?.place, geo?.region, geo?.countryCode],
-					tag,
-					panoId,
-					capturedAt,
-				),
-			);
+			const view = snapshotPanoView(panorama);
+			const blob = await canvasToBlob(await renderPanoView(view, 1920, 1080));
+			const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+			downloadBlob(blob, `${view.panoId}_${stamp}.png`);
 			setScreenshotState("done");
 			setTimeout(() => setScreenshotState("idle"), 500);
 		} catch (error) {
 			log.warn("[pano-screenshot] capture failed", error);
 			setScreenshotState("idle");
 			toast("Screenshot failed");
-		} finally {
-			screenshotPending.current = false;
 		}
-	}, [geo, panorama, tag]);
+	}, [panorama]);
 
 	return (
 		<div className="embed-controls">

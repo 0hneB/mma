@@ -1816,6 +1816,7 @@ declare namespace store {
 declare function loadGeoJSON(): Promise<void>;
 
 declare const requiresMap: () => boolean;
+declare const hasActiveLocation: () => boolean;
 declare const hasSelection: () => boolean;
 declare const hasAnySelections: () => boolean;
 /** Every editor command (palette entries; all are hotkey-bindable in Settings). */
@@ -1848,7 +1849,7 @@ declare const COMMANDS: {
         icon: string;
         group: "Map";
         execute: () => void;
-        enabled: typeof requiresMap;
+        enabled: typeof hasActiveLocation;
     };
     undo: {
         label: string;
@@ -2778,6 +2779,7 @@ declare const EVENT_DEFS: {
     "store:changed": void;
     "render:delta": RenderDelta;
     "render:selection": SelectionBitmaskPayload;
+    "map-list:changed": void;
     "settings:changed": void;
     "fullscreen:changed": void;
     "plugins:changed": void;

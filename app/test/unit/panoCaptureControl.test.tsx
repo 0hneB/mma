@@ -4,8 +4,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-	capture: vi.fn(),
-	fileName: vi.fn(),
+	snapshot: vi.fn(),
+	render: vi.fn(),
+	toBlob: vi.fn(),
 	download: vi.fn(),
 	toast: vi.fn(),
 	settings: {
@@ -23,9 +24,10 @@ const mocks = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock("@/lib/sv/panoScreenshot", () => ({
-	capturePanoScreenshot: mocks.capture,
-	panoScreenshotFileName: mocks.fileName,
+vi.mock("@/lib/sv/panoCapture", () => ({
+	snapshotPanoView: mocks.snapshot,
+	renderPanoView: mocks.render,
+	canvasToBlob: mocks.toBlob,
 }));
 vi.mock("@/lib/util/util", () => ({ downloadBlob: mocks.download, schemeBase: () => "" }));
 vi.mock("@/lib/util/toast", () => ({ toast: mocks.toast }));
@@ -52,8 +54,6 @@ function renderControls() {
 		root.render(
 			<PanoControls
 				panorama={panorama}
-				geo={{ address: "Berlin, Berlin", countryCode: "DE", place: "Berlin", region: "Berlin" }}
-				tag="Urban"
 				isFullscreen={false}
 				onFullscreen={vi.fn()}
 				onReturnToSpawn={vi.fn()}
@@ -64,8 +64,11 @@ function renderControls() {
 
 beforeEach(() => {
 	vi.useFakeTimers();
-	mocks.capture.mockReset();
-	mocks.fileName.mockReset().mockReturnValue("Berlin-DE-Urban_2026-08-01_21-31-04.png");
+	mocks.snapshot
+		.mockReset()
+		.mockReturnValue({ panoId: "pano-id", pov: { heading: 0, pitch: 0 }, zoom: 1 });
+	mocks.render.mockReset();
+	mocks.toBlob.mockReset();
 	mocks.download.mockReset();
 	mocks.toast.mockReset();
 	mocks.settings.showScreenshotButton = true;
@@ -95,27 +98,41 @@ describe("PanoControls screenshot button", () => {
 	});
 
 	it("disables during capture and downloads the completed PNG once", async () => {
-		let finish!: (result: { blob: Blob; panoId: string }) => void;
-		mocks.capture.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+		let finish!: (canvas: HTMLCanvasElement) => void;
+		mocks.render.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+		const blob = new Blob(["png"], { type: "image/png" });
+		mocks.toBlob.mockResolvedValue(blob);
 		renderControls();
 		const button = container.querySelector<HTMLButtonElement>("[data-qa='pano-screenshot']")!;
 
 		act(() => button.click());
 		expect(button.disabled).toBe(true);
-		expect(mocks.capture).toHaveBeenCalledOnce();
-
-		const blob = new Blob(["png"], { type: "image/png" });
-		await act(async () => finish({ blob, panoId: "pano-id" }));
-		expect(mocks.fileName).toHaveBeenCalledWith(
-			["Berlin", "Berlin", "DE"],
-			"Urban",
-			"pano-id",
-			expect.any(Date),
+		expect(mocks.render).toHaveBeenCalledOnce();
+		expect(mocks.render).toHaveBeenCalledWith(
+			{ panoId: "pano-id", pov: { heading: 0, pitch: 0 }, zoom: 1 },
+			1920,
+			1080,
 		);
-		expect(mocks.download).toHaveBeenCalledWith(blob, "Berlin-DE-Urban_2026-08-01_21-31-04.png");
+
+		await act(async () => finish(document.createElement("canvas")));
 		expect(mocks.download).toHaveBeenCalledOnce();
+		expect(mocks.download).toHaveBeenCalledWith(
+			blob,
+			expect.stringMatching(/^pano-id_\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.png$/),
+		);
 
 		act(() => vi.advanceTimersByTime(500));
+		expect(button.disabled).toBe(false);
+	});
+
+	it("toasts and re-enables when capture fails", async () => {
+		mocks.render.mockRejectedValue(new Error("no canvas"));
+		renderControls();
+		const button = container.querySelector<HTMLButtonElement>("[data-qa='pano-screenshot']")!;
+
+		await act(async () => button.click());
+		expect(mocks.toast).toHaveBeenCalledWith("Screenshot failed");
+		expect(mocks.download).not.toHaveBeenCalled();
 		expect(button.disabled).toBe(false);
 	});
 });
