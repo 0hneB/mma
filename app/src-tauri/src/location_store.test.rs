@@ -2632,6 +2632,65 @@ fn tag_patch_applies_set_fields_only() {
     assert_eq!(tag.name, "A");
 }
 
+fn registry_tag(id: u32, count: usize, visible: bool) -> Tag {
+    Tag {
+        id,
+        name: format!("tag{id}"),
+        color: "#ff0000".into(),
+        visible,
+        order: None,
+        count,
+        doclinks: Vec::new(),
+    }
+}
+
+// Issue #122: commit checkout rewrites the base Arrow file but not the SQLite tag
+// registry, so a tag soft-deleted after the target commit stays visible=false even
+// though the restored locations reference it. Open-time reconciliation revives it.
+#[test]
+fn reconcile_revives_soft_deleted_tag_with_members() {
+    let mut tags = HashMap::from([
+        (1, registry_tag(1, 0, false)), // ghost, but locations reference it again
+        (2, registry_tag(2, 9, true)),  // live, stale count
+        (3, registry_tag(3, 0, false)), // ghost with no members
+    ]);
+    let counts = HashMap::from([(1, 2usize), (2, 5)]);
+
+    let (max_tag_id, healed) = reconcile_tag_registry(&mut tags, &counts);
+
+    assert!(healed, "revived tag must be flagged for persistence");
+    assert_eq!(max_tag_id, 3);
+    assert!(tags[&1].visible);
+    assert_eq!(tags[&1].count, 2);
+    assert!(tags[&2].visible);
+    assert_eq!(tags[&2].count, 5);
+    assert!(
+        !tags[&3].visible,
+        "memberless ghost stays soft-deleted for undo revival"
+    );
+    assert_eq!(tags[&3].count, 0);
+}
+
+#[test]
+fn reconcile_clean_registry_needs_no_persist() {
+    let mut tags = HashMap::from([
+        (1, registry_tag(1, 3, true)),
+        (2, registry_tag(2, 0, true)), // created but unassigned; stays visible
+    ]);
+    let counts = HashMap::from([(1, 3usize), (5, 1)]);
+
+    let (max_tag_id, healed) = reconcile_tag_registry(&mut tags, &counts);
+
+    assert!(!healed, "no desync, so open must not dirty the registry");
+    assert_eq!(max_tag_id, 5);
+    assert!(tags[&2].visible);
+    assert_eq!(tags[&2].count, 0);
+    let placeholder = &tags[&5];
+    assert!(placeholder.visible);
+    assert_eq!(placeholder.count, 1);
+    assert_eq!(placeholder.name, "Tag 5");
+}
+
 /// Insert tag `id` with `count` members so selection resolution can see it.
 fn insert_tag(store: &mut Store, id: u32, count: usize) {
     store.tags.all.insert(

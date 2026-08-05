@@ -2107,34 +2107,9 @@ pub async fn store_open_map(
             rusqlite::params![alive, map_id],
         )?;
         let mut tags = read_tags_json(&conn, &map_id);
-        for tag in tags.values_mut() {
-            tag.count = 0;
-        }
-        let mut max_tag_id: u32 = tags.keys().max().copied().unwrap_or(0);
-        for (&tid, &count) in &tag_counts {
-            if tid > max_tag_id {
-                max_tag_id = tid;
-            }
-            match tags.get_mut(&tid) {
-                Some(tag) => tag.count = count,
-                None => {
-                    tags.insert(
-                        tid,
-                        Tag {
-                            id: tid,
-                            name: format!("Tag {}", tid),
-                            color: util::color_for_name(&format!("Tag {}", tid)),
-                            visible: true,
-                            order: None,
-                            count,
-                            doclinks: Vec::new(),
-                        },
-                    );
-                }
-            }
-        }
+        let (max_tag_id, healed) = reconcile_tag_registry(&mut tags, &tag_counts);
         store.tags.all = tags;
-        store.tags.dirty = false;
+        store.tags.dirty = healed;
         store.tags.next_id = max_tag_id + 1;
         store.rebuild_tag_sets();
         let extra_str: String = conn
@@ -3675,6 +3650,37 @@ pub(crate) fn read_tags_json(conn: &rusqlite::Connection, map_id: &str) -> HashM
     raw.into_iter()
         .filter_map(|(k, v)| k.parse::<u32>().ok().map(|id| (id, v)))
         .collect()
+}
+
+/// Rebuild registry counts from a location scan (map open). Counted tags are
+/// forced visible: commit checkout restores locations without reviving their
+/// soft-deleted tags, so a count>0/visible=false pair is always a desync.
+/// Returns (max tag id, whether any tag was revived and needs persisting).
+fn reconcile_tag_registry(
+    tags: &mut HashMap<u32, Tag>,
+    tag_counts: &HashMap<u32, usize>,
+) -> (u32, bool) {
+    for tag in tags.values_mut() {
+        tag.count = 0;
+    }
+    let mut max_tag_id: u32 = tags.keys().max().copied().unwrap_or(0);
+    let mut healed = false;
+    for (&tid, &count) in tag_counts {
+        max_tag_id = max_tag_id.max(tid);
+        let tag = tags.entry(tid).or_insert_with(|| Tag {
+            id: tid,
+            name: format!("Tag {}", tid),
+            color: util::color_for_name(&format!("Tag {}", tid)),
+            visible: true,
+            order: None,
+            count: 0,
+            doclinks: Vec::new(),
+        });
+        tag.count = count;
+        healed |= !tag.visible;
+        tag.visible = true;
+    }
+    (max_tag_id, healed)
 }
 
 /// Serialize tags to JSON with string keys (SQLite stores them this way).
