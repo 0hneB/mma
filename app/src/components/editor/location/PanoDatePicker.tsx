@@ -2,7 +2,7 @@ import { memo, useRef, useCallback } from "react";
 import { useSetting } from "@/store/settings";
 import { dateFmt } from "@/lib/util/format";
 import { type PanoReference } from "@/lib/sv/lookup";
-import { useCameraType } from "./useCameraType";
+import { useCameraType, type FullCameraType } from "./useCameraType";
 import { usePanoViewer } from "./PanoViewerContext";
 import { NSelect } from "@/components/primitives/NSelect";
 

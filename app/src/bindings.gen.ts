@@ -401,6 +401,8 @@ export const commands = {
 };
 
 /* Types */
+export type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker";
+
 /**
  *  A swap-removal from a render cell. JS must move the last element into `cell_index`
  *  and pop the array to mirror the Rust-side swap-remove.
