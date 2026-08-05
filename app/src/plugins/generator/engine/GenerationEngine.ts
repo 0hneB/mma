@@ -13,7 +13,7 @@ import {
 import { blueLineSample } from "./blueLineSampler";
 import { passesInitialFilters, passesDateFilters, isPanoGood, computeHeading } from "./filters";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
-import { distMeters, lerpLng, lngSpan, unionBounds } from "@/lib/geo/geo";
+import { distMeters, lerpLng, unionBounds } from "@/lib/geo/geo";
 import { searchCoverage } from "../searchCoverage";
 import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
@@ -175,15 +175,17 @@ export class GenerationEngine {
 			if (bb) bounds = bounds ? unionBounds(bounds, bb) : bb;
 		}
 		if (!bounds) return;
-		const { west, south, north } = bounds;
+		const { west, south, east, north } = bounds;
 		const r = this.settings.radius;
 		const midLat = (south + north) / 2;
 		const mPerDegLng = 111320 * Math.cos((midLat * Math.PI) / 180) || 1;
-		// Eastern edge as west + span, not `bounds.east`: the session box must stay
-		// unwrapped or a region crossing the seam gives it a negative width.
-		const east = west + lngSpan(bounds);
 		searchCoverage.beginSession(
-			[west - r / mPerDegLng, south - r / 111320, east + r / mPerDegLng, north + r / 111320],
+			{
+				west: west - r / mPerDegLng,
+				south: south - r / 111320,
+				east: east + r / mPerDegLng,
+				north: north + r / 111320,
+			},
 			r,
 		);
 	}
