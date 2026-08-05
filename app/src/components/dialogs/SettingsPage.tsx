@@ -400,6 +400,11 @@ function StreetViewBody() {
 					<SettingRow sub setting="showGroundArrow" label="Show ground arrow" />
 				</>
 			)}
+			<SettingRow
+				setting="hideNavWithUI"
+				label="Hide navigation with pano UI"
+				description="The pano UI toggle also hides link arrows, the ground arrow, and the navigation X."
+			/>
 			<SettingRow setting="showRoadLabels" label="Show road labels" />
 			<SettingRow setting="showCar" label="Show car" />
 			<SettingRow setting="showCrosshair" label="Show crosshair" />
