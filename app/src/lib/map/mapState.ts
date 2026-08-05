@@ -64,8 +64,11 @@ export function addClickInterceptor(fn: ClickInterceptor): () => void {
 }
 
 export function tryInterceptClick(lat: number, lng: number, shiftKey = false): boolean {
-	for (const fn of clickInterceptors) {
-		if (fn(lat, lng, shiftKey)) return true;
+	// Latest registered wins: a transient tool (measure, polygon draw) outranks the
+	// always-armed held-hotkey gestures registered at editor mount.
+	const fns = [...clickInterceptors];
+	for (let i = fns.length - 1; i >= 0; i--) {
+		if (fns[i](lat, lng, shiftKey)) return true;
 	}
 	return false;
 }

@@ -1,7 +1,7 @@
 import type { Location, SeenEntry } from "@/bindings.gen";
 import { createLocation } from "@/types";
 import { getMapState, setActiveLocation, addLocations, fetchLocation } from "@/store/useMapStore";
-import { getSettings } from "@/store/settings";
+import { getSettings, panoDisplayOptions } from "@/store/settings";
 import { google } from "@/lib/sv/opensv";
 import { patchOpenSV, setPanoHovered } from "@/lib/sv/opensvPatch";
 import { seenSkipNext } from "@/lib/seen/seen";
@@ -47,14 +47,9 @@ export const singletonDiv = (() => {
 export function getPanorama(): google.maps.StreetViewPanorama | null {
 	if (singletonPano) return singletonPano;
 	if (!google?.maps) return null;
-	const s = getSettings();
-	const noMove = s.defaultMovementMode !== "moving";
 	singletonPano = new google.maps.StreetViewPanorama(singletonDiv, {
 		disableDefaultUI: true,
-		showRoadLabels: s.showRoadLabels,
-		linksControl: noMove ? false : s.showLinksControl,
-		clickToGo: noMove ? false : s.clickToGo,
-		scrollwheel: s.defaultMovementMode !== "nmpz",
+		...panoDisplayOptions(getSettings()),
 		motionTracking: false,
 		visible: false,
 	});

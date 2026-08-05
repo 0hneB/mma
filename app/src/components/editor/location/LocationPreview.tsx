@@ -50,6 +50,7 @@ import {
 	useSettings,
 	useSetting,
 	getSettings,
+	panoDisplayOptions,
 	GEOCODE_PROVIDER_LABELS,
 	type GeocodeProvider,
 } from "@/store/settings";
@@ -264,18 +265,14 @@ export function LocationPreview() {
 
 	useEffect(() => {
 		if (!singletonPano) return;
-		const noMove = appSettings.defaultMovementMode !== "moving";
-		singletonPano.setOptions({
-			linksControl: noMove ? false : appSettings.showLinksControl,
-			clickToGo: noMove ? false : appSettings.clickToGo,
-			showRoadLabels: appSettings.showRoadLabels,
-			scrollwheel: appSettings.defaultMovementMode !== "nmpz",
-		});
+		singletonPano.setOptions(panoDisplayOptions(getSettings()));
 	}, [
 		appSettings.showLinksControl,
 		appSettings.clickToGo,
 		appSettings.showRoadLabels,
 		appSettings.defaultMovementMode,
+		appSettings.hidePanoUI,
+		appSettings.hideNavWithUI,
 	]);
 
 	usePanoEvent(singletonPano, "status_changed", () => sendHideCar(!appSettings.showCar), [

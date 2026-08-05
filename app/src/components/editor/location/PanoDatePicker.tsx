@@ -2,7 +2,7 @@ import { memo, useRef, useCallback } from "react";
 import { useSetting } from "@/store/settings";
 import { dateFmt } from "@/lib/util/format";
 import { type PanoReference } from "@/lib/sv/lookup";
-import { useCameraType } from "./useCameraType";
+import { useCameraType, type FullCameraType } from "./useCameraType";
 import { usePanoViewer } from "./PanoViewerContext";
 import { NSelect } from "@/components/primitives/NSelect";
 
@@ -99,7 +99,11 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 			className="pano-date-select"
 			data-side="top"
 			value={selectedPanoId ?? "default"}
-			onChange={(e) => handleValueChange(e.target.value)}
+			onChange={(e) => {
+				const select = e.currentTarget;
+				handleValueChange(e.target.value);
+				requestAnimationFrame(() => select.blur());
+			}}
 		>
 			<button type="button" className="pano-date-select__trigger">
 				<span className="pano-value">

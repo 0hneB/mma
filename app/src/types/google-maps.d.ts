@@ -3,15 +3,12 @@
 /** Shorthand for the full `typeof google` namespace provided by opensv. */
 type Google = typeof google;
 
-/** Street View camera generation, derived from panorama tile worldSize height. */
-type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker" | null;
-type FullCameraType = CameraType | "unofficial";
-
 /** Undocumented metadata opensv attaches to StreetViewPanoramaData. */
 interface SvExtra {
 	altitude: number;
 	panoType: import("@/types").PanoType;
-	cameraType: CameraType;
+	/** Null when the tile height matches no known generation. */
+	cameraType: import("@/bindings.gen").CameraType | null;
 	countryCode: string | null;
 	uploaderName: string | null;
 	/** Capture-time driving direction in degrees (0–360), per Google. */

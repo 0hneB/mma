@@ -202,6 +202,27 @@ impl KnownField {
     }
 }
 
+macro_rules! camera_types {
+    ($($variant:ident => $value:literal, $label:literal;)*) => {
+        #[derive(Clone, Copy, serde::Serialize, serde::Deserialize, specta::Type)]
+        pub enum CameraType {
+            $(#[serde(rename = $value)] $variant),*
+        }
+
+        const CAMERA_TYPE_VALUES: &[&str] = &[$($value),*];
+        const CAMERA_TYPE_LABELS: &[(&str, &str)] = &[$(($value, $label)),*];
+    };
+}
+
+camera_types! {
+    Gen1 => "gen1", "Gen 1";
+    Gen2 => "gen2", "Gen 2/3";
+    Gen4 => "gen4", "Gen 4";
+    Badcam => "badcam", "Bad cam";
+    Tripod => "tripod", "Tripod";
+    Trekker => "trekker", "Trekker";
+}
+
 static KNOWN_FIELDS: &[KnownField] = &[
     KnownField::simple("altitude", "number", "Altitude"),
     KnownField::simple("countryCode", "string", "Country code"),
@@ -209,14 +230,8 @@ static KNOWN_FIELDS: &[KnownField] = &[
         key: "cameraType",
         type_tag: "enum",
         label: "Camera type",
-        values: &["gen1", "gen2", "gen4", "badcam", "tripod"],
-        labels: &[
-            ("gen1", "Gen 1"),
-            ("gen2", "Gen 2/3"),
-            ("gen4", "Gen 4"),
-            ("badcam", "Bad cam"),
-            ("tripod", "Tripod"),
-        ],
+        values: CAMERA_TYPE_VALUES,
+        labels: CAMERA_TYPE_LABELS,
         circular_period: None,
     },
     KnownField {
@@ -1001,12 +1016,14 @@ mod tests {
     #[test]
     fn camera_type_has_enum_values() {
         let def = known_field_def("cameraType").unwrap();
-        assert!(def.values.is_some());
         let values = def.values.unwrap();
         assert!(values.contains(&"gen1".to_string()));
         assert!(values.contains(&"tripod".to_string()));
-        assert!(def.labels.is_some());
-        assert_eq!(def.labels.as_ref().unwrap().get("gen1").unwrap(), "Gen 1");
+        assert!(values.contains(&"trekker".to_string()));
+        let labels = def.labels.unwrap();
+        assert_eq!(labels.get("gen1").unwrap(), "Gen 1");
+        // every offered value is labelled
+        assert_eq!(labels.len(), values.len());
     }
 
     #[test]
