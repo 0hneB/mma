@@ -808,17 +808,9 @@ pub(crate) fn lng_delta(from: f64, to: f64) -> f64 {
     }
 }
 
-/// Rewrite a ring's longitudes so every vertex sits within 180° of its predecessor,
-/// putting the whole ring on one continuous span that may run outside [-180, 180].
-///
-/// That span is the geometry. Longitudes normalized to [-180, 180] cannot express one:
-/// a ring 190° wide and the 170° ring on the other side of the seam have the same
-/// vertices, and any rule that reads intent back off the vertices has to guess. So the
-/// span is carried, not inferred, and the one thing producers owe this function is a
-/// ring with no edge of 180° or more - split longer edges first (JS `densifyRing`),
-/// or they fold to the short way round here.
-///
-/// Borrows when the ring is already continuous, which is every ring clear of the seam.
+/// Rewrite longitudes so each vertex sits within 180° of its predecessor; the span may
+/// run outside [-180, 180]. Edges of 180° or more fold the short way round - split them
+/// first (JS `densifyRing`). Mirrors JS `unwrapRing`. Borrows when already continuous.
 pub(crate) fn unwrap_ring(ring: &[[f64; 2]]) -> Cow<'_, [[f64; 2]]> {
     if ring.windows(2).all(|w| (w[1][0] - w[0][0]).abs() <= 180.0) {
         return Cow::Borrowed(ring);
@@ -833,9 +825,7 @@ pub(crate) fn unwrap_ring(ring: &[[f64; 2]]) -> Cow<'_, [[f64; 2]]> {
     Cow::Owned(out)
 }
 
-/// Shift `lng` by whole turns into `[min, min + 360)`, the frame an unwrapped ring or
-/// bbox lives in. A point outside the ring's span lands in the gap east of it, where a
-/// ray cast eastward crosses nothing - which is the answer.
+/// Shift `lng` by whole turns into `[min, min + 360)`.
 #[inline]
 pub(crate) fn fold_lng(lng: f64, min: f64) -> f64 {
     min + (lng - min).rem_euclid(360.0)
@@ -1001,12 +991,9 @@ pub(crate) fn geometry_bbox(geom: &PolygonGeometry) -> Option<[f64; 4]> {
     }
 }
 
-/// Grow a running `[min_lng, min_lat, max_lng, max_lat]` to cover one ring. The ring is
-/// unwrapped onto its own continuous longitude span, then shifted by whole turns to sit
-/// nearest the box so far - so a geometry whose parts straddle the antimeridian ends up
-/// in one frame rather than spread over a box that spans the globe.
-/// `any` flips true once at least one vertex has been seen. Shared by owned and
-/// archived bbox computation.
+/// Grow a running `[min_lng, min_lat, max_lng, max_lat]` to cover one ring, unwrapped
+/// then shifted by whole turns to sit nearest the box so far. `any` flips true once at
+/// least one vertex has been seen. Shared by owned and archived bbox computation.
 pub(crate) fn extend_bbox_with_ring(bb: &mut [f64; 4], any: &mut bool, ring: &[[f64; 2]]) {
     let ring = unwrap_ring(ring);
     let (mut lo, mut hi) = (f64::MAX, f64::MIN);
@@ -1040,9 +1027,8 @@ pub(crate) fn extend_bbox_with_ring(bb: &mut [f64; 4], any: &mut bool, ring: &[[
     }
 }
 
-/// Slide a finished box so its western edge sits in [-180, 180). `in_bbox` runs per
-/// location per polygon, and per coordinate per feature in the border scans, so it leans
-/// on this to fold a test longitude in with one conditional add instead of a modulo.
+/// Slide a finished box so its western edge sits in [-180, 180), letting the hot
+/// `in_bbox` fold a test longitude with one conditional add instead of a modulo.
 #[inline]
 pub(crate) fn anchor_bbox(bb: &mut [f64; 4]) {
     let shift = -((bb[0] + 180.0) / 360.0).floor() * 360.0;
@@ -1052,11 +1038,9 @@ pub(crate) fn anchor_bbox(bb: &mut [f64; 4]) {
 
 /// `bb` is `[min_lng, min_lat, max_lng, max_lat]` with `min_lng` anchored in [-180, 180)
 /// by `anchor_bbox`; `max_lng` may run past 180 when the box crosses the antimeridian.
-///
-/// Requires a test longitude in [-180, 180] — one conditional add can only reach a turn.
-/// Nothing normalizes longitude on ingest, so an import carrying lng 200 would miss here;
-/// the durable fix is to normalize at the ingest boundary, not to pay a modulo on a path
-/// this hot (per location per polygon, per coordinate per feature in the border scans).
+/// Requires a test longitude in [-180, 180]. Nothing normalizes longitude on ingest, so
+/// an import carrying lng 200 would miss here; fix that at the ingest boundary, not with
+/// a modulo on this hot path.
 #[inline]
 pub(crate) fn in_bbox(lng: f64, lat: f64, bb: &[f64; 4]) -> bool {
     if lat < bb[1] || lat > bb[3] {

@@ -8,27 +8,14 @@ function lngDelta(from: number, to: number): number {
 	return d;
 }
 
-/** Continue a path at `lng` in the frame of `prevLng`, so a stroke that crosses the
- *  seam keeps running instead of jumping a full turn back across the map. */
+/** Continue a path at `lng` in the frame of `prevLng`. */
 export function unwrapLng(lng: number, prevLng: number): number {
 	return prevLng + lngDelta(prevLng, lng);
 }
 
-/**
- * Rewrite a ring's longitudes so every vertex sits within 180 degrees of its
- * predecessor, putting the whole ring on one continuous span that may run outside
- * [-180, 180].
- *
- * That span is the geometry. Longitudes normalized to [-180, 180] cannot express one:
- * a ring 190 degrees wide and the 170 degree ring on the other side of the seam have
- * the same vertices, and any rule that reads intent back off the vertices has to guess.
- * So the span is carried, not inferred, and the one thing producers owe this function
- * is a ring with no edge of 180 degrees or more - run `densifyRing` first, or they fold
- * to the short way round here. Mirrored by `unwrap_ring` in selections.rs.
- *
- * Returns the input when the ring is already continuous, which is every ring clear of
- * the seam.
- */
+/** Rewrite longitudes so each vertex sits within 180 degrees of its predecessor; the
+ *  span may run outside [-180, 180]. Edges of 180 degrees or more fold the short way
+ *  round - run `densifyRing` first. Mirrors `unwrap_ring` in selections.rs. */
 export function unwrapRing<T extends number[]>(ring: T[]): T[] {
 	if (ring.every((p, i) => i === 0 || Math.abs(p[0] - ring[i - 1][0]) <= 180)) return ring;
 	let prev = ring[0][0];
@@ -59,22 +46,14 @@ export function densifyRing<T extends number[]>(ring: T[]): T[] {
 	return out;
 }
 
-/** Shift `lng` by whole turns into `[min, min + 360)`, the frame an unwrapped ring
- *  lives in. A point outside the ring's span lands in the gap east of it, where a ray
- *  cast eastward crosses nothing - which is the answer. */
+/** Shift `lng` by whole turns into `[min, min + 360)`. */
 export function foldLng(lng: number, min: number): number {
 	return min + ((((lng - min) % 360) + 360) % 360);
 }
 
-/**
- * Bounds over `rings`, each unwrapped onto its own span and then shifted by whole turns
- * to sit nearest the box so far - so a multipolygon whose parts straddle the seam ends
- * up in one frame rather than a box spanning the globe. `null` if there are no vertices.
- * Mirrors `geometry_bbox` in selections.rs.
- *
- * Returned in the standard `Bounds` encoding, where `west > east` means the box crosses
- * the antimeridian, so test it with `inBbox` rather than comparing the edges directly.
- */
+/** Bbox over `rings`, each unwrapped then shifted by whole turns to sit nearest the box
+ *  so far. Crossing form: `west > east` means the box crosses the antimeridian, so test
+ *  with `inBbox`. `null` if no vertices. Mirrors `geometry_bbox` in selections.rs. */
 export function ringsBbox(rings: number[][][]): Bounds | null {
 	let w = Infinity;
 	let s = Infinity;
@@ -101,11 +80,14 @@ export function ringsBbox(rings: number[][][]): Bounds | null {
 		seen = true;
 	}
 	if (!seen) return null;
+	// The crossing form can't tell a 360-degree span from a 0-degree one: folding both
+	// edges of a full-globe box lands them on the same longitude.
+	if (e - w >= 360) return { west: -180, south: s, east: 180, north: n };
 	return { west: foldLng(w, -180), south: s, east: foldLng(e, -180), north: n };
 }
 
-/** Width of a box in degrees of longitude, the way round it actually spans - the one
- *  thing `east - west` gets wrong on a crossing box, where it comes out negative. */
+/** Width of a box in degrees of longitude; positive on a crossing box, where
+ *  `east - west` is negative. */
 export function lngSpan(b: Bounds): number {
 	return b.east < b.west ? b.east + 360 - b.west : b.east - b.west;
 }
@@ -115,11 +97,8 @@ export function lerpLng(b: Bounds, t: number): number {
 	return foldLng(b.west + lngSpan(b) * t, -180);
 }
 
-/**
- * Smallest box covering both. Two ranges leave two gaps, so this closes the smaller one
- * by trying each box's western edge as the anchor and keeping the narrower result -
- * plain min/max would instead always close the gap at the antimeridian.
- */
+/** Smallest box covering both, closing the smaller of the two gaps - plain min/max
+ *  would always close the gap at the antimeridian. */
 export function unionBounds(a: Bounds, b: Bounds): Bounds {
 	const south = Math.min(a.south, b.south);
 	const north = Math.max(a.north, b.north);
@@ -133,9 +112,8 @@ export function unionBounds(a: Bounds, b: Bounds): Bounds {
 	return { west, south, east: foldLng(west + span, -180), north };
 }
 
-/** Broad-phase reject against a `Bounds`, honouring the `west > east` crossing form that
- *  a bare edge comparison gets backwards. Runs per candidate point, so both edges resolve
- *  with a conditional add rather than a modulo. Mirrors `in_bbox` in selections.rs. */
+/** Broad-phase reject against a `Bounds`, honouring the `west > east` crossing form.
+ *  Mirrors `in_bbox` in selections.rs. */
 export function inBbox(lng: number, lat: number, b: Bounds): boolean {
 	if (lat < b.south || lat > b.north) return false;
 	const x = lng < b.west ? lng + 360 : lng;

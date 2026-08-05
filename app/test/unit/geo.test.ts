@@ -144,6 +144,21 @@ describe("ringsBbox / inBbox", () => {
 		expect(ringsBbox([])).toBe(null);
 		expect(ringsBbox([[]])).toBe(null);
 	});
+
+	// Antarctica-style: a ring running the full -180..180. Folding both edges would
+	// collapse the box to zero width and reject everything.
+	it("holds a full-globe span instead of collapsing to zero width", () => {
+		const ring: number[][] = [];
+		for (let lng = -180; lng <= 180; lng += 10) ring.push([lng, -85]);
+		for (let lng = 180; lng >= -180; lng -= 10) ring.push([lng, -60]);
+		const bb = ringsBbox([ring])!;
+		expect([bb.west, bb.east]).toEqual([-180, 180]);
+		expect(lngSpan(bb)).toBe(360);
+		expect(inBbox(0, -70, bb)).toBe(true);
+		expect(inBbox(-179, -70, bb)).toBe(true);
+		expect(inBbox(100, -70, bb)).toBe(true);
+		expect(inBbox(0, -50, bb)).toBe(false); // latitude still rejects
+	});
 });
 
 describe("lngSpan / lerpLng", () => {

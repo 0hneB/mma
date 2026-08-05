@@ -37,8 +37,7 @@ function simplify(pts: number[][], eps: number): number[][] {
 	return [pts[0], pts[pts.length - 1]];
 }
 
-/** The two things every consumer of a drawn ring assumes: an explicit closing vertex,
- *  and no edge long enough for an `unwrapRing` pass to fold it the short way round. */
+/** Close the ring and split any edge of 180 degrees or more so `unwrapRing` can't fold it. */
 function finishRing(ring: number[][]): number[][] {
 	if (ring.length === 0) return ring;
 	const first = ring[0];
@@ -83,9 +82,7 @@ export function PolygonTools({
 
 		const offMove = host.on("mousemove", (ll) => {
 			if (!isDrawingRef.current) return;
-			// Continue the stroke in the previous point's frame: the host reports longitude
-			// normalized to [-180, 180], so crossing the seam would otherwise read as a jump
-			// back across the whole map.
+			// Host longitudes are normalized; unwrap so a seam crossing isn't a jump.
 			points.push([unwrapLng(ll.lng, points[points.length - 1][0]), ll.lat]);
 			emitUpdate();
 		});
@@ -137,15 +134,13 @@ export function PolygonTools({
 			if (commit && ring.length >= 3) emitDraw([finishRing(ring)]);
 		};
 
-		// Vertices land in the previous one's frame: with no path between two clicks, the
-		// shortest edge is the only reading of what was drawn.
-		const nextVertex = (lat: number, lng: number): number[] => {
+		const nextVertex = (lng: number, lat: number): number[] => {
 			const prev = points[points.length - 1];
 			return [prev ? unwrapLng(lng, prev[0]) : lng, lat];
 		};
 
 		const offClick = addClickInterceptor((lat, lng) => {
-			const v = nextVertex(lat, lng);
+			const v = nextVertex(lng, lat);
 			if (points.length >= 3) {
 				const start = points[0];
 				const scale = 2 ** host.getZoom();
@@ -162,7 +157,7 @@ export function PolygonTools({
 			return true;
 		});
 		const offMove = host.on("mousemove", (ll) => {
-			cursor = nextVertex(ll.lat, ll.lng);
+			cursor = nextVertex(ll.lng, ll.lat);
 			if (points.length > 0) preview();
 		});
 		const onDblClick = (e: MouseEvent) => {
@@ -194,9 +189,7 @@ export function PolygonTools({
 
 		host.setDraggable(false);
 		let anchor: number[] | null = null;
-		// The box is two corners, but how wide it is, and which way round the globe,
-		// only exists in the drag between them. Accumulated here across mousemove, which
-		// fires far more often than every 180°, so each step reads unambiguously.
+		// Accumulated across mousemove so the drag's width and direction survive the seam.
 		let cursorLng = 0;
 
 		const rectRing = (a: number[], b: number[]) =>

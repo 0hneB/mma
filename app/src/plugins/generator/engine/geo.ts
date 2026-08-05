@@ -13,7 +13,7 @@ export function randomPointInBounds(b: Bounds): LatLng {
 	return { lat, lng: lerpLng(b, Math.random()) };
 }
 
-/** `null` for a feature with no coordinates, which nothing can be generated over. */
+/** `null` for a feature with no coordinates. */
 export function getBoundingBox(
 	feature: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>,
 ): Bounds | null {
@@ -67,8 +67,7 @@ export function poissonDiskSample(
 	const midLat = (south + north) / 2;
 	const mPerDegLng = M_PER_DEG_LAT * Math.cos(midLat * DEG_TO_RAD);
 
-	// Metres run east from the western edge, so a box crossing the seam stays a plain
-	// interval here and only the longitudes coming back out need folding.
+	// Metres run east from the western edge; a crossing box stays a plain interval here.
 	const toMx = (lng: number) => foldLng(lng - west, 0) * mPerDegLng;
 	const toMy = (lat: number) => (lat - south) * M_PER_DEG_LAT;
 	const toLng = (mx: number) => foldLng(mx / mPerDegLng + west, -180);

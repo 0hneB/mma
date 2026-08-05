@@ -89,15 +89,13 @@ export function stampDisc(
 	}
 }
 
-/** The one place the session box becomes a deck.gl tuple, and the one place it has to be
- *  unwrapped: a crossing box's `east` sits west of `left`, which renders nothing. */
+/** A crossing box must be unwrapped here or BitmapLayer renders nothing. */
 export function bitmapBounds(b: Bounds): BitmapBounds {
 	return [b.west, b.south, b.west + lngSpan(b), b.north];
 }
 
-/** Map a lng/lat to texel coordinates (origin top-left = NW corner). Longitude is taken
- *  as degrees east of `west`, so a region running past the antimeridian keeps counting
- *  instead of jumping a turn back; points outside land off-texture and get clipped. */
+/** Map a lng/lat to texel coordinates (origin top-left = NW corner). Longitude counts
+ *  degrees east of `west`; points outside land off-texture and get clipped. */
 export function lngLatToPixel(
 	b: Bounds,
 	w: number,

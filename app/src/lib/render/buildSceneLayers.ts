@@ -35,10 +35,6 @@ export const PERFECT_SCORE_LAYER_ID = "perfect-score";
 export const POLYGON_CLOSE_VERTEX_PX = 10;
 export type PolyGeom = { poly: object; fill: Position[][][]; stroke: Position[][] };
 
-function unwrapPolygonCoords<T extends number[]>(coords: T[][]): T[][] {
-	return coords.map(unwrapRing);
-}
-
 interface SceneContext {
 	markerStyle: MarkerStyle;
 	markerOpacity: number;
@@ -102,7 +98,9 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		livePolygonKeys.add(sel.key);
 		let geom = ctx.polygonGeomCache.get(sel.key);
 		if (!geom || geom.poly !== poly) {
-			const fill = [poly.coordinates, ...(poly.extraPolygons ?? [])].map(unwrapPolygonCoords);
+			const fill = [poly.coordinates, ...(poly.extraPolygons ?? [])].map((rings) =>
+				rings.map(unwrapRing),
+			);
 			geom = { poly, fill, stroke: fill.flatMap((p) => p) as Position[][] };
 			ctx.polygonGeomCache.set(sel.key, geom);
 		}
