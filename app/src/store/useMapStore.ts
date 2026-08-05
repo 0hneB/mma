@@ -7,7 +7,7 @@ import {
 	locId,
 	applyLocationPatch,
 } from "@/types";
-import type { Location, MapData, MapMeta, Tag, ExtraFieldDef } from "@/bindings.gen";
+import type { Location, MapData, MapMeta, Tag, ExtraFieldDef, StoreStatus } from "@/bindings.gen";
 import { listen } from "@tauri-apps/api/event";
 import { cmd } from "@/lib/commands";
 import type {
@@ -258,6 +258,19 @@ function clearEditState() {
 	resetCommitDiffState();
 }
 
+/** State fields every (re)open derives from the meta snapshot + open status. */
+function openedMapState(meta: MapData | null, status: StoreStatus) {
+	return {
+		map: meta,
+		locationCount: meta?.meta.locationCount ?? 0,
+		tags: meta?.meta.tags ?? {},
+		tagCounts: status.tagCounts ?? {},
+		canUndo: status.canUndo,
+		canRedo: status.canRedo,
+		knownFieldKeys: new Set(status.knownFieldKeys),
+	};
+}
+
 // --- Actions ---
 /** Open a map in this window, closing any currently open map first. */
 export async function openMap(id: string) {
@@ -277,15 +290,7 @@ export async function openMap(id: string) {
 			const openResult = await cmd.storeOpenMap(id);
 			t.step("store_open_map");
 			mapOpen.mark("data");
-			setState({
-				map: meta,
-				locationCount: meta.meta.locationCount,
-				tags: meta.meta.tags,
-				tagCounts: openResult.tagCounts ?? {},
-				canUndo: openResult.canUndo,
-				canRedo: openResult.canRedo,
-				knownFieldKeys: new Set(openResult.knownFieldKeys),
-			});
+			setState(openedMapState(meta, openResult));
 			setUserFieldDefs(meta.meta.extra?.fields ?? {});
 		} catch (e) {
 			log.error("[openMap] store_open_map failed:", e);
@@ -1140,10 +1145,11 @@ export async function commitMap(message?: string): Promise<string> {
 export async function checkoutCommit(commitId: string) {
 	if (!state.mapId) return;
 	await flushSave();
+	let openResult;
 	try {
 		await cmd.storeCloseMap();
 		await cmd.storeCheckoutCommit(state.mapId, commitId);
-		await cmd.storeOpenMap(state.mapId);
+		openResult = await cmd.storeOpenMap(state.mapId);
 		await cmd.storeResetUndo();
 		const msg = `Revert to ${commitId.slice(0, 7)}`;
 		await cmd.storeCommit(state.mapId, msg);
@@ -1153,12 +1159,11 @@ export async function checkoutCommit(commitId: string) {
 	}
 	const map = await cmd.storeGetMap(state.mapId);
 	setState({
-		map,
-		locationCount: map?.meta.locationCount ?? 0,
-		tags: map?.meta.tags ?? {},
+		...openedMapState(map, openResult),
 		selections: [],
 		selectedLocationIds: SelectedIds.EMPTY,
 		activeLocationId: null,
+		// override openedMapState: openResult was captured before storeResetUndo ran
 		canUndo: false,
 		canRedo: false,
 	});
