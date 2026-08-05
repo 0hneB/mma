@@ -14,6 +14,7 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 /// Discriminated union of all selection types. Serialized with `{ "type": "..." }` tag
@@ -794,66 +795,65 @@ pub fn resolve(view: &LocView, props: &SelectionProps) -> Vec<u32> {
 
 // --- Geometry (ray-casting point-in-polygon) ---
 
-/// Returns true if the ring involves the antimeridian — either wrapped coordinates
-/// (edge lng jump > 180) or unwrapped (any vertex lng outside [-180, 180]).
-pub(crate) fn ring_crosses_antimeridian(ring: &[[f64; 2]]) -> bool {
-    let n = ring.len();
-    if n < 2 {
-        return false;
+/// Shortest signed longitude delta from `from` to `to`, in [-180, 180].
+#[inline]
+pub(crate) fn lng_delta(from: f64, to: f64) -> f64 {
+    let d = (to - from) % 360.0;
+    if d > 180.0 {
+        d - 360.0
+    } else if d < -180.0 {
+        d + 360.0
+    } else {
+        d
     }
-    let mut j = n - 1;
-    for i in 0..n {
-        if ring[i][0] > 180.0 || ring[i][0] < -180.0 {
-            return true;
-        }
-        if (ring[i][0] - ring[j][0]).abs() > 180.0 {
-            return true;
-        }
-        j = i;
-    }
-    false
 }
 
-#[inline]
-pub(crate) fn normalize_lng(lng: f64) -> f64 {
-    if lng < 0.0 {
-        lng + 360.0
-    } else {
-        lng
+/// Rewrite a ring's longitudes so every vertex sits within 180° of its predecessor,
+/// putting the whole ring on one continuous span that may run outside [-180, 180].
+///
+/// That span is the geometry. Longitudes normalized to [-180, 180] cannot express one:
+/// a ring 190° wide and the 170° ring on the other side of the seam have the same
+/// vertices, and any rule that reads intent back off the vertices has to guess. So the
+/// span is carried, not inferred, and the one thing producers owe this function is a
+/// ring with no edge of 180° or more - split longer edges first (JS `densifyRing`),
+/// or they fold to the short way round here.
+///
+/// Borrows when the ring is already continuous, which is every ring clear of the seam.
+pub(crate) fn unwrap_ring(ring: &[[f64; 2]]) -> Cow<'_, [[f64; 2]]> {
+    if ring.windows(2).all(|w| (w[1][0] - w[0][0]).abs() <= 180.0) {
+        return Cow::Borrowed(ring);
     }
+    let mut out = Vec::with_capacity(ring.len());
+    out.push(ring[0]);
+    let mut prev = ring[0][0];
+    for &[lng, lat] in &ring[1..] {
+        prev += lng_delta(prev, lng);
+        out.push([prev, lat]);
+    }
+    Cow::Owned(out)
+}
+
+/// Shift `lng` by whole turns into `[min, min + 360)`, the frame an unwrapped ring or
+/// bbox lives in. A point outside the ring's span lands in the gap east of it, where a
+/// ray cast eastward crosses nothing - which is the answer.
+#[inline]
+pub(crate) fn fold_lng(lng: f64, min: f64) -> f64 {
+    min + (lng - min).rem_euclid(360.0)
 }
 
 /// Ray-casting algorithm: cast a horizontal ray eastward from (lng, lat) and count
 /// edge crossings. Odd count = inside. O(V) where V = vertices.
-/// Handles antimeridian-crossing rings by shifting to [0, 360).
 pub(crate) fn point_in_ring(lng: f64, lat: f64, ring: &[[f64; 2]]) -> bool {
-    let crosses = ring_crosses_antimeridian(ring);
-    let lng = if crosses { normalize_lng(lng) } else { lng };
-    let mut inside = false;
-    let n = ring.len();
-    let mut j = n.wrapping_sub(1);
-    for i in 0..n {
-        let xi = if crosses {
-            normalize_lng(ring[i][0])
-        } else {
-            ring[i][0]
-        };
-        let yi = ring[i][1];
-        let xj = if crosses {
-            normalize_lng(ring[j][0])
-        } else {
-            ring[j][0]
-        };
-        let yj = ring[j][1];
-        if ((yi > lat) != (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
-            inside = !inside;
-        }
-        j = i;
+    if ring.is_empty() {
+        return false;
     }
-    inside
+    let ring = unwrap_ring(ring);
+    let min = ring.iter().map(|v| v[0]).fold(f64::INFINITY, f64::min);
+    ring_test_raw(fold_lng(lng, min), lat, &ring)
 }
 
-/// Crossing-number loop with no per-edge normalization; callers pre-normalize.
+/// Crossing-number loop with no per-edge folding; callers pre-fold both the ring and
+/// the test longitude into one frame.
 #[inline]
 fn ring_test_raw(lng: f64, lat: f64, ring: &[[f64; 2]]) -> bool {
     let mut inside = false;
@@ -870,40 +870,30 @@ fn ring_test_raw(lng: f64, lat: f64, ring: &[[f64; 2]]) -> bool {
     inside
 }
 
-/// One ring preprocessed for repeated point tests: the antimeridian flag and bbox are
-/// computed once here instead of once per tested point, and a crossing ring stores a
-/// pre-normalized copy so the crossing-number loop runs branch-free.
+/// One ring preprocessed for repeated point tests: the unwrap pass and the bbox are
+/// paid once here instead of once per tested point, so the crossing-number loop runs
+/// branch-free over longitudes already in the ring's own frame.
 pub(crate) struct PreparedRing<'a> {
-    ring: std::borrow::Cow<'a, [[f64; 2]]>,
-    crosses: bool,
-    /// `[min_lng, min_lat, max_lng, max_lat]`, in [0,360) space when `crosses`.
+    ring: Cow<'a, [[f64; 2]]>,
+    /// `[min_lng, min_lat, max_lng, max_lat]` in the unwrapped ring's frame, so
+    /// `min_lng` may sit below -180 and `max_lng` above it.
     bb: [f64; 4],
 }
 
 impl<'a> PreparedRing<'a> {
     pub(crate) fn new(ring: &'a [[f64; 2]]) -> Self {
-        let crosses = ring_crosses_antimeridian(ring);
-        let ring: std::borrow::Cow<'a, [[f64; 2]]> = if crosses {
-            std::borrow::Cow::Owned(
-                ring.iter()
-                    .map(|&[lng, lat]| [normalize_lng(lng), lat])
-                    .collect(),
-            )
-        } else {
-            std::borrow::Cow::Borrowed(ring)
-        };
+        let ring = unwrap_ring(ring);
         let mut bb = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
         let mut any = false;
-        extend_bbox_with_ring(&mut bb, &mut any, false, &ring);
-        Self { ring, crosses, bb }
+        extend_bbox_with_ring(&mut bb, &mut any, &ring);
+        Self { ring, bb }
     }
 
     /// Bbox reject, then the raw crossing test. Equivalent to `point_in_ring`.
     #[inline]
     pub(crate) fn contains(&self, lng: f64, lat: f64) -> bool {
-        let lng = if self.crosses { normalize_lng(lng) } else { lng };
-        lng >= self.bb[0]
-            && lng <= self.bb[2]
+        let lng = fold_lng(lng, self.bb[0]);
+        lng <= self.bb[2]
             && lat >= self.bb[1]
             && lat <= self.bb[3]
             && ring_test_raw(lng, lat, &self.ring)
@@ -988,49 +978,52 @@ pub(crate) fn point_in_geometry(lng: f64, lat: f64, geom: &PolygonGeometry) -> b
 /// Axis-aligned bounding box `[min_lng, min_lat, max_lng, max_lat]` over every ring of
 /// a geometry (outer + holes + extra polygons). Used as a cheap broad-phase reject
 /// before the full crossing-number test in polygon selections. `None` if no coords.
-/// When the geometry crosses the antimeridian, longitudes are normalized to [0, 360)
-/// so `max_lng` may exceed 180 — `in_bbox` handles this transparently.
+/// Longitudes are in the unwrapped frame of the first ring, so `min_lng` may sit below
+/// -180 and `max_lng` above it - `in_bbox` handles this transparently.
 pub(crate) fn geometry_bbox(geom: &PolygonGeometry) -> Option<[f64; 4]> {
-    let crosses = geom
-        .coordinates
-        .iter()
-        .chain(
-            geom.extra_polygons
-                .iter()
-                .flat_map(|polys| polys.iter().flatten()),
-        )
-        .any(|ring| ring_crosses_antimeridian(ring));
     let mut bb = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
     let mut any = false;
     for ring in &geom.coordinates {
-        extend_bbox_with_ring(&mut bb, &mut any, crosses, ring);
+        extend_bbox_with_ring(&mut bb, &mut any, ring);
     }
     if let Some(extras) = &geom.extra_polygons {
         for poly in extras {
             for ring in poly {
-                extend_bbox_with_ring(&mut bb, &mut any, crosses, ring);
+                extend_bbox_with_ring(&mut bb, &mut any, ring);
             }
         }
     }
     if any {
+        anchor_bbox(&mut bb);
         Some(bb)
     } else {
         None
     }
 }
 
-/// Fold one ring's vertices into a running `[min_lng, min_lat, max_lng, max_lat]`,
-/// normalizing longitudes to [0, 360) when the geometry crosses the antimeridian.
+/// Grow a running `[min_lng, min_lat, max_lng, max_lat]` to cover one ring. The ring is
+/// unwrapped onto its own continuous longitude span, then shifted by whole turns to sit
+/// nearest the box so far - so a geometry whose parts straddle the antimeridian ends up
+/// in one frame rather than spread over a box that spans the globe.
 /// `any` flips true once at least one vertex has been seen. Shared by owned and
 /// archived bbox computation.
-pub(crate) fn extend_bbox_with_ring(
-    bb: &mut [f64; 4],
-    any: &mut bool,
-    crosses: bool,
-    ring: &[[f64; 2]],
-) {
-    for &[lng, lat] in ring {
-        let lng = if crosses { normalize_lng(lng) } else { lng };
+pub(crate) fn extend_bbox_with_ring(bb: &mut [f64; 4], any: &mut bool, ring: &[[f64; 2]]) {
+    let ring = unwrap_ring(ring);
+    let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+    for &[lng, _] in ring.iter() {
+        lo = lo.min(lng);
+        hi = hi.max(lng);
+    }
+    if lo > hi {
+        return;
+    }
+    let shift = if *any {
+        (((bb[0] + bb[2]) - (lo + hi)) / 720.0).round() * 360.0
+    } else {
+        0.0
+    };
+    for &[lng, lat] in ring.iter() {
+        let lng = lng + shift;
         if lng < bb[0] {
             bb[0] = lng;
         }
@@ -1047,17 +1040,26 @@ pub(crate) fn extend_bbox_with_ring(
     }
 }
 
-/// `bb` is `[min_lng, min_lat, max_lng, max_lat]`.
-/// When `max_lng > 180` the bbox is in normalized [0,360) space (antimeridian crossing);
-/// negative test longitudes are shifted by +360 automatically.
+/// Slide a finished box so its western edge sits in [-180, 180). `in_bbox` runs per
+/// location per polygon, and per coordinate per feature in the border scans, so it leans
+/// on this to fold a test longitude in with one conditional add instead of a modulo.
+#[inline]
+pub(crate) fn anchor_bbox(bb: &mut [f64; 4]) {
+    let shift = -((bb[0] + 180.0) / 360.0).floor() * 360.0;
+    bb[0] += shift;
+    bb[2] += shift;
+}
+
+/// `bb` is `[min_lng, min_lat, max_lng, max_lat]` with `min_lng` anchored in [-180, 180)
+/// by `anchor_bbox`; `max_lng` may run past 180 when the box crosses the antimeridian.
+/// Assumes a test longitude already in [-180, 180], which every stored one is.
 #[inline]
 pub(crate) fn in_bbox(lng: f64, lat: f64, bb: &[f64; 4]) -> bool {
-    let lng = if bb[2] > 180.0 && lng < 0.0 {
-        lng + 360.0
-    } else {
-        lng
-    };
-    lng >= bb[0] && lng <= bb[2] && lat >= bb[1] && lat <= bb[3]
+    if lat < bb[1] || lat > bb[3] {
+        return false;
+    }
+    let lng = if lng < bb[0] { lng + 360.0 } else { lng };
+    lng <= bb[2]
 }
 
 // --- Duplicates (bitmask version) ---
@@ -1369,7 +1371,11 @@ pub fn find_duplicate_groups(view: &LocView, distance_m: f64) -> Vec<Vec<u32>> {
             let ra = find(&mut uf.0, pi);
             let rb = find(&mut uf.0, pj);
             if ra != rb {
-                let (small, big) = if uf.1[ra] < uf.1[rb] { (ra, rb) } else { (rb, ra) };
+                let (small, big) = if uf.1[ra] < uf.1[rb] {
+                    (ra, rb)
+                } else {
+                    (rb, ra)
+                };
                 uf.0[small] = big;
                 uf.1[big] += uf.1[small];
             }

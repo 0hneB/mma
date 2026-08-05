@@ -26,6 +26,7 @@ import {
 	MEASURE_NODE_PX,
 } from "@/lib/sv/measure";
 import type { RGB } from "@/lib/util/color";
+import { unwrapRing } from "@/lib/geo/geo";
 
 export const LOCATION_LAYER_ID = "locations";
 export const PERFECT_SCORE_LAYER_ID = "perfect-score";
@@ -34,20 +35,8 @@ export const PERFECT_SCORE_LAYER_ID = "perfect-score";
 export const POLYGON_CLOSE_VERTEX_PX = 10;
 export type PolyGeom = { poly: object; fill: Position[][][]; stroke: Position[][] };
 
-export function normalizeRing<T extends number[]>(ring: T[]): T[] {
-	const crosses =
-		ring.some((p) => p[0] > 180 || p[0] < -180) ||
-		ring.some((_, i, a) => i > 0 && Math.abs(a[i][0] - a[i - 1][0]) > 180);
-	if (!crosses) return ring;
-	return ring.map((p) => {
-		const out = [...p] as unknown as T;
-		if (out[0] < 0) out[0] += 360;
-		return out;
-	});
-}
-
-function normalizePolygonCoords<T extends number[]>(coords: T[][]): T[][] {
-	return coords.map(normalizeRing);
+function unwrapPolygonCoords<T extends number[]>(coords: T[][]): T[][] {
+	return coords.map(unwrapRing);
 }
 
 interface SceneContext {
@@ -113,7 +102,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		livePolygonKeys.add(sel.key);
 		let geom = ctx.polygonGeomCache.get(sel.key);
 		if (!geom || geom.poly !== poly) {
-			const fill = [poly.coordinates, ...(poly.extraPolygons ?? [])].map(normalizePolygonCoords);
+			const fill = [poly.coordinates, ...(poly.extraPolygons ?? [])].map(unwrapPolygonCoords);
 			geom = { poly, fill, stroke: fill.flatMap((p) => p) as Position[][] };
 			ctx.polygonGeomCache.set(sel.key, geom);
 		}
@@ -315,7 +304,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		layers.push(
 			new PathLayer({
 				id: "freehand-drawing",
-				data: [normalizeRing(freehand)],
+				data: [unwrapRing(freehand)],
 				getPath: (d) => d,
 				getColor: [255, 255, 255, 200],
 				getWidth: 3,
@@ -353,7 +342,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		layers.push(
 			new PathLayer({
 				id: "measure-path",
-				data: [normalizeRing(measurePoints)],
+				data: [unwrapRing(measurePoints)],
 				getPath: (d) => d,
 				getColor: [0, 0, 0, 255],
 				getWidth: 2,

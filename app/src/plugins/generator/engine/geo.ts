@@ -1,5 +1,5 @@
-import { pointInPolygon } from "@/lib/geo/geo";
-import type { LatLng } from "@/types";
+import { inBbox, pointInPolygon, ringsBbox } from "@/lib/geo/geo";
+import type { Bounds, LatLng } from "@/types";
 
 const DEG_TO_RAD = Math.PI / 180;
 const M_PER_DEG_LAT = 111_320;
@@ -44,10 +44,7 @@ export function getBoundingBox(
 }
 
 interface CompiledPart {
-	w: number;
-	s: number;
-	e: number;
-	n: number;
+	bb: Bounds;
 	rings: number[][][];
 }
 const compiledCache = new WeakMap<object, CompiledPart[]>();
@@ -56,19 +53,12 @@ function compileParts(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): Compile
 	const cached = compiledCache.get(geometry);
 	if (cached) return cached;
 	const polys = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
-	const parts: CompiledPart[] = polys.map((rings) => {
-		let w = Infinity,
-			s = Infinity,
-			e = -Infinity,
-			n = -Infinity;
-		for (const [lng, lat] of rings[0]) {
-			if (lng < w) w = lng;
-			if (lng > e) e = lng;
-			if (lat < s) s = lat;
-			if (lat > n) n = lat;
-		}
-		return { w, s, e, n, rings };
-	});
+	const parts: CompiledPart[] = [];
+	for (const rings of polys) {
+		// Outer ring only: holes can't widen the part's bounds.
+		const bb = ringsBbox(rings.slice(0, 1));
+		if (bb) parts.push({ bb, rings });
+	}
 	compiledCache.set(geometry, parts);
 	return parts;
 }
@@ -79,7 +69,7 @@ export function pointInGeoJsonGeometry(
 	geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
 ): boolean {
 	for (const part of compileParts(geometry)) {
-		if (lng < part.w || lng > part.e || lat < part.s || lat > part.n) continue;
+		if (!inBbox(lng, lat, part.bb)) continue;
 		if (pointInPolygon(lng, lat, part.rings)) return true;
 	}
 	return false;
