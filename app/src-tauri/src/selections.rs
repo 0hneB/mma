@@ -1052,7 +1052,11 @@ pub(crate) fn anchor_bbox(bb: &mut [f64; 4]) {
 
 /// `bb` is `[min_lng, min_lat, max_lng, max_lat]` with `min_lng` anchored in [-180, 180)
 /// by `anchor_bbox`; `max_lng` may run past 180 when the box crosses the antimeridian.
-/// Assumes a test longitude already in [-180, 180], which every stored one is.
+///
+/// Requires a test longitude in [-180, 180] — one conditional add can only reach a turn.
+/// Nothing normalizes longitude on ingest, so an import carrying lng 200 would miss here;
+/// the durable fix is to normalize at the ingest boundary, not to pay a modulo on a path
+/// this hot (per location per polygon, per coordinate per feature in the border scans).
 #[inline]
 pub(crate) fn in_bbox(lng: f64, lat: f64, bb: &[f64; 4]) -> bool {
     if lat < bb[1] || lat > bb[3] {
