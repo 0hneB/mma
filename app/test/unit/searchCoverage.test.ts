@@ -56,6 +56,15 @@ describe("lngLatToPixel", () => {
 		expect(lngLatToPixel(b, 100, 100, 10, 0)).toEqual([100, 100]); // SE
 		expect(lngLatToPixel(b, 100, 100, 5, 5)).toEqual([50, 50]); // center
 	});
+
+	it("keeps counting east across the antimeridian", () => {
+		// Session box runs 170 -> 190; a probe at -175 is 15 degrees in, not off-texture.
+		const b: [number, number, number, number] = [170, 0, 190, 10];
+		expect(lngLatToPixel(b, 100, 100, 170, 10)).toEqual([0, 0]);
+		expect(lngLatToPixel(b, 100, 100, 180, 5)).toEqual([50, 50]);
+		expect(lngLatToPixel(b, 100, 100, -175, 5)[0]).toBe(75);
+		expect(lngLatToPixel(b, 100, 100, 160, 5)[0]).toBeGreaterThan(100); // outside, clipped
+	});
 });
 
 describe("searchCoverage session lifecycle", () => {

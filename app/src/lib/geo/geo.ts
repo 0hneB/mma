@@ -104,6 +104,35 @@ export function ringsBbox(rings: number[][][]): Bounds | null {
 	return { west: foldLng(w, -180), south: s, east: foldLng(e, -180), north: n };
 }
 
+/** Width of a box in degrees of longitude, the way round it actually spans - the one
+ *  thing `east - west` gets wrong on a crossing box, where it comes out negative. */
+export function lngSpan(b: Bounds): number {
+	return b.east < b.west ? b.east + 360 - b.west : b.east - b.west;
+}
+
+/** A longitude at fraction `t` along the box, folded back into [-180, 180). */
+export function lerpLng(b: Bounds, t: number): number {
+	return foldLng(b.west + lngSpan(b) * t, -180);
+}
+
+/**
+ * Smallest box covering both. Two ranges leave two gaps, so this closes the smaller one
+ * by trying each box's western edge as the anchor and keeping the narrower result -
+ * plain min/max would instead always close the gap at the antimeridian.
+ */
+export function unionBounds(a: Bounds, b: Bounds): Bounds {
+	const south = Math.min(a.south, b.south);
+	const north = Math.max(a.north, b.north);
+	// Each candidate anchors on one box and measures how far east the other one reaches.
+	const reach = (from: Bounds, other: Bounds) =>
+		Math.max(lngSpan(from), foldLng(other.west, from.west) - from.west + lngSpan(other));
+	const spanA = reach(a, b);
+	const spanB = reach(b, a);
+	const [west, span] = spanA <= spanB ? [a.west, spanA] : [b.west, spanB];
+	if (span >= 360) return { west: -180, south, east: 180, north };
+	return { west, south, east: foldLng(west + span, -180), north };
+}
+
 /** Broad-phase reject against a `Bounds`, honouring the `west > east` crossing form that
  *  a bare edge comparison gets backwards. Runs per candidate point, so both edges resolve
  *  with a conditional add rather than a modulo. Mirrors `in_bbox` in selections.rs. */

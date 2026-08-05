@@ -1,4 +1,4 @@
-import { inBbox, pointInPolygon, ringsBbox } from "@/lib/geo/geo";
+import { foldLng, inBbox, lerpLng, lngSpan, pointInPolygon, ringsBbox } from "@/lib/geo/geo";
 import type { Bounds, LatLng } from "@/types";
 
 const DEG_TO_RAD = Math.PI / 180;
@@ -6,41 +6,22 @@ const M_PER_DEG_LAT = 111_320;
 
 export { latLngToWorld, worldToTile as worldToTileAtZoom, pixelToLatLng } from "@/lib/geo/mercator";
 
-export function randomPointInBounds(
-	south: number,
-	north: number,
-	west: number,
-	east: number,
-): LatLng {
-	const sinS = Math.sin((south * Math.PI) / 180);
-	const sinN = Math.sin((north * Math.PI) / 180);
+export function randomPointInBounds(b: Bounds): LatLng {
+	const sinS = Math.sin((b.south * Math.PI) / 180);
+	const sinN = Math.sin((b.north * Math.PI) / 180);
 	const lat = (Math.asin(Math.random() * (sinN - sinS) + sinS) * 180) / Math.PI;
-	const lng = west + Math.random() * (east - west);
-	return { lat, lng };
+	return { lat, lng: lerpLng(b, Math.random()) };
 }
 
+/** `null` for a feature with no coordinates, which nothing can be generated over. */
 export function getBoundingBox(
 	feature: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>,
-): [west: number, south: number, east: number, north: number] {
-	let west = Infinity,
-		south = Infinity,
-		east = -Infinity,
-		north = -Infinity;
-	const coords =
+): Bounds | null {
+	const polys =
 		feature.geometry.type === "Polygon"
 			? [feature.geometry.coordinates]
 			: feature.geometry.coordinates;
-	for (const poly of coords) {
-		for (const ring of poly) {
-			for (const [lng, lat] of ring) {
-				if (lng < west) west = lng;
-				if (lng > east) east = lng;
-				if (lat < south) south = lat;
-				if (lat > north) north = lat;
-			}
-		}
-	}
-	return [west, south, east, north];
+	return ringsBbox(polys.flat());
 }
 
 interface CompiledPart {
@@ -80,16 +61,20 @@ export function poissonDiskSample(
 	minDistance: number,
 	k = 30,
 ): LatLng[] {
-	const [west, south, east, north] = getBoundingBox(feature);
+	const bounds = getBoundingBox(feature);
+	if (!bounds) return [];
+	const { west, south, north } = bounds;
 	const midLat = (south + north) / 2;
 	const mPerDegLng = M_PER_DEG_LAT * Math.cos(midLat * DEG_TO_RAD);
 
-	const toMx = (lng: number) => (lng - west) * mPerDegLng;
+	// Metres run east from the western edge, so a box crossing the seam stays a plain
+	// interval here and only the longitudes coming back out need folding.
+	const toMx = (lng: number) => foldLng(lng - west, 0) * mPerDegLng;
 	const toMy = (lat: number) => (lat - south) * M_PER_DEG_LAT;
-	const toLng = (mx: number) => mx / mPerDegLng + west;
+	const toLng = (mx: number) => foldLng(mx / mPerDegLng + west, -180);
 	const toLat = (my: number) => my / M_PER_DEG_LAT + south;
 
-	const widthM = toMx(east);
+	const widthM = lngSpan(bounds) * mPerDegLng;
 	const heightM = toMy(north);
 	const cellSize = minDistance / Math.SQRT2;
 	const gridCols = Math.ceil(widthM / cellSize);
@@ -103,7 +88,7 @@ export function poissonDiskSample(
 
 	let seedMx: number, seedMy: number;
 	for (;;) {
-		const pt = randomPointInBounds(south, north, west, east);
+		const pt = randomPointInBounds(bounds);
 		if (pointInGeoJsonGeometry(pt.lng, pt.lat, feature.geometry)) {
 			seedMx = toMx(pt.lng);
 			seedMy = toMy(pt.lat);

@@ -3,12 +3,19 @@ import {
 	densifyRing,
 	foldLng,
 	inBbox,
+	lerpLng,
+	lngSpan,
 	pointInPolygon,
 	ringsBbox,
+	unionBounds,
 	unwrapLng,
 	unwrapRing,
 } from "@/lib/geo/geo";
-import { pointInGeoJsonGeometry } from "@/plugins/generator/engine/geo";
+import {
+	getBoundingBox,
+	pointInGeoJsonGeometry,
+	poissonDiskSample,
+} from "@/plugins/generator/engine/geo";
 
 /** What the rectangle tool builds, before it is closed and densified. */
 const corners = (a: number, b: number) => [
@@ -139,6 +146,48 @@ describe("ringsBbox / inBbox", () => {
 	});
 });
 
+describe("lngSpan / lerpLng", () => {
+	it("measures the way the box actually spans", () => {
+		expect(lngSpan({ west: 10, east: 20, south: 0, north: 1 })).toBe(10);
+		expect(lngSpan({ west: 170, east: -170, south: 0, north: 1 })).toBe(20);
+		expect(lngSpan({ west: -170, east: 20, south: 0, north: 1 })).toBe(190);
+	});
+
+	it("interpolates across the seam and folds back into range", () => {
+		const b = { west: 170, east: -170, south: 0, north: 1 };
+		expect(lerpLng(b, 0)).toBeCloseTo(170);
+		expect(Math.abs(lerpLng(b, 0.5))).toBeCloseTo(180); // range is half-open, so -180
+		expect(lerpLng(b, 1)).toBeCloseTo(-170);
+		expect(lerpLng(b, 0.75)).toBeCloseTo(-175);
+	});
+});
+
+describe("unionBounds", () => {
+	it("closes the smaller gap rather than the one at the antimeridian", () => {
+		const u = unionBounds(
+			{ west: 10, east: 20, south: 0, north: 1 },
+			{ west: 350, east: 355, south: 0, north: 1 },
+		);
+		expect(lngSpan(u)).toBe(30); // 350 -> 20, not the 345 the other way
+		expect(inBbox(0, 0.5, u)).toBe(true);
+		expect(inBbox(180, 0.5, u)).toBe(false);
+	});
+
+	it("behaves like plain min/max when neither box crosses", () => {
+		const u = unionBounds(
+			{ west: 10, east: 20, south: 0, north: 5 },
+			{ west: 30, east: 40, south: -5, north: 1 },
+		);
+		expect([u.west, u.east, u.south, u.north]).toEqual([10, 40, -5, 5]);
+	});
+
+	it("absorbs a box already inside the other", () => {
+		const outer = { west: 170, east: -170, south: 0, north: 1 };
+		const u = unionBounds(outer, { west: 178, east: -178, south: 0, north: 1 });
+		expect(lngSpan(u)).toBe(20);
+	});
+});
+
 describe("pointInPolygon across the seam", () => {
 	it("selects inside a narrow box straddling the antimeridian", () => {
 		const ring = box(170, 190);
@@ -182,6 +231,25 @@ describe("pointInPolygon across the seam", () => {
 		expect(pointInGeoJsonGeometry(175, 0, geometry)).toBe(true);
 		expect(pointInGeoJsonGeometry(160, 0, geometry)).toBe(false);
 		expect(pointInGeoJsonGeometry(0, 0, geometry)).toBe(false);
+	});
+
+	it("samples a seam-crossing region instead of the rest of the world", () => {
+		// Raw min/max bounds made this box 340 degrees wide, so sampling landed almost
+		// entirely outside it and every emitted longitude had to be in [-180, 180].
+		const feature: GeoJSON.Feature<GeoJSON.Polygon> = {
+			type: "Feature",
+			properties: {},
+			geometry: { type: "Polygon", coordinates: [box(170, 190)] },
+		};
+		expect(lngSpan(getBoundingBox(feature)!)).toBe(20);
+		const points = poissonDiskSample(feature, 40_000);
+		expect(points.length).toBeGreaterThan(0);
+		for (const p of points) {
+			expect(p.lng).toBeGreaterThanOrEqual(-180);
+			expect(p.lng).toBeLessThanOrEqual(180);
+			expect(pointInGeoJsonGeometry(p.lng, p.lat, feature.geometry)).toBe(true);
+		}
+		expect(points.some((p) => p.lng < 0)).toBe(true); // reached past the seam
 	});
 
 	it("honours holes in the seam frame", () => {

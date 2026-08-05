@@ -5,7 +5,11 @@
 // overlap darkening. This module is deck-free (so it stays unit-testable); the buffer
 // is rendered by coverageOverlay.ts into the plugin's own GoogleMapsOverlay.
 
-type Bounds = [number, number, number, number]; // [west, south, east, north]
+import { foldLng } from "@/lib/geo/geo";
+
+// [west, south, east, north], unwrapped: `east` runs past 180 for a region crossing the
+// antimeridian, so the width stays positive and deck.gl's BitmapLayer spans the seam.
+type Bounds = [number, number, number, number];
 
 const TARGET_DISC_PX = 6; // texels per probe radius at full resolution
 const MIN_DISC_PX = 2.5; // floor so coarse (large-region) textures still draw round dots, not plus-signs
@@ -84,7 +88,9 @@ export function stampDisc(
 	}
 }
 
-/** Map a lng/lat to texel coordinates (origin top-left = NW corner). */
+/** Map a lng/lat to texel coordinates (origin top-left = NW corner). Longitude is taken
+ *  as degrees east of `west`, so a region running past the antimeridian keeps counting
+ *  instead of jumping a turn back; points outside land off-texture and get clipped. */
 export function lngLatToPixel(
 	b: Bounds,
 	w: number,
@@ -93,7 +99,7 @@ export function lngLatToPixel(
 	lat: number,
 ): [number, number] {
 	const [west, south, east, north] = b;
-	const px = ((lng - west) / (east - west)) * w;
+	const px = (foldLng(lng - west, 0) / (east - west)) * w;
 	const py = ((north - lat) / (north - south)) * h;
 	return [px, py];
 }
