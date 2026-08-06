@@ -1,3 +1,30 @@
+## v0.8.3 - 2026-08-06
+- Location actions in the map right-click menu (copy link, copy pano ID, download, copy to map, duplicate, delete)
+- Select the country or subdivision under the cursor from the right-click menu
+- Rebuilt measure tool that works on every map style
+- Street View screenshot button
+- Collapsible fullscreen tag bar
+- Hotkey to cycle movement mode
+- Finer fullscreen minimap sizing and a close-delay setting
+- Layers remember their last opacity when toggled
+- Locations without a saved zoom open fully zoomed out
+- Faster selections, duplicate detection, and field filters on large maps
+- Faster exact date lookup
+- Faster vision search
+- Fixed looking around with hotkeys resetting panorama zoom
+- Fixed trekker coverage not being available via filter
+- Fixed polygon selections and generator regions breaking at the antimeridian
+- Fixed the Duplicates selection missing some members of duplicate chains
+- Fixed overlapping selections painting in the wrong order
+- Fixed identical polygon selections stacking instead of deduplicating
+- Fixed the bulk import tag not applying unless Enter was pressed
+- Fixed the panorama UI toggle not hiding navigation arrows
+- Fixed stale tag counts and filter fields after checking out a commit
+- Fixed tags with locations missing from the tag list after reopening a map
+- Fixed exact date search reporting no result when a lookup failed mid-search
+- Fixed hover panels closing while dragging inside them
+- Fixed hotkeys not responding after using the date picker
+
 ## v0.8.2 - 2026-07-25
 - New setting for the color of newly drawn polygons
 - Overlapping selections draw one marker per location instead of stacking duplicates
