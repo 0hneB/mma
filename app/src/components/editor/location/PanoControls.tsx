@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { memo, useEffect, useRef, useState, useCallback } from "react";
 import { hasLoadAsPanoId, LocationFlag } from "@/types";
-import { PANO_ZOOM, SV_JUMP_RADIUS } from "@/lib/sv/constants";
+import { PANO_ZOOM, SV_JUMP_RADIUS, displayZoom, zoomInStep, zoomOutStep } from "@/lib/sv/constants";
 import { google } from "@/lib/sv/opensv";
 import { lookupStreetView } from "@/lib/sv/lookup";
 import { shortenMapsUrl, mapsPanoUrl, fovForZoom, appendLinkTags } from "@/lib/sv/mapsLink";
@@ -313,19 +313,16 @@ function CompassControl({ panorama }: { panorama: google.maps.StreetViewPanorama
 
 function ZoomControl({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const [atMin, setAtMin] = useState(() => (panorama.getZoom() ?? 0) <= PANO_ZOOM.min);
-	const [atZero, setAtZero] = useState(() => (panorama.getZoom() ?? 0) <= 0);
 	usePanoEvent(panorama, "zoom_changed", () => {
-		const z = panorama.getZoom() ?? 0;
-		setAtMin(z <= PANO_ZOOM.min);
-		setAtZero(z <= 0);
+		setAtMin((panorama.getZoom() ?? 0) <= PANO_ZOOM.min);
 	});
 
 	const zoomIn = useCallback(() => {
-		panorama.setZoom(Math.min(PANO_ZOOM.max, Math.max(0, panorama.getZoom()) + 1));
+		panorama.setZoom(zoomInStep(panorama.getZoom()));
 	}, [panorama]);
 
 	const zoomOut = useCallback(() => {
-		panorama.setZoom(Math.max(0, panorama.getZoom() - 1));
+		panorama.setZoom(zoomOutStep(panorama.getZoom()));
 	}, [panorama]);
 
 	const resetZoom = useCallback(() => {
@@ -350,7 +347,7 @@ function ZoomControl({ panorama }: { panorama: google.maps.StreetViewPanorama })
 					</button>
 				</Tooltip>
 				<Tooltip content="Zoom out" side="right">
-					<button disabled={atZero} onClick={zoomOut} aria-label="Zoom out">
+					<button disabled={atMin} onClick={zoomOut} aria-label="Zoom out">
 						<Icon path={mdiMinus} />
 					</button>
 				</Tooltip>
@@ -374,7 +371,7 @@ function ReturnToSpawnControl({
 		setHasChanged(
 			pov.heading !== location.heading ||
 				pov.pitch !== location.pitch ||
-				panorama.getZoom() !== location.zoom,
+				panorama.getZoom() !== displayZoom(location.zoom),
 		);
 	};
 	usePanoEvent(panorama, "pov_changed", checkChanged, [location]);

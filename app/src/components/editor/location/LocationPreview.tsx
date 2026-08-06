@@ -20,7 +20,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
-import { SV_SEARCH_RADIUS } from "@/lib/sv/constants";
+import { SV_SEARCH_RADIUS, storedZoom } from "@/lib/sv/constants";
 import type { Tag } from "@/bindings.gen";
 import {
 	useMapState,
@@ -473,7 +473,7 @@ export function LocationPreview() {
 		// Staged (virtual) location: updateLocation no-ops, cursorId can't match a
 		// negative id, so this falls through to setActiveLocation(null) = close.
 		const pov = singletonPano.getPov();
-		const zoom = singletonPano.getZoom();
+		const zoom = storedZoom(singletonPano.getZoom());
 		const pano = singletonPano.getPano();
 		const pos = singletonPano.getPosition();
 

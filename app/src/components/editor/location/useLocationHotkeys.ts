@@ -11,7 +11,7 @@ import { sortTagsByMode } from "@/lib/util/util";
 import { useHotkey } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { getSettings, setSetting, MOVEMENT_CYCLE, MOVEMENT_MODES } from "@/store/settings";
-import { PANO_ZOOM } from "@/lib/sv/constants";
+import { PANO_ZOOM, zoomInStep, zoomOutStep } from "@/lib/sv/constants";
 import { tweenPov } from "@/lib/sv/tweenPov";
 import { type PanoReference, nearestLinkHeading, followLinkedPanos } from "@/lib/sv/lookup";
 import { toast } from "@/lib/util/toast";
@@ -116,12 +116,12 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 	const canZoom = () => getSettings().defaultMovementMode !== "nmpz";
 	useHotkey(useBinding("zoomIn"), () => {
 		if (singletonPano && canZoom()) {
-			singletonPano.setZoom(Math.min(PANO_ZOOM.max, Math.max(0, singletonPano.getZoom()) + 1));
+			singletonPano.setZoom(zoomInStep(singletonPano.getZoom()));
 		}
 	});
 	useHotkey(useBinding("zoomOut"), () => {
 		if (singletonPano && canZoom()) {
-			singletonPano.setZoom(Math.max(0, singletonPano.getZoom() - 1));
+			singletonPano.setZoom(zoomOutStep(singletonPano.getZoom()));
 		}
 	});
 	useHotkey(useBinding("panoZoomReset"), () => {

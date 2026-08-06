@@ -6,6 +6,7 @@ import { google } from "@/lib/sv/opensv";
 import { patchOpenSV, setPanoHovered } from "@/lib/sv/opensvPatch";
 import { seenSkipNext } from "@/lib/seen/seen";
 import type { ResolvedPano } from "@/lib/sv/lookup";
+import { displayZoom } from "@/lib/sv/constants";
 
 export let singletonPano: google.maps.StreetViewPanorama | null = null;
 
@@ -76,7 +77,7 @@ export function applyResolved(
 	} else {
 		sv.setPosition({ lat: loc.lat, lng: loc.lng });
 	}
-	sv.setZoom(loc.zoom);
+	sv.setZoom(displayZoom(loc.zoom));
 	sv.setPov({ heading: loc.heading, pitch: loc.pitch });
 	sv.setVisible(true);
 	sv.focus();
