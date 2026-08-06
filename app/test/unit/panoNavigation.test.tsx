@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 
 const pano = vi.hoisted(() => ({
 	setPano: vi.fn(),
-	setOptions: vi.fn(),
+	setPov: vi.fn(),
 	getPov: () => ({ heading: 0, pitch: 0, zoom: 1 }),
 	getLinks: () => [{ heading: 10, pano: "next" }],
 }));
@@ -45,7 +45,7 @@ const waitFrames = async (n: number) => {
 
 beforeEach(() => {
 	pano.setPano.mockClear();
-	pano.setOptions.mockClear();
+	pano.setPov.mockClear();
 });
 
 describe("usePanoNavigation movement-mode gates", () => {
@@ -74,7 +74,7 @@ describe("usePanoNavigation movement-mode gates", () => {
 		const unmount = mount("no-move");
 		press("ArrowLeft");
 		await waitFrames(2);
-		expect(pano.setOptions).toHaveBeenCalled();
+		expect(pano.setPov).toHaveBeenCalled();
 		unmount();
 	});
 
@@ -82,7 +82,7 @@ describe("usePanoNavigation movement-mode gates", () => {
 		const unmount = mount("nmpz");
 		press("ArrowLeft");
 		await waitFrames(2);
-		expect(pano.setOptions).not.toHaveBeenCalled();
+		expect(pano.setPov).not.toHaveBeenCalled();
 		unmount();
 	});
 });
