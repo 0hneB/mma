@@ -40,11 +40,9 @@ export function usePanoNavigation(appSettings: AppSettings) {
 			if (nav.held.has("panoLookDown")) dp -= speed;
 
 			if (dh || dp) {
-				singletonPano.setOptions({
-					pov: {
-						heading: (pov.heading + dh + 360) % 360,
-						pitch: clamp(pov.pitch + dp, PANO_PITCH),
-					},
+				singletonPano.setPov({
+					heading: (pov.heading + dh + 360) % 360,
+					pitch: clamp(pov.pitch + dp, PANO_PITCH),
 				});
 			}
 
