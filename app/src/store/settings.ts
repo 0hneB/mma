@@ -111,6 +111,7 @@ const DEFAULTS = {
 	showMapLinks: true,
 	showCoordinateDisplay: true,
 	showFullscreenButton: true,
+	showScreenshotButton: true,
 	showPanoMetadata: false,
 	exactDateFormat: "date" as ExactDateFormat,
 	dateTimezone: "location" as DateTimezone,

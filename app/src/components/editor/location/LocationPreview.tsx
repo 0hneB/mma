@@ -66,7 +66,7 @@ import { enrich } from "@/lib/sv/enrich";
 import { FullscreenMiniMap } from "@/components/editor/location/FullscreenMiniMap";
 import { FullscreenTagBar } from "@/components/editor/location/FullscreenTagBar";
 import { PanoControls, CrosshairOverlay, sendHideCar } from "./PanoControls";
-import { seenPanoChanged, seenFlush, seenSetCanvas, seenUpdateGeo } from "@/lib/seen/seen";
+import { seenPanoChanged, seenFlush, seenUpdateGeo } from "@/lib/seen/seen";
 import { useReverseGeocode, type GeoDisplay } from "@/components/editor/location/useReverseGeocode";
 import { usePanoViewer, setPanoAltitude } from "./PanoViewerContext";
 import {
@@ -374,7 +374,6 @@ export function LocationPreview() {
 				setCurrentPano(result.pano);
 			}
 			setPanoReady(true);
-			seenSetCanvas(() => singletonDiv.querySelector("canvas"));
 		});
 
 		return () => {

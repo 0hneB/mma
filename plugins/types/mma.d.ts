@@ -2328,12 +2328,15 @@ declare const DEFAULTS: {
     showMapLinks: boolean;
     showCoordinateDisplay: boolean;
     showFullscreenButton: boolean;
+    showScreenshotButton: boolean;
     showPanoMetadata: boolean;
     exactDateFormat: ExactDateFormat;
     dateTimezone: DateTimezone;
     showNavArrow: boolean;
     showGroundArrow: boolean;
     hidePanoUI: boolean;
+    /** Hiding the pano UI also hides navigation: link arrows, ground arrow, click-to-go X. */
+    hideNavWithUI: boolean;
     fullscreenMap: boolean;
     showFullscreenMapMeta: boolean;
     showFullscreenMiniLocationPreview: boolean;
@@ -3140,12 +3143,14 @@ declare const surface: {
         showMapLinks: boolean;
         showCoordinateDisplay: boolean;
         showFullscreenButton: boolean;
+        showScreenshotButton: boolean;
         showPanoMetadata: boolean;
         exactDateFormat: ExactDateFormat;
         dateTimezone: DateTimezone;
         showNavArrow: boolean;
         showGroundArrow: boolean;
         hidePanoUI: boolean;
+        hideNavWithUI: boolean;
         fullscreenMap: boolean;
         showFullscreenMapMeta: boolean;
         showFullscreenMiniLocationPreview: boolean;
