@@ -395,28 +395,29 @@ export class GenerationEngine {
 				const lng = pano.location.latLng.lng();
 				if (!pointInGeoJsonGeometry(lng, lat, region.feature.geometry)) continue;
 
-				const depth = depthMap.get(frontier[i]) ?? 0;
+				let depth = depthMap.get(frontier[i]) ?? 0;
 
+				// a find resets depth
 				if (isPanoGood(pano, s)) {
 					await this.finalizeLoc(pano, region);
+					depth = 0;
+				} else if (++depth > maxDepth) {
+					continue;
 				}
 
-				// Enqueue linked panos
-				if (depth < maxDepth) {
-					for (const link of pano.links) {
-						if (link.pano && !visited.has(link.pano)) {
-							visited.add(link.pano);
-							queue.push(link.pano);
-							depthMap.set(link.pano, depth + 1);
-						}
+				for (const link of pano.links) {
+					if (link.pano && !visited.has(link.pano)) {
+						visited.add(link.pano);
+						queue.push(link.pano);
+						depthMap.set(link.pano, depth);
 					}
-					if (s.checkAllDates && pano.time) {
-						for (const entry of pano.time) {
-							if (entry.pano && !visited.has(entry.pano)) {
-								visited.add(entry.pano);
-								queue.push(entry.pano);
-								depthMap.set(entry.pano, depth + 1);
-							}
+				}
+				if (s.checkAllDates && pano.time) {
+					for (const entry of pano.time) {
+						if (entry.pano && !visited.has(entry.pano)) {
+							visited.add(entry.pano);
+							queue.push(entry.pano);
+							depthMap.set(entry.pano, depth);
 						}
 					}
 				}
