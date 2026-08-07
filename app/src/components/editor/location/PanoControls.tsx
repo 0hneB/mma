@@ -564,6 +564,7 @@ export const PanoControls = memo(function PanoControls({
 			const blob = await canvasToBlob(await renderPanoView(view, 1920, 1080));
 			const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
 			downloadBlob(blob, `${view.panoId}_${stamp}.png`);
+			toast("Screenshot downloaded");
 			setScreenshotState("done");
 			setTimeout(() => setScreenshotState("idle"), 500);
 		} catch (error) {

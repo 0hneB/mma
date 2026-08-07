@@ -120,6 +120,7 @@ describe("PanoControls screenshot button", () => {
 			blob,
 			expect.stringMatching(/^pano-id_\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.png$/),
 		);
+		expect(mocks.toast).toHaveBeenCalledWith("Screenshot downloaded");
 
 		act(() => vi.advanceTimersByTime(500));
 		expect(button.disabled).toBe(false);
