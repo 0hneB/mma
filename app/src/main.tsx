@@ -13,6 +13,7 @@ import { loadSession, saveSession } from "@/store/session";
 import { openMapWindow, openMapWindowIds, closeAllMapWindows } from "@/lib/window";
 import { cmd } from "@/lib/commands";
 import { checkForUpdate } from "@/lib/util/updateCheck";
+import { blockBrowserAccelerators } from "@/lib/hooks/useHotkey";
 import "@/api";
 import "@/store/commandDefs";
 
@@ -73,10 +74,8 @@ async function boot() {
 		if (e.key === "F11") {
 			win.isFullscreen().then((fs) => win.setFullscreen(!fs));
 		}
-		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
-			e.preventDefault();
-		}
 	});
+	blockBrowserAccelerators();
 
 	createRoot(document.getElementById("root")!).render(<App />);
 	mark("render");
