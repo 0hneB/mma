@@ -15,7 +15,7 @@ import { usePanoEvent } from "@/lib/hooks/usePanoEvent";
 import { open } from "@tauri-apps/plugin-shell";
 import { tweenPov } from "@/lib/sv/tweenPov";
 import { snapshotPanoView, renderPanoView, canvasToBlob } from "@/lib/sv/panoCapture";
-import { downloadBlob } from "@/lib/util/util";
+import { downloadBlob, copyImageToClipboard } from "@/lib/util/util";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
 import { Tooltip } from "@/components/primitives/Tooltip";
@@ -557,22 +557,30 @@ export const PanoControls = memo(function PanoControls({
 		jumpPending.current = jump(180);
 	}, [jump]);
 
-	const takeScreenshot = useCallback(async () => {
-		setScreenshotState("loading");
-		try {
-			const view = snapshotPanoView(panorama);
-			const blob = await canvasToBlob(await renderPanoView(view, 1920, 1080));
-			const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
-			downloadBlob(blob, `${view.panoId}_${stamp}.png`);
-			toast("Screenshot downloaded");
-			setScreenshotState("done");
-			setTimeout(() => setScreenshotState("idle"), 500);
-		} catch (error) {
-			log.warn("[pano-screenshot] capture failed", error);
-			setScreenshotState("idle");
-			toast("Screenshot failed");
-		}
-	}, [panorama]);
+	const takeScreenshot = useCallback(
+		async (download: boolean) => {
+			setScreenshotState("loading");
+			try {
+				const view = snapshotPanoView(panorama);
+				const blob = await canvasToBlob(await renderPanoView(view, 1920, 1080));
+				const copied = download ? false : await copyImageToClipboard(blob);
+				if (copied) {
+					toast("Screenshot copied");
+				} else {
+					const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+					downloadBlob(blob, `${view.panoId}_${stamp}.png`);
+					toast(download ? "Screenshot downloaded" : "Clipboard unavailable, downloaded instead");
+				}
+				setScreenshotState("done");
+				setTimeout(() => setScreenshotState("idle"), 500);
+			} catch (error) {
+				log.warn("[pano-screenshot] capture failed", error);
+				setScreenshotState("idle");
+				toast("Screenshot failed");
+			}
+		},
+		[panorama],
+	);
 
 	return (
 		<div className="embed-controls">
@@ -584,11 +592,11 @@ export const PanoControls = memo(function PanoControls({
 				>
 					{vis.showScreenshotButton && (
 						<div className="map-control map-control--button">
-							<Tooltip content="Download screenshot" side="bottom" align="end">
+							<Tooltip content="Copy screenshot (Shift: download)" side="bottom" align="end">
 								<button
-									onClick={takeScreenshot}
+									onClick={(e) => takeScreenshot(e.shiftKey)}
 									disabled={screenshotState !== "idle"}
-									aria-label="Download screenshot"
+									aria-label="Copy screenshot to clipboard"
 									data-qa="pano-screenshot"
 								>
 									{screenshotState === "loading" ? (

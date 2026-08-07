@@ -72,6 +72,17 @@ export function downloadBlob(blob: Blob, fileName: string) {
 	URL.revokeObjectURL(url);
 }
 
+/** Copy an image Blob to the clipboard. False when the platform refuses it. */
+export async function copyImageToClipboard(blob: Blob): Promise<boolean> {
+	if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") return false;
+	try {
+		await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** Prompt for a destination and move a temp export file there (native dialog in
  *  Tauri, File System Access / download in the browser). False = cancelled. */
 export async function saveExportTempFile(srcPath: string, fileName: string): Promise<boolean> {
