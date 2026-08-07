@@ -933,6 +933,11 @@ input[type="range"]:disabled {
 	left: 50%;
 	transform: translate(-50%, -50%);
 }
+/* Radix parks focus on the content element (tabindex -1) whenever a child unmounts;
+   it is never a tab stop, so its ring is noise. */
+.modal:focus {
+	outline: none;
+}
 .modal::backdrop,
 .modal__backdrop {
 	z-index: 10;
