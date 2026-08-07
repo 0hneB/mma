@@ -4729,28 +4729,36 @@ body {
 }
 
 /* Hotkey display & recording */
+/* Same box metrics so swapping display for record never changes the row height. */
+.hotkey-display,
+.hotkey-record {
+	box-sizing: border-box;
+	display: inline-block;
+	font-size: 0.8rem;
+	line-height: 1.25rem;
+	padding: 2px 6px;
+	border: 2px solid transparent;
+	border-radius: 3px;
+}
 .hotkey-display {
 	cursor: pointer;
-	padding: 2px 6px;
-	border-radius: 3px;
-	font-size: 0.8rem;
 	transition: background 0.15s;
 }
 .hotkey-display:hover {
 	background: #ffffff14;
 }
+/* The blank cell has no text, so give it a line box or padding collapses onto itself. */
 .hotkey-display--empty {
 	min-width: 3.5rem;
-	display: inline-block;
+}
+.hotkey-display--empty::before {
+	content: "\00a0";
 }
 .hotkey-record {
 	width: 120px;
 	text-align: center;
-	font-size: 0.8rem;
-	border: 2px solid #2fcc8b;
-	border-radius: 3px;
+	border-color: #2fcc8b;
 	outline: none;
-	padding: 2px 6px;
 	animation: pulse 1s infinite;
 }
 @keyframes pulse {
