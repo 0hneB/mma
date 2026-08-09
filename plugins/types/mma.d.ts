@@ -95,13 +95,28 @@ declare const commands: {
     /**  Installed sidecar version for a plugin (from `sidecar/version.txt`), or `None`. */
     sidecarInstalledVersion: (pluginId: string) => Promise<string | null>;
     /**
-     *  Spawn a plugin's installed sidecar binary. Streams stdout/stderr lines as
-     *  `sidecar-stdout` / `sidecar-stderr` events and the exit as `sidecar-exit`,
-     *  keyed by the returned run id. Runs in the sidecar dir so co-located dlls resolve.
+     *  Run one unit of work on a plugin's sidecar. Commands the manifest lists under
+     *  `serve` go to the plugin's resident process; the rest get a one-shot child.
+     *  Streams `sidecar-line` (one JSON object per unit) and `sidecar-log` (stderr),
+     *  then exactly one `sidecar-done`, all keyed by the returned request id.
      */
-    sidecarSpawn: (pluginId: string, name: string, args: string[]) => Promise<number>;
-    /**  Kill a running sidecar process by run id (no-op if already exited). */
-    sidecarKill: (runId: number) => Promise<null>;
+    sidecarRequest: (pluginId: string, command: string, payload: string | null) => Promise<number>;
+    /**
+     *  Stop everything a plugin has running. Called when the plugin is disabled or
+     *  uninstalled, so a resident process never outlives the plugin that wanted it.
+     */
+    sidecarStop: (pluginId: string) => Promise<null>;
+    /**
+     *  Stop every plugin's sidecar processes. Used when the editor tears all plugins
+     *  down at once (map close), where nothing should still be running afterwards.
+     */
+    sidecarStopAll: () => Promise<void>;
+    /**
+     *  Kill the process behind a one-shot request (no-op if it already finished).
+     *  Resident-served requests have no process of their own, so this does not
+     *  interrupt them -- the caller simply stops listening.
+     */
+    sidecarCancel: (reqId: number) => Promise<null>;
     checkBorderFile: (level: string) => Promise<boolean>;
     downloadBorderFile: (level: string) => Promise<null>;
     borderLookup: (lat: number, lng: number, level: string) => Promise<PolygonGeometry | null>;
@@ -3077,17 +3092,19 @@ export interface LocationStore {
 /** A live id-to-Location map of the whole map, kept in sync via store events.
  *  Call `destroy()` when done. */
 declare function createLocationStore(): Promise<LocationStore>;
-/** A running sidecar process. Callbacks fire per line; listeners self-remove on exit. */
-export interface SidecarRun {
-    runId: number;
-    onLine(cb: (line: string) => void): void;
-    onStderr(cb: (line: string) => void): void;
-    onExit(cb: (code: number | null) => void): void;
-    kill(): void;
+export interface SidecarOptions<T> {
+    /** Fires once per JSON object the sidecar emits, in order. */
+    onLine?(item: T): void;
+    /** Sidecar diagnostics (stderr), one-shot runs only. Resident-served commands
+     *  write theirs to the app log instead. */
+    onLog?(line: string): void;
+    signal?: AbortSignal;
 }
-/** Run an installed plugin's sidecar binary. Register onLine/onExit right after this
- *  resolves -- listeners attach before the process starts, so no output is missed. */
-declare function spawnSidecar(pluginId: string, name: string, args: string[]): Promise<SidecarRun>;
+/** Run one unit of work on a plugin's sidecar and resolve with its last emitted
+ *  object (null if it emitted none). The app owns the process: commands the manifest
+ *  lists under `serve` are answered by the plugin's resident sidecar, the rest by a
+ *  one-shot run. `payload` is handed to the sidecar as JSON. */
+declare function sidecarRequest<T>(pluginId: string, command: string, payload?: unknown, opts?: SidecarOptions<T>): Promise<T | null>;
 /** Explicitly exposed functions not in other APIs. */
 declare const surface: {
     ready: boolean;
@@ -3102,7 +3119,7 @@ declare const surface: {
     };
     sidecar: {
         installedVersion: (pluginId: string) => Promise<string | null>;
-        spawn: typeof spawnSidecar;
+        request: typeof sidecarRequest;
     };
     registerPlugin: typeof registerPlugin;
     registerEnrichFields: typeof registerEnrichFields;

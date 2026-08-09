@@ -211,28 +211,37 @@ struct PluginManifest {
 
 /// Parse the optional `sidecar` object out of a manifest JSON value.
 fn parse_sidecar(val: &serde_json::Value) -> Option<PluginSidecar> {
-    let s = val.get("sidecar")?;
-    let sha256 = sidecar::platform_tag().ok().and_then(|p| {
-        s.get(format!("sha256-{p}"))?
-            .as_str()
-            .map(|s| s.to_string())
-    });
+    let spec = sidecar::SidecarSpec::from_manifest(val).ok()?;
+    let sha256 = sidecar::platform_tag()
+        .ok()
+        .and_then(|p| spec.sha256(p))
+        .map(str::to_string);
     Some(PluginSidecar {
-        name: s.get("name")?.as_str()?.to_string(),
-        version: s.get("version")?.as_str()?.to_string(),
+        version: spec.version.clone()?,
+        name: spec.name,
         sha256,
     })
 }
 
-fn validate_sidecar_name(name: &str) -> AppResult<()> {
-    if name.is_empty()
-        || !name
+/// Plugin ids, sidecar names, and sidecar commands all end up in paths, argv, or URL
+/// paths, so they share one conservative charset.
+fn validate_ident(kind: &str, value: &str) -> AppResult<()> {
+    if value.is_empty()
+        || !value
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     {
-        return Err(AppError(format!("Invalid sidecar name: {name}")));
+        return Err(AppError(format!("Invalid {kind}: {value}")));
     }
     Ok(())
+}
+
+fn validate_sidecar_name(name: &str) -> AppResult<()> {
+    validate_ident("sidecar name", name)
+}
+
+pub(crate) fn validate_sidecar_command(command: &str) -> AppResult<()> {
+    validate_ident("sidecar command", command)
 }
 
 /// Scan the `plugins/` directory under app data and return manifests for all installed plugins.
@@ -316,14 +325,7 @@ fn list_user_plugins() -> Vec<PluginManifest> {
 const PLUGIN_REPO_BASE: &str = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins";
 
 pub(crate) fn validate_plugin_id(id: &str) -> AppResult<()> {
-    if id.is_empty()
-        || !id
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-    {
-        return Err(AppError(format!("Invalid plugin id: {id}")));
-    }
-    Ok(())
+    validate_ident("plugin id", id)
 }
 
 /// Download a plugin from the GitHub plugin repository and install it to the local plugins directory.
@@ -407,9 +409,14 @@ fn install_plugin(id: String) -> AppResult<PluginManifest> {
 fn uninstall_plugin(id: String) -> AppResult<()> {
     validate_plugin_id(&id)?;
     let dir = storage::app_data_dir()?.join("plugins").join(&id);
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir)?;
-    }
+    // A live sidecar holds the directory open on Windows, so delete under the
+    // plugin's process lock with everything stopped.
+    sidecar::with_plugin_stopped(&id, || {
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir)?;
+        }
+        Ok(())
+    })?;
     Ok(())
 }
 
@@ -629,8 +636,10 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             uninstall_plugin,
             sidecar::sidecar_install,
             sidecar::sidecar_installed_version,
-            sidecar::sidecar_spawn,
-            sidecar::sidecar_kill,
+            sidecar::sidecar_request,
+            sidecar::sidecar_stop,
+            sidecar::sidecar_stop_all,
+            sidecar::sidecar_cancel,
             borders::check_border_file,
             borders::download_border_file,
             borders::border_lookup,

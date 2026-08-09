@@ -2,6 +2,7 @@ import { useState, useCallback, type ComponentType, type SetStateAction } from "
 import { emit as emitEvent } from "@/lib/events";
 import { runAsPlugin, disposePlugin } from "@/plugins/scope";
 import { cmpVersion } from "@/lib/util/util";
+import { cmd } from "@/lib/commands";
 
 export interface PluginSettingDef {
 	key: string;
@@ -261,6 +262,9 @@ export function deactivatePlugins() {
 		cleanup();
 	}
 	cleanups.clear();
+	// Nothing is active any more, so nothing should still be running. Covers plugins
+	// that registered no cleanup of their own.
+	cmd.sidecarStopAll().catch(() => {});
 }
 
 export function activatePlugin(id: string) {
@@ -276,6 +280,8 @@ export function deactivatePlugin(id: string) {
 		cleanup();
 		cleanups.delete(id);
 	}
+	// A disabled plugin keeps no processes, whether or not it cleaned up after itself.
+	cmd.sidecarStop(id).catch(() => {});
 	// Reverse every host registration the plugin made during activation, even when it
 	// returned no cleanup — so a disabled plugin's providers/fields/listeners stop.
 	disposePlugin(id);

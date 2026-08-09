@@ -42,13 +42,28 @@ export const commands = {
 	/**  Installed sidecar version for a plugin (from `sidecar/version.txt`), or `None`. */
 	sidecarInstalledVersion: (pluginId: string) => __TAURI_INVOKE<string | null>("sidecar_installed_version", { pluginId }),
 	/**
-	 *  Spawn a plugin's installed sidecar binary. Streams stdout/stderr lines as
-	 *  `sidecar-stdout` / `sidecar-stderr` events and the exit as `sidecar-exit`,
-	 *  keyed by the returned run id. Runs in the sidecar dir so co-located dlls resolve.
+	 *  Run one unit of work on a plugin's sidecar. Commands the manifest lists under
+	 *  `serve` go to the plugin's resident process; the rest get a one-shot child.
+	 *  Streams `sidecar-line` (one JSON object per unit) and `sidecar-log` (stderr),
+	 *  then exactly one `sidecar-done`, all keyed by the returned request id.
 	 */
-	sidecarSpawn: (pluginId: string, name: string, args: string[]) => __TAURI_INVOKE<number>("sidecar_spawn", { pluginId, name, args }),
-	/**  Kill a running sidecar process by run id (no-op if already exited). */
-	sidecarKill: (runId: number) => __TAURI_INVOKE<null>("sidecar_kill", { runId }),
+	sidecarRequest: (pluginId: string, command: string, payload: string | null) => __TAURI_INVOKE<number>("sidecar_request", { pluginId, command, payload }),
+	/**
+	 *  Stop everything a plugin has running. Called when the plugin is disabled or
+	 *  uninstalled, so a resident process never outlives the plugin that wanted it.
+	 */
+	sidecarStop: (pluginId: string) => __TAURI_INVOKE<null>("sidecar_stop", { pluginId }),
+	/**
+	 *  Stop every plugin's sidecar processes. Used when the editor tears all plugins
+	 *  down at once (map close), where nothing should still be running afterwards.
+	 */
+	sidecarStopAll: () => __TAURI_INVOKE<void>("sidecar_stop_all"),
+	/**
+	 *  Kill the process behind a one-shot request (no-op if it already finished).
+	 *  Resident-served requests have no process of their own, so this does not
+	 *  interrupt them -- the caller simply stops listening.
+	 */
+	sidecarCancel: (reqId: number) => __TAURI_INVOKE<null>("sidecar_cancel", { reqId }),
 	checkBorderFile: (level: string) => __TAURI_INVOKE<boolean>("check_border_file", { level }),
 	downloadBorderFile: (level: string) => __TAURI_INVOKE<null>("download_border_file", { level }),
 	borderLookup: (lat: number, lng: number, level: string) => __TAURI_INVOKE<PolygonGeometry | null>("border_lookup", { lat, lng, level }).then((v) => (v==null?v:({...v,coordinates:v.coordinates.map(i=>i.map(i=>i.map(i=>i))),extraPolygons:v.extraPolygons==null?v.extraPolygons:v.extraPolygons.map(i=>i.map(i=>i.map(i=>i.map(i=>i))))}) as typeof v)),
