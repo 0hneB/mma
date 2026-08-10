@@ -640,7 +640,7 @@ const TagTreeNodeRow = memo(function TagTreeNodeRow({
 					</ContextMenu.Portal>
 				) : (
 					<ContextMenu.Portal>
-						<ContextMenu.Positioner>
+						<ContextMenu.Positioner className="menu-positioner">
 							<ContextMenu.Popup className="context-menu">
 								<ContextMenu.Item
 									className="context-menu__item"

@@ -4258,12 +4258,16 @@ body {
 .gm-style > div:nth-child(8) > div:first-child {
 	margin-left: 10px !important;
 }
+/* z-index must sit on the positioned element (the positioner), not the popup:
+ * it keeps menus above maplibre's z-indexed ctrl layer, which hosts the deck canvas. */
+.menu-positioner {
+	z-index: 10000;
+}
 .context-menu {
 	/* The popup takes focus on open; highlighted items carry the focus cue, not this box. */
 	outline: none;
 	color: var(--text-1);
 	width: max-content;
-	z-index: 10000;
 	box-shadow: var(--shadow-4);
 	background: var(--surface-3);
 	border: 1px solid var(--border-subtle);

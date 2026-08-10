@@ -404,7 +404,7 @@ export function TagContextMenuContent({
 	const inSel = selCount ?? 0;
 
 	return (
-		<ContextMenu.Positioner>
+		<ContextMenu.Positioner className="menu-positioner">
 			<ContextMenu.Popup className="context-menu">
 				<ContextMenu.Item
 					className="context-menu__item"

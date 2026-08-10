@@ -361,7 +361,7 @@ export const SelectionRow = memo(function SelectionRow({
 							}
 						/>
 						<Menu.Portal>
-							<Menu.Positioner align="end">
+							<Menu.Positioner className="menu-positioner" align="end">
 								<Menu.Popup className="context-menu">
 									{view === "color" ? (
 										<div style={{ padding: "0.5rem", width: "14rem" }}>

@@ -48,7 +48,7 @@ export const MapContextMenuContent = forwardRef<HTMLDivElement>((_props, ref) =>
 	const polygonCount = polygonsAt(latLng.lat, latLng.lng).length;
 
 	return (
-		<ContextMenu.Positioner>
+		<ContextMenu.Positioner className="menu-positioner">
 			<ContextMenu.Popup className="context-menu" ref={ref}>
 				{location && (
 					<>
