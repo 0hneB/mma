@@ -41,7 +41,6 @@ export interface MapHostEvents {
 }
 
 export interface BasemapOpts {
-	useBlobby: boolean;
 	customStyles: CustomStyle[];
 }
 

@@ -21,7 +21,6 @@ import { MeasurementBar } from "@/components/primitives/MeasurementBar";
 import { MapContextMenuContent } from "@/components/editor/map/MapContextMenu";
 import { useMapState, addSelections, mapOpen } from "@/store/useMapStore";
 import { loadOpenSV, google } from "@/lib/sv/opensv";
-import { BLOBBY_ZOOM_THRESHOLD } from "@/lib/sv/constants";
 import { setMapHost, tryInterceptDraw } from "@/lib/map/mapState";
 import { createMapHost, hostKindForMapType, type MapHost } from "@/lib/map/host";
 import { mountSearchRadiusCursor } from "@/lib/map/searchRadiusCursor";
@@ -82,9 +81,6 @@ export function MapEmbed({
 			[key]: toggledOpacity(p[key], lastOpacityRef.current[key], getSettings().opacityToggleMode),
 		}));
 	const coordDisplayRef = useRef<HTMLSpanElement>(null);
-	// Boolean, not the raw zoom: re-renders only when crossing the blobby threshold.
-	// The live zoom readout subscribes itself (ZoomReadout).
-	const [belowBlobbyZoom, setBelowBlobbyZoom] = useState(2 <= BLOBBY_ZOOM_THRESHOLD);
 
 	const [customStyles, setCustomStyles] = useLocalStorage<CustomStyle[]>(CUSTOM_STYLES_KEY, []);
 	const [showStylesDialog, setShowStylesDialog] = useState(false);
@@ -156,7 +152,6 @@ export function MapEmbed({
 
 			const { prefs: p, customStyles: cs } = buildRef.current;
 			created = await createMapHost(hostKind, hostDiv, p, {
-				useBlobby: p.svBlobby,
 				customStyles: cs,
 				camera: savedCameraRef.current ?? undefined,
 			});
@@ -172,15 +167,11 @@ export function MapEmbed({
 						coordDisplayRef.current.textContent = `${ll.lat.toFixed(6)}° ${ll.lng.toFixed(6)}°`;
 					}
 				}),
-				created.on("zoom", () => {
-					setBelowBlobbyZoom((hostRef.current?.getZoom() ?? 0) <= BLOBBY_ZOOM_THRESHOLD);
-				}),
 			);
 
 			hostRef.current = created;
 			setMapHost(created);
 			setHost(created);
-			setBelowBlobbyZoom(created.getZoom() <= BLOBBY_ZOOM_THRESHOLD);
 			if (first) {
 				mapOpen.mark("map-ready");
 				created.once("tilesloaded", () => mapOpen.mark("tiles"));
@@ -287,11 +278,9 @@ export function MapEmbed({
 		};
 	}, [host, showPreviews]);
 
-	const useBlobby = prefs.svBlobby && belowBlobbyZoom;
-
 	useEffect(() => {
-		hostRef.current?.applyPrefs(prefs, { useBlobby, customStyles });
-	}, [host, prefs, useBlobby, customStyles]);
+		hostRef.current?.applyPrefs(prefs, { customStyles });
+	}, [host, prefs, customStyles]);
 
 	const handleSearchResult = useCallback((lat: number, lng: number, _name: string) => {
 		hostRef.current?.fitBounds({

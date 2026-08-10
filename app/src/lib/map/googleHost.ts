@@ -240,7 +240,6 @@ class GoogleMapHost implements MapHostContract<"google"> {
 
 	applyPrefs(prefs: MapEmbedPrefs, opts: BasemapOpts) {
 		const { mapType: stack } = resolveStackForPrefs(prefs, {
-			useBlobby: opts.useBlobby,
 			customStyles: opts.customStyles,
 		});
 		this.map.mapTypes.set("stack", stack);

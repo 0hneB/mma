@@ -7,15 +7,15 @@
 //
 // SV tiles: MapLibre raster sources take URL templates, not functions, so the
 // source uses a fake `mma-sv://{z}/{x}/{y}` template and `transformRequest`
-// rewrites each request through buildTileUrl with the current coverage config.
+// rewrites each request through the current SV tile source.
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
-import { buildTileUrl, type TileConfig } from "@/lib/geo/tiles";
-import { createSvConfigForPrefs, svLayerOpacity } from "@/lib/geo/mapStack";
+import { createSvTileSource, type SvTileSource } from "@/lib/geo/mapStack";
 import { vectorStyleUrl } from "@/lib/geo/mapStyles";
+import { BLOBBY_ZOOM_THRESHOLD } from "@/lib/sv/constants";
 import type { MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 import type { LatLng, Bounds } from "@/types";
 import type {
@@ -117,17 +117,15 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 	readonly kind = "maplibre" as const;
 	readonly map: maplibregl.Map;
 	private overlays = new Set<MapLibreDeckOverlay>();
-	private svCfg: TileConfig;
+	private svSrc: SvTileSource;
 	private svRev = 0;
-	private svOpacity: number;
 	private styleName: string;
 
 	private outer: HTMLElement;
 	private mapDiv: HTMLDivElement;
 
 	constructor(container: HTMLElement, prefs: MapEmbedPrefs, opts: CreateHostOpts) {
-		this.svOpacity = svLayerOpacity(prefs, opts.useBlobby);
-		this.svCfg = createSvConfigForPrefs(prefs, opts.useBlobby);
+		this.svSrc = createSvTileSource(prefs);
 		this.styleName = prefs.vectorStyleName;
 		// Oversized, clipped inner container = tile prefetch margin (see PREFETCH_MARGIN).
 		this.outer = container;
@@ -155,7 +153,7 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 				if (!url.startsWith(SV_SCHEME)) return undefined;
 				const m = url.match(/^mma-sv:\/\/(\d+)\/(\d+)\/(\d+)/);
 				if (!m) return undefined;
-				return { url: buildTileUrl(this.svCfg, Number(m[2]), Number(m[3]), Number(m[1])) };
+				return { url: this.svSrc.url(Number(m[2]), Number(m[3]), Number(m[1])) };
 			},
 		});
 		this.map.touchZoomRotate.disableRotation();
@@ -206,10 +204,21 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 				id: SV_SOURCE,
 				type: "raster",
 				source: SV_SOURCE,
-				paint: { "raster-opacity": this.svOpacity, "raster-fade-duration": 0 },
+				paint: { "raster-opacity": this.svOpacityExpr(), "raster-fade-duration": 0 },
 			},
 			firstSymbol,
 		);
+	}
+
+	// 256px raster tiles render at tile z = floor(cameraZoom) + 1 here, so the
+	// tile-zoom blobby threshold maps to a camera-zoom step at the same number
+	// (the +1 cancels ZOOM_OFFSET).
+	private svOpacityExpr(): number | maplibregl.ExpressionSpecification {
+		const below = this.svSrc.opacity(BLOBBY_ZOOM_THRESHOLD);
+		const above = this.svSrc.opacity(BLOBBY_ZOOM_THRESHOLD + 1);
+		return below === above
+			? above
+			: ["step", ["zoom"], below, BLOBBY_ZOOM_THRESHOLD, above];
 	}
 
 	getZoom() {
@@ -310,12 +319,15 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 		}
 	}
 
-	applyPrefs(prefs: MapEmbedPrefs, opts: BasemapOpts) {
-		this.setSvOpacity(svLayerOpacity(prefs, opts.useBlobby));
-		const next = createSvConfigForPrefs(prefs, opts.useBlobby);
+	applyPrefs(prefs: MapEmbedPrefs, _opts: BasemapOpts) {
+		const next = createSvTileSource(prefs);
 		// Refetch SV tiles only when the coverage config actually changed.
-		if (buildTileUrl(next, 0, 0, 0) !== buildTileUrl(this.svCfg, 0, 0, 0)) {
-			this.svCfg = next;
+		const refetch = next.key !== this.svSrc.key;
+		this.svSrc = next;
+		if (this.map.getLayer(SV_SOURCE)) {
+			this.map.setPaintProperty(SV_SOURCE, "raster-opacity", this.svOpacityExpr());
+		}
+		if (refetch) {
 			this.svRev++;
 			const src = this.map.getSource(SV_SOURCE) as maplibregl.RasterTileSource | undefined;
 			if (src) src.setTiles([this.svTileTemplate()]);
@@ -323,13 +335,6 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 		if (prefs.vectorStyleName !== this.styleName) {
 			this.styleName = prefs.vectorStyleName;
 			this.map.setStyle(vectorStyleUrl(prefs.vectorStyleName));
-		}
-	}
-
-	private setSvOpacity(v: number) {
-		this.svOpacity = v;
-		if (this.map.getLayer(SV_SOURCE)) {
-			this.map.setPaintProperty(SV_SOURCE, "raster-opacity", v);
 		}
 	}
 

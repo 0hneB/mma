@@ -47,7 +47,6 @@ async function ensureMinimapHost(
 	}
 	if (!minimapHost) {
 		minimapHost = await createMapHost(kind, minimapDiv, prefs, {
-			useBlobby: prefs.svBlobby,
 			customStyles: getLocal<CustomStyle[]>(CUSTOM_STYLES_KEY, []),
 			camera: { center: { lat, lng }, zoom: 14 },
 			scaleControl: false,
@@ -120,7 +119,6 @@ export function FullscreenMiniMap() {
 	useEffect(() => {
 		if (!surface) return;
 		surface.host.applyPrefs(prefs, {
-			useBlobby: prefs.svBlobby,
 			customStyles: getLocal<CustomStyle[]>(CUSTOM_STYLES_KEY, []),
 		});
 	}, [prefs, surface]);
