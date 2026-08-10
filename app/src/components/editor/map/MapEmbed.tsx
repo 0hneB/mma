@@ -210,13 +210,6 @@ export function MapEmbed({
 		};
 	}, [hostKind]);
 
-	useEffect(() => {
-		if (!host) return;
-		const blobbySingleType =
-			prefs.svBlobby && belowBlobbyZoom && prefs.svCoverageType !== "default";
-		host.setSvOpacity(blobbySingleType ? svOpacity * 0.6 : svOpacity);
-	}, [host, svOpacity, prefs.svBlobby, belowBlobbyZoom, prefs.svCoverageType]);
-
 	// The editor map drives the single scene engine (delta/selection/active subscriptions)
 	useEffect(() => startSceneEngine(), []);
 

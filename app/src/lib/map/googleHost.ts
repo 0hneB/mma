@@ -108,12 +108,9 @@ class GoogleDeckOverlay implements DeckOverlayHandle {
 class GoogleMapHost implements MapHostContract<"google"> {
 	readonly kind = "google" as const;
 	readonly map: google.maps.Map;
-	private svLayer: google.maps.ImageMapType | null = null;
-	private svOpacity: number;
 	private overlays = new Set<GoogleDeckOverlay>();
 
 	constructor(container: HTMLElement, prefs: MapEmbedPrefs, opts: CreateHostOpts) {
-		this.svOpacity = prefs.svOpacity;
 		this.map = new google.maps.Map(container, {
 			center: opts.camera?.center ?? { lat: 0, lng: 0 },
 			zoom: opts.camera?.zoom ?? 2,
@@ -242,12 +239,10 @@ class GoogleMapHost implements MapHostContract<"google"> {
 	}
 
 	applyPrefs(prefs: MapEmbedPrefs, opts: BasemapOpts) {
-		const { mapType: stack, svLayer } = resolveStackForPrefs(prefs, {
+		const { mapType: stack } = resolveStackForPrefs(prefs, {
 			useBlobby: opts.useBlobby,
 			customStyles: opts.customStyles,
 		});
-		this.svLayer = svLayer;
-		this.svLayer.setOpacity(this.svOpacity);
 		this.map.mapTypes.set("stack", stack);
 		this.map.setMapTypeId("stack");
 		const bg = getStyleBackgroundColor(prefs.mapStyleName);
@@ -256,11 +251,6 @@ class GoogleMapHost implements MapHostContract<"google"> {
 		mapDiv.style.backgroundColor = bg;
 		const inner = mapDiv.querySelector<HTMLElement>("div[style*='background-color']");
 		if (inner) inner.style.backgroundColor = bg;
-	}
-
-	setSvOpacity(v: number) {
-		this.svOpacity = v;
-		this.svLayer?.setOpacity(v);
 	}
 
 	resize() {

@@ -14,7 +14,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
 import { buildTileUrl, type TileConfig } from "@/lib/geo/tiles";
-import { createSvConfigForPrefs } from "@/lib/geo/mapStack";
+import { createSvConfigForPrefs, svLayerOpacity } from "@/lib/geo/mapStack";
 import { vectorStyleUrl } from "@/lib/geo/mapStyles";
 import type { MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 import type { LatLng, Bounds } from "@/types";
@@ -126,7 +126,7 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 	private mapDiv: HTMLDivElement;
 
 	constructor(container: HTMLElement, prefs: MapEmbedPrefs, opts: CreateHostOpts) {
-		this.svOpacity = prefs.svOpacity;
+		this.svOpacity = svLayerOpacity(prefs, opts.useBlobby);
 		this.svCfg = createSvConfigForPrefs(prefs, opts.useBlobby);
 		this.styleName = prefs.vectorStyleName;
 		// Oversized, clipped inner container = tile prefetch margin (see PREFETCH_MARGIN).
@@ -311,6 +311,7 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 	}
 
 	applyPrefs(prefs: MapEmbedPrefs, opts: BasemapOpts) {
+		this.setSvOpacity(svLayerOpacity(prefs, opts.useBlobby));
 		const next = createSvConfigForPrefs(prefs, opts.useBlobby);
 		// Refetch SV tiles only when the coverage config actually changed.
 		if (buildTileUrl(next, 0, 0, 0) !== buildTileUrl(this.svCfg, 0, 0, 0)) {
@@ -325,7 +326,7 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 		}
 	}
 
-	setSvOpacity(v: number) {
+	private setSvOpacity(v: number) {
 		this.svOpacity = v;
 		if (this.map.getLayer(SV_SOURCE)) {
 			this.map.setPaintProperty(SV_SOURCE, "raster-opacity", v);

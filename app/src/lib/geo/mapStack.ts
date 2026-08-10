@@ -56,6 +56,13 @@ export function createSvConfigForPrefs(prefs: MapEmbedPrefs, useBlobby: boolean)
 			});
 }
 
+/** Effective SV coverage opacity: blobby tiles of a single coverage type are drawn
+ *  dimmer, since they overlap far more than the line tiles do. */
+export function svLayerOpacity(prefs: MapEmbedPrefs, useBlobby: boolean): number {
+	const singleType = useBlobby && prefs.svCoverageType !== "default";
+	return singleType ? prefs.svOpacity * 0.6 : prefs.svOpacity;
+}
+
 export function buildMapStack(prefs: MapEmbedPrefs, opts: BuildOpts): MapStackResult {
 	const tileSize = new google.maps.Size(256, 256);
 	const layers: google.maps.ImageMapType[] = [];
@@ -194,9 +201,6 @@ export function buildMapStack(prefs: MapEmbedPrefs, opts: BuildOpts): MapStackRe
 		}
 	}
 
-	const showOfficial = prefs.svCoverageType === "official" || prefs.svCoverageType === "default";
-	const showUnofficial =
-		prefs.svCoverageType === "unofficial" || prefs.svCoverageType === "default";
 	const svCfg = createSvConfigForPrefs(prefs, opts.useBlobby);
 	const svLayer = new google.maps.ImageMapType({
 		getTileUrl: (coord: TileCoord, zoom: number) => buildTileUrl(svCfg, coord.x, coord.y, zoom),
@@ -204,8 +208,7 @@ export function buildMapStack(prefs: MapEmbedPrefs, opts: BuildOpts): MapStackRe
 		minZoom: 0,
 		maxZoom: 20,
 	});
-	const blobbySingleType = opts.useBlobby && !(showOfficial && showUnofficial);
-	svLayer.setOpacity(blobbySingleType ? prefs.svOpacity * 0.6 : prefs.svOpacity);
+	svLayer.setOpacity(svLayerOpacity(prefs, opts.useBlobby));
 	layers.push(svLayer);
 
 	if (prefs.showLabels && prefs.mapType !== "osm") {
