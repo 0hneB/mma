@@ -157,8 +157,26 @@ pub enum ComparisonType {
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapExtra {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_field_defs")]
     pub fields: Option<HashMap<String, ExtraFieldDef>>,
+}
+
+/// Field keys are captured from raw location JSON, so defs registered before ingest
+/// canonicalized them can carry escapes (`café`) and match no location. Decode on
+/// read; the next def write persists the repair.
+fn de_field_defs<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Option<HashMap<String, ExtraFieldDef>>, D::Error> {
+    use serde::Deserialize;
+    let Some(fields) = Option::<HashMap<String, ExtraFieldDef>>::deserialize(d)? else {
+        return Ok(None);
+    };
+    Ok(Some(
+        fields
+            .into_iter()
+            .map(|(k, v)| (crate::types::decode_json_key(&k).into_owned(), v))
+            .collect(),
+    ))
 }
 
 /// Score bounding box: either `"auto"` (computed from locations) or an
@@ -772,6 +790,17 @@ mod tests {
         let settings: MapSettings = serde_json::from_str(old_json).unwrap();
         assert!(settings.key_bindings.is_empty());
         assert!(MapSettings::default().key_bindings.is_empty());
+    }
+
+    #[test]
+    fn map_extra_decodes_escaped_field_keys() {
+        // Defs registered before ingest canonicalized keys spell the field with its raw
+        // JSON escape; reading them back must yield the name the location data uses.
+        let bs = '\\';
+        let json = format!(r#"{{"fields":{{"caf{bs}{bs}u00e9":{{"type":"string"}}}}}}"#);
+        let extra: MapExtra = serde_json::from_str(&json).unwrap();
+        let fields = extra.fields.unwrap();
+        assert!(fields.contains_key("café"), "got {:?}", fields.keys());
     }
 
     #[test]

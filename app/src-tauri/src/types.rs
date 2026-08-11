@@ -56,7 +56,7 @@ impl RawExtra {
         if is_empty_object(rv.get()) {
             return None;
         }
-        Some(RawExtra(rv))
+        Some(RawExtra(canonicalize_keys(rv)))
     }
 
     /// Build from a JSON value (an object). `None` if not an object or empty.
@@ -86,8 +86,8 @@ impl RawExtra {
     }
 
     /// One field's value, parsed on demand. Zero-alloc scan to the key; only the
-    /// matching value slice is parsed. Keys are matched on raw bytes (a key written
-    /// with JSON escapes won't match its unescaped form).
+    /// matching value slice is parsed. Keys are matched on raw bytes, which is exact
+    /// because every constructor canonicalizes them (see [`canonicalize_keys`]).
     pub fn get(&self, key: &str) -> Option<serde_json::Value> {
         json_field(self.0.get(), key)
     }
@@ -102,6 +102,46 @@ impl RawExtra {
             f(&s[fs.key.clone()], &s[fs.value.clone()]);
             false
         });
+    }
+}
+
+/// Decode JSON-escaped member keys (`ensure_ascii` encoders unicode-escape `café`) so
+/// raw-byte key matching sees one spelling. A doc with no escaped key is returned as-is.
+fn canonicalize_keys(rv: Box<serde_json::value::RawValue>) -> Box<serde_json::value::RawValue> {
+    if !has_escaped_key(rv.get()) {
+        return rv;
+    }
+    let Ok(m) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(rv.get()) else {
+        return rv;
+    };
+    serde_json::to_string(&m)
+        .ok()
+        .and_then(|s| serde_json::value::RawValue::from_string(s).ok())
+        .unwrap_or(rv)
+}
+
+fn has_escaped_key(s: &str) -> bool {
+    let b = s.as_bytes();
+    if memchr::memchr(b'\\', b).is_none() {
+        return false;
+    }
+    let mut hit = false;
+    scan_fields(b, |fs| {
+        hit = memchr::memchr(b'\\', &b[fs.key.clone()]).is_some();
+        hit
+    });
+    hit
+}
+
+/// Decode a key captured from raw JSON source (e.g. by [`RawExtra::for_each_field`]) into
+/// the text it denotes. Returned unchanged when there is nothing to decode.
+pub(crate) fn decode_json_key(key: &str) -> std::borrow::Cow<'_, str> {
+    if !key.contains('\\') {
+        return std::borrow::Cow::Borrowed(key);
+    }
+    match serde_json::from_str::<String>(&format!("\"{key}\"")) {
+        Ok(decoded) => std::borrow::Cow::Owned(decoded),
+        Err(_) => std::borrow::Cow::Borrowed(key),
     }
 }
 
@@ -263,7 +303,9 @@ impl serde::Serialize for RawExtra {
 impl<'de> serde::Deserialize<'de> for RawExtra {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         if d.is_human_readable() {
-            Box::<serde_json::value::RawValue>::deserialize(d).map(RawExtra)
+            Box::<serde_json::value::RawValue>::deserialize(d)
+                .map(canonicalize_keys)
+                .map(RawExtra)
         } else {
             d.deserialize_any(BinRawExtraVisitor)
         }
@@ -285,6 +327,7 @@ impl<'de> serde::de::Visitor<'de> for BinRawExtraVisitor {
 
     fn visit_string<E: serde::de::Error>(self, v: String) -> Result<RawExtra, E> {
         serde_json::value::RawValue::from_string(v)
+            .map(canonicalize_keys)
             .map(RawExtra)
             .map_err(E::custom)
     }

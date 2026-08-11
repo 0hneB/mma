@@ -1741,6 +1741,34 @@ fn extra_filter_scans_base_batch_top_level_only() {
     );
 }
 
+// A field whose name arrived ASCII-escaped (`"café"`) is canonicalized on ingest,
+// so filtering it by name matches instead of silently returning nothing.
+#[test]
+fn extra_filter_matches_ascii_escaped_field_name() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let bs = '\\';
+    let mut l1 = loc(1, 0.0, 0.0);
+    l1.extra = crate::types::RawExtra::from_string(format!("{{\"caf{bs}u00e9\":\"noir\"}}"));
+    let batch = locations_to_batch(&[l1]);
+    let adds: Vec<Location> = vec![];
+    let view = make_view(Some(&batch), &dead, &patches, &adds);
+
+    assert_eq!(
+        resolve(
+            &view,
+            &SelectionProps::Filter {
+                field: "café".into(),
+                op: FilterOp::Eq,
+                value: serde_json::json!("noir"),
+                value2: None,
+                tz_local: false,
+            }
+        ),
+        vec![1]
+    );
+}
+
 // -----------------------------------------------------------------------
 // tz_local filters: bucket each location's absolute `datetime` into its own
 // timezone before comparing. Same instant, different zones -> different days.
