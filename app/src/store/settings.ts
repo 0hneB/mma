@@ -1,4 +1,4 @@
-import { emit as emitEvent, useEventValue } from "@/lib/events";
+import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
@@ -213,16 +213,30 @@ export const CSS_VAR_SETTINGS: ReadonlyArray<
 
 const STORAGE_KEY = "appSettings";
 
-let settings: AppSettings = { ...DEFAULTS };
-try {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	if (stored) {
-		settings = { ...DEFAULTS, ...JSON.parse(stored) };
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+function readStoredSettings(): AppSettings | null {
+	try {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : null;
+	} catch {
+		return null;
 	}
-} catch {
-	// ignored
 }
+
+let settings: AppSettings = { ...DEFAULTS };
+const storedAtInit = readStoredSettings();
+if (storedAtInit) {
+	settings = storedAtInit;
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+	} catch {
+		// ignored
+	}
+}
+
+// Another window changed settings: reread the shared localStorage before re-emitting.
+bridgeAcrossWindows("settings:changed", () => {
+	settings = readStoredSettings() ?? settings;
+});
 
 export function getSettings(): AppSettings {
 	return settings;
