@@ -11,10 +11,11 @@ import {
 } from "@/lib/geo/mapStyles";
 import type { MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 import { Icon } from "@/components/primitives/Icon";
-import { mdiCogOutline } from "@mdi/js";
+import { mdiChevronDown, mdiCogOutline } from "@mdi/js";
 import type { MapTypeKey, SvCoverageType, MarkerStyle } from "@/types";
 import { ColorPicker } from "@/components/primitives/ColorPicker";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
+import { useStableHandler } from "@/lib/hooks/useStableHandler";
 import { Slider } from "@/components/primitives/Slider";
 import { hexToRgbObj, rgbToHex, resolveSvColorHex } from "@/lib/util/color";
 import { useMapSetting } from "@/store/useMapSetting";
@@ -280,12 +281,10 @@ function BasemapSelector({
 	previewUrls,
 	selected,
 	onSelect,
-	onMouseEnter,
 }: {
 	previewUrls: Record<MapTypeKey, string>;
 	selected: MapTypeKey;
 	onSelect: (type: MapTypeKey) => void;
-	onMouseEnter?: (e: React.MouseEvent) => void;
 }) {
 	return (
 		<div className="map-type-control__basemap">
@@ -296,7 +295,6 @@ function BasemapSelector({
 					className="map-type-control__button"
 					data-state={selected === t ? "on" : "off"}
 					onClick={() => onSelect(t)}
-					onMouseEnter={onMouseEnter}
 				>
 					<div className="map-type-control__background">
 						<img src={previewUrls[t]} alt="" draggable={false} />
@@ -308,24 +306,52 @@ function BasemapSelector({
 	);
 }
 
+function LayerConfigToggle({ open, onClick }: { open: boolean; onClick: () => void }) {
+	return (
+		<button
+			type="button"
+			className="map-type-control__toggle"
+			data-state={open ? "open" : "closed"}
+			aria-expanded={open}
+			aria-label="Layers and map style"
+			title="Layers and map style"
+			onClick={onClick}
+		>
+			<Icon path={mdiChevronDown} size={20} />
+		</button>
+	);
+}
+
+function useCloseOnEscape(close: () => void, enabled: boolean) {
+	const handler = useStableHandler(close);
+	useEffect(() => {
+		if (!enabled) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") handler();
+		};
+		document.addEventListener("keydown", onKey);
+		return () => document.removeEventListener("keydown", onKey);
+	}, [handler, enabled]);
+}
+
 /** Collapse to a single menu button when the expanded basemap would overlap top-right controls. */
 function useMapTypeCompact(
 	containerRef: RefObject<HTMLDivElement | null>,
-	basemapMeasureRef: RefObject<HTMLDivElement | null>,
+	rowMeasureRef: RefObject<HTMLDivElement | null>,
 ) {
 	const [compact, setCompact] = useState(false);
 
 	useEffect(() => {
 		const el = containerRef.current;
-		const measure = basemapMeasureRef.current;
+		const measure = rowMeasureRef.current;
 		if (!el) return;
 		const root = el.closest(".embed-controls");
 		const leftGroup = el.closest(".embed-controls__control");
 		if (!root || !leftGroup) return;
 
 		const check = () => {
-			const basemapWidth = measure?.scrollWidth ?? 0;
-			if (basemapWidth === 0) return;
+			const rowWidth = measure?.scrollWidth ?? 0;
+			if (rowWidth === 0) return;
 
 			const rootRect = root.getBoundingClientRect();
 			const leftEdge = rootRect.left + 8;
@@ -353,7 +379,7 @@ function useMapTypeCompact(
 			}
 
 			const available = conflictLeft - leftEdge - 8;
-			const needed = basemapWidth + marginX(el) + siblingsWidth;
+			const needed = rowWidth + marginX(el) + siblingsWidth;
 			setCompact((prev) => {
 				// Hysteresis avoids flip-flopping at the breakpoint.
 				if (prev) return needed > available;
@@ -369,7 +395,7 @@ function useMapTypeCompact(
 		}
 		check();
 		return () => obs.disconnect();
-	}, [containerRef, basemapMeasureRef]);
+	}, [containerRef, rowMeasureRef]);
 
 	return compact;
 }
@@ -377,14 +403,14 @@ function useMapTypeCompact(
 export function MapTypeDropdown({ layerConfig }: { layerConfig: LayerConfig }) {
 	const [isOpen, setIsOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const basemapMeasureRef = useRef<HTMLDivElement>(null);
-	const basemapRef = useRef<HTMLDivElement>(null);
-	const compact = useMapTypeCompact(containerRef, basemapMeasureRef);
+	const rowMeasureRef = useRef<HTMLDivElement>(null);
+	const rowRef = useRef<HTMLDivElement>(null);
+	const compact = useMapTypeCompact(containerRef, rowMeasureRef);
 	const mapPreviewUrl = useMemo(() => buildTileUrl(createRoadmapTileConfig(), 0, 0, 0), []);
 
 	useEffect(() => {
-		const measure = basemapMeasureRef.current;
-		const visible = basemapRef.current;
+		const measure = rowMeasureRef.current;
+		const visible = rowRef.current;
 		if (!measure || !visible) return;
 		const sync = () => {
 			visible.style.width = `${measure.scrollWidth}px`;
@@ -396,6 +422,7 @@ export function MapTypeDropdown({ layerConfig }: { layerConfig: LayerConfig }) {
 	}, [compact]);
 
 	useClickOutside(containerRef, () => setIsOpen(false), isOpen);
+	useCloseOnEscape(() => setIsOpen(false), isOpen);
 
 	const previewUrls: Record<MapTypeKey, string> = {
 		map: mapPreviewUrl,
@@ -436,8 +463,8 @@ export function MapTypeDropdown({ layerConfig }: { layerConfig: LayerConfig }) {
 			style={{ position: "relative" }}
 		>
 			<div
-				ref={basemapMeasureRef}
-				className="map-type-control__basemap map-type-control__basemap--measure"
+				ref={rowMeasureRef}
+				className="map-type-control__row map-type-control__row--measure"
 				aria-hidden
 			>
 				<BasemapSelector
@@ -445,6 +472,7 @@ export function MapTypeDropdown({ layerConfig }: { layerConfig: LayerConfig }) {
 					selected={layerConfig.prefs.mapType}
 					onSelect={() => {}}
 				/>
+				<LayerConfigToggle open={false} onClick={() => {}} />
 			</div>
 			{compact ? (
 				<>
@@ -459,23 +487,13 @@ export function MapTypeDropdown({ layerConfig }: { layerConfig: LayerConfig }) {
 				</>
 			) : (
 				<>
-					<div ref={basemapRef}>
+					<div ref={rowRef} className="map-type-control__row">
 						<BasemapSelector
 							previewUrls={previewUrls}
 							selected={layerConfig.prefs.mapType}
-							onSelect={(t) => {
-								if (layerConfig.prefs.mapType === t) {
-									setIsOpen((v) => !v);
-								} else {
-									layerConfig.setPref("mapType")(t);
-									setIsOpen(false);
-								}
-							}}
-							onMouseEnter={(e) => {
-								if (e.buttons !== 0) return;
-								setIsOpen(true);
-							}}
+							onSelect={(t) => layerConfig.setPref("mapType")(t)}
 						/>
+						<LayerConfigToggle open={isOpen} onClick={() => setIsOpen((v) => !v)} />
 					</div>
 					{settingsPopup}
 				</>
@@ -502,6 +520,7 @@ export function MapSettingsDropdown({
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useClickOutside(containerRef, () => setIsOpen(false), isOpen);
+	useCloseOnEscape(() => setIsOpen(false), isOpen);
 
 	return (
 		<div

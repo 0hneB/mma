@@ -2077,7 +2077,13 @@ input[type="range"]:disabled {
 .map-type-control {
 	padding: 0;
 }
-.map-type-control__basemap--measure {
+.map-type-control__row {
+	display: flex;
+}
+.map-type-control__row .map-type-control__basemap {
+	flex: 1;
+}
+.map-type-control__row--measure {
 	position: fixed;
 	left: -9999px;
 	top: 0;
@@ -2087,8 +2093,31 @@ input[type="range"]:disabled {
 	height: auto;
 	overflow: visible;
 }
-.map-type-control__basemap--measure .map-type-control__button span {
+.map-type-control__row--measure .map-type-control__button span {
 	font-weight: 700;
+}
+.map-type-control__toggle {
+	color: #000;
+	cursor: pointer;
+	background: #fff;
+	border: none;
+	border-left: 1px solid #0000001f;
+	flex: none;
+	place-content: center;
+	width: 34px;
+	height: 40px;
+	display: grid;
+	transition: background 0.12s ease;
+}
+.map-type-control__toggle:hover,
+.map-type-control__toggle[data-state="open"] {
+	background: #ebebeb;
+}
+.map-type-control__toggle svg {
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.map-type-control__toggle[data-state="open"] svg {
+	transform: rotate(180deg);
 }
 .map-type-control__basemap {
 	grid-auto-flow: column;
@@ -2129,6 +2158,10 @@ input[type="range"]:disabled {
 	position: absolute;
 	inset: 0;
 	overflow: hidden;
+	transition: opacity 0.12s ease;
+}
+.map-type-control__button:hover .map-type-control__background {
+	opacity: 0.62;
 }
 .map-type-control__background img {
 	position: absolute;
@@ -2139,6 +2172,13 @@ input[type="range"]:disabled {
 	transform: translate(-50%, -50%);
 	pointer-events: none;
 	user-select: none;
+}
+@media (prefers-reduced-motion) {
+	.map-type-control__toggle,
+	.map-type-control__toggle svg,
+	.map-type-control__background {
+		transition: none;
+	}
 }
 .layer-config {
 	width: 100%;
@@ -4219,6 +4259,8 @@ body {
 	padding: 0.5rem 1rem;
 	font-size: 0.9rem;
 	line-height: 2rem;
+	/* Hangs below its trigger, so it unfolds from the top edge rather than its centre. */
+	transform-origin: top;
 	animation: 0.15s cubic-bezier(0.16, 1, 0.3, 1) popoverShow;
 	display: flex;
 }
