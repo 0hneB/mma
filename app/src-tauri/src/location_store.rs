@@ -2119,7 +2119,7 @@ pub async fn store_open_map(
                 |row| row.get(0),
             )
             .unwrap_or_default();
-        let extra: map_meta::MapExtra = serde_json::from_str(&extra_str).unwrap_or_default();
+        let extra = map_meta::MapExtra::from_json(&extra_str);
         store.known_field_keys = extra
             .fields
             .as_ref()

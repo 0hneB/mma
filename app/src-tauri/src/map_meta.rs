@@ -157,26 +157,26 @@ pub enum ComparisonType {
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapExtra {
-    #[serde(default, deserialize_with = "de_field_defs")]
+    #[serde(default)]
     pub fields: Option<HashMap<String, ExtraFieldDef>>,
 }
 
-/// Field keys are captured from raw location JSON, so defs registered before ingest
-/// canonicalized them can carry escapes (`café`) and match no location. Decode on
-/// read; the next def write persists the repair.
-fn de_field_defs<'de, D: serde::Deserializer<'de>>(
-    d: D,
-) -> Result<Option<HashMap<String, ExtraFieldDef>>, D::Error> {
-    use serde::Deserialize;
-    let Some(fields) = Option::<HashMap<String, ExtraFieldDef>>::deserialize(d)? else {
-        return Ok(None);
-    };
-    Ok(Some(
-        fields
-            .into_iter()
-            .map(|(k, v)| (crate::types::decode_json_key(&k).into_owned(), v))
-            .collect(),
-    ))
+impl MapExtra {
+    /// Parse from the `maps.extra` JSON column. Field defs registered before ingest
+    /// canonicalized keys can carry escapes and match no location, so decode them
+    /// here; the next def write persists the repair. Default on invalid JSON.
+    pub fn from_json(s: &str) -> Self {
+        let mut extra: MapExtra = serde_json::from_str(s).unwrap_or_default();
+        if let Some(fields) = extra.fields.take() {
+            extra.fields = Some(
+                fields
+                    .into_iter()
+                    .map(|(k, v)| (crate::types::decode_json_key(&k).into_owned(), v))
+                    .collect(),
+            );
+        }
+        extra
+    }
 }
 
 /// Score bounding box: either `"auto"` (computed from locations) or an
@@ -386,7 +386,7 @@ pub fn persist_field_defs(
         params![map_id],
         |row| row.get(0),
     )?;
-    let mut extra: MapExtra = serde_json::from_str(&extra_str).unwrap_or_default();
+    let mut extra = MapExtra::from_json(&extra_str);
     let fields = extra.fields.get_or_insert_with(HashMap::new);
     for (k, v) in new_defs {
         fields.entry(k.clone()).or_insert_with(|| v.clone());
@@ -595,7 +595,7 @@ pub fn store_update_map_meta(
                 r.get(0)
             })
             .unwrap_or_default();
-        serde_json::from_str::<MapExtra>(&s).ok()
+        Some(MapExtra::from_json(&s))
     } else {
         None
     };
@@ -798,7 +798,7 @@ mod tests {
         // JSON escape; reading them back must yield the name the location data uses.
         let bs = '\\';
         let json = format!(r#"{{"fields":{{"caf{bs}{bs}u00e9":{{"type":"string"}}}}}}"#);
-        let extra: MapExtra = serde_json::from_str(&json).unwrap();
+        let extra = MapExtra::from_json(&json);
         let fields = extra.fields.unwrap();
         assert!(fields.contains_key("café"), "got {:?}", fields.keys());
     }
