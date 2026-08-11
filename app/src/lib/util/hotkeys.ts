@@ -1,5 +1,5 @@
 import { getCommands, getCommand } from "@/store/commands";
-import { emit as emitEvent, useEventValue } from "@/lib/events";
+import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
 
 const QUICKTAG_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 type QuicktagSlot = (typeof QUICKTAG_SLOTS)[number];
@@ -361,13 +361,21 @@ const STORAGE_KEY = "hotkeyOverrides";
 
 type HotkeyOverrides = Partial<Record<string, string>>;
 
-let overrides: HotkeyOverrides = {};
-try {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	if (stored) overrides = JSON.parse(stored);
-} catch {
-	// ignored
+function readStoredOverrides(): HotkeyOverrides {
+	try {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		return stored ? JSON.parse(stored) : {};
+	} catch {
+		return {};
+	}
 }
+
+let overrides: HotkeyOverrides = readStoredOverrides();
+
+// Another window changed bindings: reread the shared localStorage before re-emitting.
+bridgeAcrossWindows("hotkeys:changed", () => {
+	overrides = readStoredOverrides();
+});
 
 function getDefaultBinding(action: string): string {
 	for (const d of RAW_HOTKEY_DEFS) {
