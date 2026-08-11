@@ -310,7 +310,7 @@ const STATIC_HOTKEY_DEFS = [
 	},
 	{
 		action: "mapZoomSelection",
-		label: "Zoom to selection bounds",
+		label: "Zoom to selected locations",
 		group: "Map Navigation",
 		defaultBinding: "Shift+e",
 	},
