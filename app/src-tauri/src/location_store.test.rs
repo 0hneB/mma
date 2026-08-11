@@ -3697,7 +3697,7 @@ fn min_pairwise(ids: &[u32], coords: &std::collections::HashMap<u32, (f64, f64)>
 #[test]
 fn pick_spaced_count_returns_exactly_n_subset() {
     let store = spaced_grid_store();
-    let res = store.pick_spaced(Some(8), None).unwrap();
+    let res = store.pick_spaced(None, Some(8), None).unwrap();
     assert_eq!(res.ids.len(), 8);
     let uniq: std::collections::HashSet<u32> = res.ids.iter().copied().collect();
     assert_eq!(uniq.len(), 8, "no duplicates");
@@ -3713,7 +3713,7 @@ fn pick_spaced_count_returns_exactly_n_subset() {
 #[test]
 fn pick_spaced_count_ge_size_returns_all() {
     let store = spaced_grid_store();
-    let res = store.pick_spaced(Some(50), None).unwrap();
+    let res = store.pick_spaced(None, Some(50), None).unwrap();
     assert_eq!(res.ids.len(), 20);
     assert_eq!(res.distance_m, 0);
     let uniq: std::collections::HashSet<u32> = res.ids.iter().copied().collect();
@@ -3724,7 +3724,7 @@ fn pick_spaced_count_ge_size_returns_all() {
 fn pick_spaced_count_pairwise_spacing_meets_returned_distance() {
     let store = spaced_grid_store();
     let coords = coord_lookup(&store);
-    let res = store.pick_spaced(Some(6), None).unwrap();
+    let res = store.pick_spaced(None, Some(6), None).unwrap();
     let min = min_pairwise(&res.ids, &coords);
     assert!(
         min >= res.distance_m as f64 - 1e-6,
@@ -3738,7 +3738,7 @@ fn pick_spaced_count_pairwise_spacing_meets_returned_distance() {
 fn pick_spaced_distance_enforces_threshold() {
     let store = spaced_grid_store();
     let coords = coord_lookup(&store);
-    let res = store.pick_spaced(None, Some(250)).unwrap();
+    let res = store.pick_spaced(None, None, Some(250)).unwrap();
     assert_eq!(res.distance_m, 250);
     assert!(!res.ids.is_empty());
     let min = min_pairwise(&res.ids, &coords);
@@ -3748,20 +3748,45 @@ fn pick_spaced_distance_enforces_threshold() {
 #[test]
 fn pick_spaced_arg_validation() {
     let store = spaced_grid_store();
-    assert!(store.pick_spaced(Some(5), Some(100)).is_err(), "both set");
-    assert!(store.pick_spaced(None, None).is_err(), "neither set");
-    assert!(store.pick_spaced(None, Some(0)).is_err(), "zero distance");
+    assert!(
+        store.pick_spaced(None, Some(5), Some(100)).is_err(),
+        "both set"
+    );
+    assert!(store.pick_spaced(None, None, None).is_err(), "neither set");
+    assert!(
+        store.pick_spaced(None, None, Some(0)).is_err(),
+        "zero distance"
+    );
 }
 
 #[test]
 fn pick_spaced_empty_selection() {
     let store = setup_store_with(&[]);
-    let count = store.pick_spaced(Some(5), None).unwrap();
+    let count = store.pick_spaced(None, Some(5), None).unwrap();
     assert!(count.ids.is_empty());
     assert_eq!(count.distance_m, 0);
-    let dist = store.pick_spaced(None, Some(100)).unwrap();
+    let dist = store.pick_spaced(None, None, Some(100)).unwrap();
     assert!(dist.ids.is_empty());
     assert_eq!(dist.distance_m, 0);
+}
+
+#[test]
+fn pick_spaced_scope_overrides_selection() {
+    let mut store = spaced_grid_store();
+    // Selection is the whole grid; scope to ids 1..=5 (one row).
+    let scope = SelectionProps::Manual {
+        locations: vec![1, 2, 3, 4, 5],
+    };
+    let res = store.pick_spaced(Some(&scope), Some(3), None).unwrap();
+    assert_eq!(res.ids.len(), 3);
+    for id in &res.ids {
+        assert!(*id <= 5, "id {} outside scope", id);
+    }
+
+    // An empty selection does not starve a scoped pick.
+    store.selections.ids = RoaringBitmap::new();
+    let res = store.pick_spaced(Some(&scope), Some(3), None).unwrap();
+    assert_eq!(res.ids.len(), 3);
 }
 
 // -----------------------------------------------------------------------

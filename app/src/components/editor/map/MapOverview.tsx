@@ -7,6 +7,7 @@ import {
 	createTags,
 	addSelections,
 	getVisibleTags,
+	getActiveSelections,
 	selectRandomFromSelection,
 	selectSpacedFromSelection,
 } from "@/store/useMapStore";
@@ -25,6 +26,7 @@ import { ReviewSessionsModal } from "@/components/dialogs/ReviewSessions";
 import { beginReview } from "@/lib/review/review";
 import { ToolBlock } from "@/components/primitives/ToolBlock";
 import { Button } from "@/components/primitives/Button";
+import { Checkbox } from "@/components/primitives/Checkbox";
 import { TextInput } from "@/components/primitives/TextInput";
 import { PluginToolbar } from "@/plugins/PluginPanels";
 import { fmt } from "@/lib/util/format";
@@ -33,21 +35,49 @@ import { SelectionRow } from "./SelectionRow";
 import { PinnedToolbar } from "./PinnedToolbar";
 import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectionDialogs";
 
+/** Opt-in "run this pick once per active selection" switch, shown only when there are
+ *  enough selections for it to mean anything. */
+function PerSelectionToggle({
+	value,
+	onChange,
+}: {
+	value: boolean;
+	onChange: (v: boolean) => void;
+}) {
+	const count = useMapState(() => getActiveSelections().length);
+	if (count < 2) return null;
+	return (
+		<label className="selection-manager__inline-option">
+			<Checkbox checked={value} onChange={(e) => onChange(e.target.checked)} />
+			from each of {count} selections
+		</label>
+	);
+}
+
+const eachSuffix = (perSelection: boolean) => (perSelection ? " from each selection" : "");
+
 function RandomPickPanel() {
 	const [value, setValue] = useState("");
+	const [perSelection, setPerSelection] = useState(false);
 	const total = useMapState((s) => s.selectedLocationIds).size;
 	const parsed = Math.floor(Number(value));
 	const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
-	const count = valid ? Math.min(parsed, total) : 0;
+	const count = valid ? (perSelection ? parsed : Math.min(parsed, total)) : 0;
 	return (
 		<form
 			className="selection-manager__inline-form"
 			onSubmit={(e) => {
 				e.preventDefault();
 				if (!valid) return;
-				const picked = selectRandomFromSelection(count);
-				if (picked > 0)
-					toast(`Selected ${fmt.format(picked)} random location${picked !== 1 ? "s" : ""}`);
+				selectRandomFromSelection(count, perSelection)
+					.then((picked) => {
+						if (picked === 0) return;
+						const s = picked !== 1 ? "s" : "";
+						toast(
+							`Selected ${fmt.format(picked)} random location${s}${eachSuffix(perSelection)}`,
+						);
+					})
+					.catch((err) => toast(String(err)));
 			}}
 		>
 			<TextInput
@@ -59,6 +89,7 @@ function RandomPickPanel() {
 				onChange={(e) => setValue(e.target.value)}
 			/>
 			<span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>
+			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
 				Pick
 			</Button>
@@ -69,6 +100,7 @@ function RandomPickPanel() {
 function SpacedPickPanel() {
 	const [mode, setMode] = useState<"count" | "distance">("count");
 	const [value, setValue] = useState("");
+	const [perSelection, setPerSelection] = useState(false);
 	const total = useMapState((s) => s.selectedLocationIds).size;
 	const parsed = Math.floor(Number(value));
 	const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
@@ -76,12 +108,16 @@ function SpacedPickPanel() {
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!valid) return;
-		const opts = mode === "count" ? { count: Math.min(parsed, total) } : { minDistanceM: parsed };
-		selectSpacedFromSelection(opts)
+		const count = perSelection ? parsed : Math.min(parsed, total);
+		const opts = mode === "count" ? { count } : { minDistanceM: parsed };
+		selectSpacedFromSelection(opts, perSelection)
 			.then(({ picked, distanceM }) => {
 				if (picked === 0) return;
 				const spacing = distanceM > 0 ? `, at least ${fmt.format(distanceM)}m apart` : "";
-				toast(`Selected ${fmt.format(picked)} location${picked !== 1 ? "s" : ""}${spacing}`);
+				const s = picked !== 1 ? "s" : "";
+				toast(
+					`Selected ${fmt.format(picked)} location${s}${eachSuffix(perSelection)}${spacing}`,
+				);
 			})
 			.catch((err) => toast(String(err)));
 	};
@@ -101,6 +137,7 @@ function SpacedPickPanel() {
 				onChange={(e) => setValue(e.target.value)}
 			/>
 			{mode === "count" && <span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>}
+			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
 				Pick
 			</Button>

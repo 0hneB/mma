@@ -1284,10 +1284,12 @@ impl Store {
         })
     }
 
-    /// Evenly spaced subset of the current selection: `target_count` thins to N ids
-    /// maximizing spacing; `min_distance_m` keeps as many as fit at that spacing.
+    /// Evenly spaced subset of `scope`, defaulting to the current selection:
+    /// `target_count` thins to N ids maximizing spacing; `min_distance_m` keeps as
+    /// many as fit at that spacing.
     pub(crate) fn pick_spaced(
         &self,
+        scope: Option<&SelectionProps>,
         target_count: Option<u32>,
         min_distance_m: Option<u32>,
     ) -> AppResult<SpacedPickResult> {
@@ -1310,10 +1312,12 @@ impl Store {
             _ => {}
         }
 
-        let mut candidates: Vec<(u32, f64, f64)> = self
-            .selections
-            .ids
-            .iter()
+        let candidate_ids: Vec<u32> = match scope {
+            Some(props) => selections::resolve(&self.loc_view(), props),
+            None => self.selections.ids.iter().collect(),
+        };
+        let mut candidates: Vec<(u32, f64, f64)> = candidate_ids
+            .into_iter()
             .filter_map(|id| {
                 let (lat, lng) = self.coords_of(id)?;
                 (lat.is_finite() && lng.is_finite()).then_some((id, lat, lng))
@@ -3922,30 +3926,30 @@ pub struct SpacedPickResult {
     pub distance_m: i32,
 }
 
-/// Pick an evenly spaced subset of the current selection. Exactly one of `target_count`
-/// (thin to N, maximizing spacing) or `min_distance_m` (keep as many as fit at that spacing)
-/// must be provided.
+/// Pick an evenly spaced subset of `scope`, or of the current selection when `scope` is
+/// null. Exactly one of `target_count` (thin to N, maximizing spacing) or `min_distance_m`
+/// (keep as many as fit at that spacing) must be provided.
 #[tauri::command]
 #[specta::specta]
 pub fn store_pick_spaced(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
+    scope: Option<SelectionProps>,
     target_count: Option<u32>,
     min_distance_m: Option<u32>,
 ) -> AppResult<SpacedPickResult> {
     let _t = std::time::Instant::now();
     with_store!(webview, state, |store| {
-        let candidate_count = store.selections.ids.len();
-        let result = store.pick_spaced(target_count, min_distance_m)?;
+        let result = store.pick_spaced(scope.as_ref(), target_count, min_distance_m)?;
         let mode = if target_count.is_some() {
             "count"
         } else {
             "distance"
         };
         log::debug!(
-            "[cmd] store_pick_spaced mode={} candidates={} picked={} distance_m={} total={}ms",
+            "[cmd] store_pick_spaced mode={} scoped={} picked={} distance_m={} total={}ms",
             mode,
-            candidate_count,
+            scope.is_some(),
             result.ids.len(),
             result.distance_m,
             _t.elapsed().as_millis()

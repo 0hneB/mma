@@ -284,11 +284,11 @@ declare const commands: {
     /**  Return the union of all currently selected location IDs. */
     storeGetSelectedIdsList: () => Promise<number[]>;
     /**
-     *  Pick an evenly spaced subset of the current selection. Exactly one of `target_count`
-     *  (thin to N, maximizing spacing) or `min_distance_m` (keep as many as fit at that spacing)
-     *  must be provided.
+     *  Pick an evenly spaced subset of `scope`, or of the current selection when `scope` is
+     *  null. Exactly one of `target_count` (thin to N, maximizing spacing) or `min_distance_m`
+     *  (keep as many as fit at that spacing) must be provided.
      */
-    storePickSpaced: (targetCount: number | null, minDistanceM: number | null) => Promise<SpacedPickResult>;
+    storePickSpaced: (scope: SelectionProps | null, targetCount: number | null, minDistanceM: number | null) => Promise<SpacedPickResult>;
     /**
      *  Resolve a single selection to its matching location IDs without persisting it.
      *  Used by plugins and one-off queries (e.g., tag merge, export filtered).
@@ -1657,15 +1657,17 @@ declare function selectInverse(keys?: string[] | null): Promise<void>;
 declare function toggleManualSelection(locationId: number): Promise<void>;
 /** Replace the current selection with a single Manual selection holding `count` ids picked
  *  at random from whatever is currently selected. `count` is clamped to the selection size.
- *  No-op when nothing is selected. Returns the number of ids actually picked. */
-declare function selectRandomFromSelection(count: number): number;
+ *  With `perSelection` it is a per-bucket cap: up to `count` ids from each active selection,
+ *  unioned. No-op when nothing is selected. Returns the number of ids actually picked. */
+declare function selectRandomFromSelection(count: number, perSelection?: boolean): Promise<number>;
 /** Replace the current selection with a single Manual selection of ids picked from the
  *  current selection, spaced apart in Rust: either `count` ids maximizing spacing, or as
- *  many as fit at `minDistanceM`. No-op when the pick returns nothing. */
+ *  many as fit at `minDistanceM`. With `perSelection` each active selection is picked from
+ *  separately and the results unioned. No-op when the pick returns nothing. */
 declare function selectSpacedFromSelection(opts: {
     count?: number;
     minDistanceM?: number;
-}): Promise<{
+}, perSelection?: boolean): Promise<{
     picked: number;
     distanceM: number;
 }>;
@@ -2949,7 +2951,6 @@ export interface MapHostEvents {
     tilesloaded: void;
 }
 export interface BasemapOpts {
-    useBlobby: boolean;
     customStyles: CustomStyle[];
 }
 export interface MapHostContract<K extends MapHostKind = MapHostKind> {

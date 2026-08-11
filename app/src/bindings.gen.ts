@@ -231,11 +231,11 @@ export const commands = {
 	/**  Return the union of all currently selected location IDs. */
 	storeGetSelectedIdsList: () => __TAURI_INVOKE<number[]>("store_get_selected_ids_list"),
 	/**
-	 *  Pick an evenly spaced subset of the current selection. Exactly one of `target_count`
-	 *  (thin to N, maximizing spacing) or `min_distance_m` (keep as many as fit at that spacing)
-	 *  must be provided.
+	 *  Pick an evenly spaced subset of `scope`, or of the current selection when `scope` is
+	 *  null. Exactly one of `target_count` (thin to N, maximizing spacing) or `min_distance_m`
+	 *  (keep as many as fit at that spacing) must be provided.
 	 */
-	storePickSpaced: (targetCount: number | null, minDistanceM: number | null) => __TAURI_INVOKE<SpacedPickResult>("store_pick_spaced", { targetCount, minDistanceM }),
+	storePickSpaced: (scope: SelectionProps | null, targetCount: number | null, minDistanceM: number | null) => __TAURI_INVOKE<SpacedPickResult>("store_pick_spaced", { scope: scope==null?scope:scope, targetCount, minDistanceM }),
 	/**
 	 *  Resolve a single selection to its matching location IDs without persisting it.
 	 *  Used by plugins and one-off queries (e.g., tag merge, export filtered).

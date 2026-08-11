@@ -3386,6 +3386,13 @@ input.date-picker__trigger:focus {
 	align-items: center;
 	gap: 0.5rem;
 }
+.selection-manager__inline-option {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	opacity: 0.6;
+}
 .icon-button.is-active {
 	background: #ffffff1a;
 }

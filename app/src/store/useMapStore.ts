@@ -709,28 +709,56 @@ export function toggleManualSelection(locationId: number) {
 	return applySelectionUpdate((sels) => toggleManual(sels, locationId));
 }
 
+/** The buckets a pick runs over: one per active selection when `perSelection`, else the
+ *  whole selection as one. `null` means "whatever is currently selected" - the only way to
+ *  express a selected-id set that no live selection produced. Falls back to that single
+ *  bucket below two active selections, where per-bucket picking is the same operation. */
+function pickBuckets(perSelection: boolean): (SelectionProps | null)[] {
+	const active = getActiveSelections();
+	if (!perSelection || active.length < 2) return [null];
+	return active.map((s) => s.props);
+}
+
 /** Replace the current selection with a single Manual selection holding `count` ids picked
  *  at random from whatever is currently selected. `count` is clamped to the selection size.
- *  No-op when nothing is selected. Returns the number of ids actually picked. */
-export function selectRandomFromSelection(count: number): number {
-	const ids = Array.from(state.selectedLocationIds);
-	const picked = sampleIds(ids, count);
+ *  With `perSelection` it is a per-bucket cap: up to `count` ids from each active selection,
+ *  unioned. No-op when nothing is selected. Returns the number of ids actually picked. */
+export async function selectRandomFromSelection(
+	count: number,
+	perSelection = false,
+): Promise<number> {
+	const buckets = await Promise.all(
+		pickBuckets(perSelection).map((props) =>
+			props
+				? cmd.storeResolveSelection(props)
+				: Promise.resolve(Array.from(state.selectedLocationIds)),
+		),
+	);
+	const picked = [...new Set(buckets.flatMap((ids) => sampleIds(ids, count)))];
 	if (picked.length === 0) return 0;
-	void applySelectionUpdate(() => addSel([], { type: "Manual", locations: picked }));
+	await applySelectionUpdate(() => addSel([], { type: "Manual", locations: picked }));
 	return picked.length;
 }
 
 /** Replace the current selection with a single Manual selection of ids picked from the
  *  current selection, spaced apart in Rust: either `count` ids maximizing spacing, or as
- *  many as fit at `minDistanceM`. No-op when the pick returns nothing. */
-export async function selectSpacedFromSelection(opts: {
-	count?: number;
-	minDistanceM?: number;
-}): Promise<{ picked: number; distanceM: number }> {
-	const result = await cmd.storePickSpaced(opts.count ?? null, opts.minDistanceM ?? null);
-	if (result.ids.length === 0) return { picked: 0, distanceM: 0 };
-	await applySelectionUpdate(() => addSel([], { type: "Manual", locations: result.ids }));
-	return { picked: result.ids.length, distanceM: result.distanceM };
+ *  many as fit at `minDistanceM`. With `perSelection` each active selection is picked from
+ *  separately and the results unioned. No-op when the pick returns nothing. */
+export async function selectSpacedFromSelection(
+	opts: { count?: number; minDistanceM?: number },
+	perSelection = false,
+): Promise<{ picked: number; distanceM: number }> {
+	const results = await Promise.all(
+		pickBuckets(perSelection).map((props) =>
+			cmd.storePickSpaced(props, opts.count ?? null, opts.minDistanceM ?? null),
+		),
+	);
+	const ids = [...new Set(results.flatMap((r) => r.ids))];
+	if (ids.length === 0) return { picked: 0, distanceM: 0 };
+	await applySelectionUpdate(() => addSel([], { type: "Manual", locations: ids }));
+	// Spacing only holds within a bucket - two buckets can each pick a coincident location.
+	const distanceM = results.length === 1 ? results[0].distanceM : 0;
+	return { picked: ids.length, distanceM };
 }
 
 /** Read-only preview of transitive duplicate groups (size >= 2) within `distance` metres. */
