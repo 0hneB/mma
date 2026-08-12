@@ -1309,6 +1309,9 @@ impl Store {
                     "pick_spaced: min_distance_m must be greater than 0",
                 ))
             }
+            (_, Some(d)) if d > i32::MAX as u32 => {
+                return Err(AppError::from("pick_spaced: min_distance_m too large"))
+            }
             _ => {}
         }
 

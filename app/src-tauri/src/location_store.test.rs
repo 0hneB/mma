@@ -3757,6 +3757,10 @@ fn pick_spaced_arg_validation() {
         store.pick_spaced(None, None, Some(0)).is_err(),
         "zero distance"
     );
+    assert!(
+        store.pick_spaced(None, None, Some(u32::MAX)).is_err(),
+        "distance above i32::MAX"
+    );
 }
 
 #[test]
