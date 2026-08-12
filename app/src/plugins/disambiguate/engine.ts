@@ -4,6 +4,8 @@
 
 import type { Location, ExtraFieldDef, ComparisonType } from "@/bindings.gen";
 import { getFieldDef, isWritableField, getBuiltinKeys } from "@/lib/data/fieldDefRegistry";
+import { fieldValue, extraKeysOf } from "@/lib/data/fieldOps";
+import { ymOrdinal } from "@/lib/util/date";
 import {
 	kruskalEps2,
 	circularEta2,
@@ -126,33 +128,22 @@ function isoToUnix(s: string): number | null {
 	return Number.isNaN(ms) ? null : ms / 1000;
 }
 
-/** `YYYY-MM` -> month index (year*12 + month-1), or null. */
-function parseYearMonth(s: string): number | null {
-	if (!/^\d{4}-\d{2}$/.test(s)) return null;
-	const year = Number(s.slice(0, 4));
-	const month = Number(s.slice(5));
-	return year * 12 + (month - 1);
-}
-
 /** Numeric value for a field on a location (built-in columns + extra). */
 function numericValue(loc: Location, key: string): number | null {
-	if (key === "heading") return loc.heading;
-	if (key === "pitch") return loc.pitch;
-	if (key === "zoom") return loc.zoom;
-	const v = loc.extra?.[key];
+	const v = fieldValue(loc, key);
 	if (v == null) return null;
 	if (typeof v === "number") return v;
 	if (typeof v === "string") {
 		const ts = isoToUnix(v);
 		if (ts !== null) return ts;
-		return parseYearMonth(v);
+		return ymOrdinal(v);
 	}
 	return null;
 }
 
-/** Canonical category string for an extra value (null/missing -> null). */
+/** Canonical category string for a field value (null/missing -> null). */
 function categoryValue(loc: Location, key: string): string | null {
-	const v = loc.extra?.[key];
+	const v = fieldValue(loc, key);
 	if (v == null) return null;
 	if (typeof v === "string") return v;
 	if (typeof v === "boolean" || typeof v === "number") return String(v);
@@ -316,9 +307,7 @@ export function computeDivergence(
 
 	// Extra fields: registered defs plus any key discovered on the locations.
 	const extraKeys = new Set<string>(Object.keys(fieldDefs));
-	for (const { loc } of labeled) {
-		if (loc.extra) for (const k of Object.keys(loc.extra)) extraKeys.add(k);
-	}
+	for (const k of extraKeysOf(labeled.map((l) => l.loc))) extraKeys.add(k);
 	const sortedKeys = [...extraKeys].filter((k) => !EXCLUDED_FIELDS.has(k)).sort();
 	for (const key of sortedKeys) {
 		const def = fieldDefs[key] ?? sampleDef(key, labeled);

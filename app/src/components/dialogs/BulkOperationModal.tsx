@@ -26,7 +26,13 @@ import {
 	getAllFieldDefs,
 	isWritableField,
 } from "@/lib/data/fieldDefRegistry";
-import { planFieldSet, planFieldExpr, parseFieldExpr, fieldPatch } from "@/lib/data/fieldOps";
+import {
+	planFieldSet,
+	planFieldExpr,
+	parseFieldExpr,
+	fieldPatch,
+	extraKeysOf,
+} from "@/lib/data/fieldOps";
 import { ValidationState } from "@/store/selections";
 import { validateLocations } from "@/lib/sv/validate";
 import { enrichAll, type EnrichResult } from "@/lib/sv/enrich";
@@ -257,12 +263,7 @@ function PinPanoSetup({ scopeCtl, locs, onReady }: SetupProps) {
 }
 
 function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
-	const allKeys = new Set<string>();
-	for (const loc of locs) {
-		if (loc.extra) for (const k of Object.keys(loc.extra)) allKeys.add(k);
-	}
-
-	const sortedKeys = [...allKeys].sort();
+	const sortedKeys = [...extraKeysOf(locs)].sort();
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 
 	const toggle = (key: string) => {
@@ -335,9 +336,7 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 	const sortedKeys = useMemo(() => {
 		const known = new Set<string>(Object.keys(getAllFieldDefs()).filter(isWritableField));
-		for (const loc of locs) {
-			if (loc.extra) for (const k of Object.keys(loc.extra)) known.add(k);
-		}
+		for (const k of extraKeysOf(locs)) known.add(k);
 		return [...known].sort();
 	}, [locs]);
 

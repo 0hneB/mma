@@ -231,6 +231,15 @@ export function fieldValue(loc: Location, key: string): unknown {
 	return isBuiltinField(key) ? (loc as unknown as Record<string, unknown>)[key] : loc.extra?.[key];
 }
 
+/** Every `extra` key present on any of `locs`. */
+export function extraKeysOf(locs: readonly Location[]): Set<string> {
+	const keys = new Set<string>();
+	for (const loc of locs) {
+		if (loc.extra) for (const k of Object.keys(loc.extra)) keys.add(k);
+	}
+	return keys;
+}
+
 /** Evaluate an expression against one location. Returns null when any referenced
  *  field is missing/non-numeric or the result is not finite (skip that location). */
 export function evalFieldExpr(expr: FieldExpr, loc: Location): number | null {

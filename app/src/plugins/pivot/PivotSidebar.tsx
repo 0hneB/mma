@@ -8,6 +8,7 @@ import { savedToSelectionProps, describeRule, type SavedSelection } from "@/stor
 import { Sidebar, Field, EmptyState, SegmentedControl } from "@/components/primitives/Sidebar";
 import type { ExtraFieldDef } from "@/bindings.gen";
 import { fieldLabel, getFieldDef } from "@/lib/data/fieldDefRegistry";
+import { fieldValue } from "@/lib/data/fieldOps";
 import { binNumeric, compareNatural } from "@/lib/util/util";
 import { usePluginState } from "@/plugins/registry";
 import {
@@ -98,7 +99,7 @@ async function computePivot(
 	// user's choice and the field's cardinality.
 	const numericVals = isNumeric
 		? allLocs.flatMap((loc) => {
-				const v = loc.extra?.[fieldKey];
+				const v = fieldValue(loc, fieldKey);
 				const n = v == null ? NaN : Number(v);
 				return Number.isFinite(n) ? [n] : [];
 			})
@@ -124,7 +125,7 @@ async function computePivot(
 				);
 			}
 		} else {
-			const val = loc.extra?.[fieldKey];
+			const val = fieldValue(loc, fieldKey);
 			if (val == null) continue;
 			if (buckets) {
 				const n = Number(val);
