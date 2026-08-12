@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isOfficialPano } from "@/lib/sv/panoId";
+import { ymFormat, ymParse } from "@/lib/util/date";
 import { PanoType } from "@/types";
 import type { CameraType } from "@/bindings.gen";
 import { PbfReader, PbfWriter } from "pbf";
@@ -13,18 +14,18 @@ import {
 const RPC_URL =
 	"https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata";
 
-const BADCAM_THRESHOLDS = new Map<string, (d: Date, lat: number) => boolean>([
-	["BD", (d) => d > new Date(2021, 3)],
-	["EC", (d) => d > new Date(2022, 2)],
-	["FI", (d) => d > new Date(2020, 8)],
-	["IN", (d) => d > new Date(2021, 9)],
-	["KH", (d) => d > new Date(2022, 9)],
-	["LB", (d) => d > new Date(2021, 0)],
-	["LK", (d) => d > new Date(2021, 1)],
-	["NG", (d) => d > new Date(2021, 5)],
-	["NP", (d) => d > new Date(2020, 0)],
-	["US", (d, lat) => lat > 52 && d > new Date(2019, 0)],
-	["VN", (d) => d > new Date(2020, 0)],
+const BADCAM_THRESHOLDS = new Map<string, (ym: string, lat: number) => boolean>([
+	["BD", (ym) => ym > "2021-04"],
+	["EC", (ym) => ym > "2022-03"],
+	["FI", (ym) => ym > "2020-09"],
+	["IN", (ym) => ym > "2021-10"],
+	["KH", (ym) => ym > "2022-10"],
+	["LB", (ym) => ym > "2021-01"],
+	["LK", (ym) => ym > "2021-02"],
+	["NG", (ym) => ym > "2021-06"],
+	["NP", (ym) => ym > "2020-01"],
+	["US", (ym, lat) => lat > 52 && ym > "2019-01"],
+	["VN", (ym) => ym > "2020-01"],
 	...[
 		"AT",
 		"BG",
@@ -44,7 +45,8 @@ const BADCAM_THRESHOLDS = new Map<string, (d: Date, lat: number) => boolean>([
 		"RO",
 		"SE",
 	].map(
-		(cc) => [cc, (d: Date) => d > new Date(2021, 0)] as [string, (d: Date, lat: number) => boolean],
+		(cc) =>
+			[cc, (ym: string) => ym > "2021-01"] as [string, (ym: string, lat: number) => boolean],
 	),
 	["CY", () => true],
 	["ST", () => true],
@@ -79,11 +81,11 @@ export function detectCameraType(
 	const scout = data.extra?._source === "scout";
 	const base = cameraTypeFromHeight(data.tiles.worldSize.height);
 	if (base !== "gen2") return base === "gen4" && scout ? "trekker" : base;
-	const imgDate = data.imageDate ? new Date(data.imageDate) : null;
-	if (imgDate && imgDate.getFullYear() > 2000) {
+	const ym = data.imageDate;
+	if (ym && ymParse(ym) && ym > "2000-12") {
 		const cc = data.extra?.countryCode;
 		const check = cc && BADCAM_THRESHOLDS.get(cc);
-		if (check && check(imgDate, data.location.latLng.lat())) return "badcam";
+		if (check && check(ym, data.location.latLng.lat())) return "badcam";
 	}
 	if (data.extra?._levelId != null) return "tripod";
 	return scout ? "trekker" : "gen2";
@@ -166,10 +168,7 @@ export function parseResult(
 	const source = m.date?.sourceInfo?.source || null;
 
 	const incDate = m.date?.date;
-	const imageDate =
-		incDate && incDate.year > 0
-			? `${String(incDate.year).padStart(4, "0")}-${String(incDate.month).padStart(2, "0")}`
-			: "";
+	const imageDate = incDate && incDate.year > 0 ? ymFormat(incDate.year, incDate.month) : "";
 
 	const panoId = m.pano ? imageKeyToPanoId([m.pano.frontend, m.pano.id]) : "";
 	const refPanoId = (ref?: { key?: { frontend: number; id: string } }) =>
