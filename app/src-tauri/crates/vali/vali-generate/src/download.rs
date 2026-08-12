@@ -43,10 +43,8 @@ pub fn download_files(
     cancel: Option<&CancelToken>,
 ) -> anyhow::Result<()> {
     ensure_download_folder_writable(root)?;
-    let all_codes: Vec<&str> = crate::names::COUNTRY_NAMES
-        .iter()
-        .map(|(c, _)| *c)
-        .collect();
+    let all_codes: Vec<&str> =
+        crate::names::country_names().iter().map(|(c, _)| *c).collect();
     let country_codes: Vec<String> = match country.filter(|c| !c.is_empty()) {
         None => all_codes.iter().map(|c| c.to_string()).collect(),
         Some(code) => {

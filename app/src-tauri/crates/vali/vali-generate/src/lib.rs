@@ -12,6 +12,7 @@ pub mod neighbor;
 pub mod progress;
 pub mod proximity;
 pub mod store;
+pub mod tables;
 pub mod tags;
 pub mod weights;
 pub use definition::{prepare, Prepared};
