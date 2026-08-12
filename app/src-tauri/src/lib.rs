@@ -621,6 +621,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         )
         // Exported for TS but not carried by any command signature.
         .typ::<map_meta::CameraType>()
+        .constant("KNOWN_FIELDS", map_meta::KNOWN_FIELDS)
         .commands(tauri_specta::collect_commands![
             write_temp_file,
             read_file,

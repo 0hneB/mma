@@ -8,6 +8,7 @@ import {
 	isFieldEnabled,
 	getEnrichmentProviders,
 	getDefaultEnrichKeys,
+	knownFieldDefs,
 	registerEnrichmentProvider,
 	providerWaves,
 	type EnrichmentProvider,
@@ -117,10 +118,7 @@ export const exactDateProvider: EnrichmentProvider = {
 	id: "exactDate",
 	label: "Exact dates",
 	requires: ["imageDate"],
-	fieldDefs: {
-		datetime: { type: "date", label: "Exact date" },
-		timezone: { type: "enum", label: "Timezone" },
-	},
+	fieldDefs: knownFieldDefs("datetime", "timezone"),
 	units: (locations, enrichFields, force) =>
 		isFieldEnabled(enrichFields, "datetime")
 			? locations.filter((l) => l.extra?.imageDate && (force || l.extra?.datetime == null)).length

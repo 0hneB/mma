@@ -198,25 +198,38 @@ impl Default for ScoreBounds {
 // Known field defs + auto-registration
 // ---------------------------------------------------------------------------
 
-struct KnownField {
-    key: &'static str,
-    type_tag: &'static str,
-    label: &'static str,
-    values: &'static [&'static str],
-    labels: &'static [(&'static str, &'static str)],
-    circular_period: Option<f64>,
+/// One entry of the SV metadata field catalog. Exported to TS as the `KNOWN_FIELDS`
+/// constant, which is the only field list the frontend has.
+#[derive(serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct KnownField {
+    pub key: &'static str,
+    #[serde(rename = "type")]
+    pub field_type: ExtraFieldType,
+    pub label: &'static str,
+    pub values: &'static [&'static str],
+    pub labels: &'static [(&'static str, &'static str)],
+    pub circular_period: Option<f64>,
+    /// Excluded from the default enrich set; the user must opt in.
+    pub default_off: bool,
 }
 
 impl KnownField {
-    const fn simple(key: &'static str, type_tag: &'static str, label: &'static str) -> Self {
+    const fn simple(key: &'static str, field_type: ExtraFieldType, label: &'static str) -> Self {
         Self {
             key,
-            type_tag,
+            field_type,
             label,
             values: &[],
             labels: &[],
             circular_period: None,
+            default_off: false,
         }
+    }
+
+    const fn off(mut self) -> Self {
+        self.default_off = true;
+        self
     }
 }
 
@@ -241,50 +254,43 @@ camera_types! {
     Trekker => "trekker", "Trekker";
 }
 
-static KNOWN_FIELDS: &[KnownField] = &[
-    KnownField::simple("altitude", "number", "Altitude"),
-    KnownField::simple("countryCode", "string", "Country code"),
+pub static KNOWN_FIELDS: &[KnownField] = &[
+    KnownField::simple("altitude", ExtraFieldType::Number, "Altitude"),
+    KnownField::simple("countryCode", ExtraFieldType::String, "Country code"),
     KnownField {
         key: "cameraType",
-        type_tag: "enum",
+        field_type: ExtraFieldType::Enum,
         label: "Camera type",
         values: CAMERA_TYPE_VALUES,
         labels: CAMERA_TYPE_LABELS,
         circular_period: None,
+        default_off: false,
     },
     KnownField {
         key: "panoType",
-        type_tag: "enum",
+        field_type: ExtraFieldType::Enum,
         label: "Pano type",
         values: &["2", "3", "10"],
         labels: &[("2", "Official"), ("3", "Unknown"), ("10", "User uploaded")],
         circular_period: None,
+        default_off: false,
     },
-    KnownField::simple("imageDate", "month", "Image date"),
-    KnownField::simple("datetime", "date", "Exact date"),
-    KnownField::simple("timezone", "enum", "Timezone"),
+    KnownField::simple("imageDate", ExtraFieldType::Month, "Image date"),
+    KnownField::simple("datetime", ExtraFieldType::Date, "Exact date").off(),
+    KnownField::simple("timezone", ExtraFieldType::Enum, "Timezone").off(),
     KnownField {
         key: "drivingDirection",
-        type_tag: "number",
+        field_type: ExtraFieldType::Number,
         label: "Driving direction",
         values: &[],
         labels: &[],
         circular_period: Some(360.0),
+        default_off: true,
     },
-    KnownField::simple("uploaderName", "string", "Uploader"),
-    KnownField::simple("coverageDates", "array", "Coverage dates"),
+    KnownField::simple("uploaderName", ExtraFieldType::String, "Uploader").off(),
+    KnownField::simple("coverageDates", ExtraFieldType::Array, "Coverage dates").off(),
+    KnownField::simple("subdivision", ExtraFieldType::String, "Subdivision").off(),
 ];
-
-fn type_from_tag(tag: &str) -> ExtraFieldType {
-    match tag {
-        "number" => ExtraFieldType::Number,
-        "date" => ExtraFieldType::Date,
-        "month" => ExtraFieldType::Month,
-        "enum" => ExtraFieldType::Enum,
-        "array" => ExtraFieldType::Array,
-        _ => ExtraFieldType::String,
-    }
-}
 
 /// Returns a curated field definition for well-known SV metadata keys
 /// (altitude, countryCode, cameraType, etc.). Falls back to `None` for
@@ -294,7 +300,7 @@ pub fn known_field_def(key: &str) -> Option<ExtraFieldDef> {
         .iter()
         .find(|f| f.key == key)
         .map(|f| ExtraFieldDef {
-            field_type: type_from_tag(f.type_tag),
+            field_type: f.field_type.clone(),
             label: Some(f.label.into()),
             values: if f.values.is_empty() {
                 None
