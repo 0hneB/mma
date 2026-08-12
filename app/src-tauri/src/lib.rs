@@ -58,6 +58,8 @@ mod sync_engine;
 mod sync_geoguessr;
 mod sync_keying;
 mod sync_map_making;
+#[cfg(test)]
+mod test_util;
 mod vcs;
 mod vcs_delta;
 
