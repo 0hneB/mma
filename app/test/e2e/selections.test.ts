@@ -6,8 +6,8 @@ import {
 	refreshSelections,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
-import type { Location } from "@/bindings.gen";
 
 describe("Selections - basic types", () => {
 	useMap("E2E Selections");
@@ -22,20 +22,14 @@ describe("Selections - basic types", () => {
 		tagBlueId = tagBlue.id;
 
 		// Seed 200 locations with varied properties
-		const locs: Location[] = [];
-		for (let i = 0; i < 200; i++) {
-			locs.push(
-				createLocation({
-					lat: (i % 20) - 10,
-					lng: (i % 36) * 10 - 180,
-					heading: 0,
-					panoId: i < 80 ? `pano_${i}` : null,
-					flags: i < 50 ? 1 : 0,
-					tags: i < 60 ? [tagRedId] : i < 120 ? [tagBlueId] : [],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(200, (i) => ({
+			lat: (i % 20) - 10,
+			lng: (i % 36) * 10 - 180,
+			heading: 0,
+			panoId: i < 80 ? `pano_${i}` : null,
+			flags: i < 50 ? 1 : 0,
+			tags: i < 60 ? [tagRedId] : i < 120 ? [tagBlueId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -199,19 +193,13 @@ describe("Selection operations", () => {
 		const tagA = await createTag("tag-a");
 		tagAId = tagA.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 100; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					panoId: i < 40 ? `pano_${i}` : null,
-					flags: i < 30 ? 1 : 0,
-					tags: i < 50 ? [tagAId] : [],
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(100, (i) => ({
+			lat: i,
+			lng: i,
+			panoId: i < 40 ? `pano_${i}` : null,
+			flags: i < 30 ? 1 : 0,
+			tags: i < 50 ? [tagAId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -301,18 +289,12 @@ describe("Selection correctness after mutations", () => {
 	let locIds: number[];
 
 	it("PanoIds selection updates after flag change", async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					panoId: `pano_${i}`,
-					flags: 0,
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({
+			lat: i,
+			lng: i,
+			panoId: `pano_${i}`,
+			flags: 0,
+		}));
 
 		const locsToFlag = [];
 		for (let i = 0; i < 5; i++) locsToFlag.push(await getLoc(locIds[i]));
@@ -407,17 +389,11 @@ describe("Selection with Filter", () => {
 	useMap("E2E Filter");
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 50; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					extra: { altitude: i * 10, country: i < 25 ? "US" : "GB" },
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(50, (i) => ({
+			lat: i,
+			lng: i,
+			extra: { altitude: i * 10, country: i < 25 ? "US" : "GB" },
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());

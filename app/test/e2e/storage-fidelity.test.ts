@@ -13,6 +13,7 @@ import {
 	createLocation,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -383,16 +384,10 @@ describe("Geohash cell boundary correctness", () => {
 
 	it("locations in different geohash cells are independent", async () => {
 		// Add locations spread across many cells, remove from one cell only
-		const spreadLocs = [];
-		for (let i = 0; i < 20; i++) {
-			spreadLocs.push(
-				createLocation({
-					lat: -80 + i * 8,
-					lng: -170 + i * 18,
-				}),
-			);
-		}
-		const spreadIds = await addLocs(spreadLocs);
+		const spreadIds = await seedLocs(20, (i) => ({
+			lat: -80 + i * 8,
+			lng: -170 + i * 18,
+		}));
 
 		await flushAndWait();
 

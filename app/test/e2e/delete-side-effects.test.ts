@@ -15,6 +15,7 @@ import {
 	openLocation,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -27,9 +28,7 @@ describe("Delete marks store dirty", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i, lng: i }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(5, (i) => ({ lat: i, lng: i }));
 		await flushAndWait();
 	});
 	it("store is dirty after delete", async () => {
@@ -52,9 +51,7 @@ describe("Delete updates location count", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({ lat: i, lng: i }));
 		await flushAndWait();
 	});
 	it("location count decreases by 1 after single delete", async () => {
@@ -93,9 +90,7 @@ describe("Delete clears active location", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i * 10, lng: i * 10 }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(5, (i) => ({ lat: i * 10, lng: i * 10 }));
 	});
 	it("active location cleared when it is deleted", async () => {
 		await openLocation(locIds[0]);
@@ -149,9 +144,7 @@ describe("Delete syncs with selections", () => {
 		const tag = await createTag("DelSelTag");
 		tagId = tag.id;
 
-		const tagged: Location[] = [];
-		for (let i = 0; i < 5; i++) tagged.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		taggedIds = await addLocs(tagged);
+		taggedIds = await seedLocs(5, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 
 		const untagged: Location[] = [];
 		for (let i = 10; i < 15; i++) untagged.push(createLocation({ lat: i, lng: i }));
@@ -200,9 +193,7 @@ describe("Delete updates tag counts", () => {
 		const tag = await createTag("CountTag");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(8, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("tag count starts correct", async () => {
 		const count = await withApi(async (api, tid) => {

@@ -154,6 +154,18 @@ export async function addLocs(locs: Location[]): Promise<number[]> {
 	}, locs);
 }
 
+type LocSpec = Partial<Location> & { lat: number; lng: number };
+
+/** Build `n` locations, `fn(i)` supplying each one's fields. */
+export function makeLocs(n: number, fn: (i: number) => LocSpec): Location[] {
+	return Array.from({ length: n }, (_, i) => createLocation(fn(i)));
+}
+
+/** Build `n` locations via `fn(i)` and add them in one batch. Returns the assigned ids. */
+export async function seedLocs(n: number, fn: (i: number) => LocSpec): Promise<number[]> {
+	return addLocs(makeLocs(n, fn));
+}
+
 export async function getLoc(id: number): Promise<Location> {
 	const loc = await withApi(async (api, locId) => api.fetchLocation(locId), id);
 	if (loc == null) throw new Error(`Location ${id} not found`);

@@ -10,6 +10,7 @@ import {
 	randomHeading,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 
 describe("Location CRUD", () => {
@@ -28,11 +29,7 @@ describe("Location CRUD", () => {
 	});
 
 	it("add bulk locations (500)", async () => {
-		const locs = [];
-		for (let i = 0; i < 500; i++) {
-			locs.push(createLocation({ ...randomLatLng(), ...randomHeading() }));
-		}
-		bulkLocIds = await addLocs(locs);
+		bulkLocIds = await seedLocs(500, () => ({ ...randomLatLng(), ...randomHeading() }));
 		const count = await getLocCount();
 		expect(count).toBe(501);
 	});
@@ -201,21 +198,15 @@ describe("Location persistence", () => {
 	let persistLocIds: number[];
 
 	it("locations survive save/load cycle", async () => {
-		const locs = [];
-		for (let i = 0; i < 100; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: -i,
-					heading: i * 3.6,
-					pitch: 0,
-					zoom: 1,
-					panoId: i % 10 === 0 ? `pano_${i}` : null,
-					flags: i % 4 === 0 ? 1 : 0,
-				}),
-			);
-		}
-		persistLocIds = await addLocs(locs);
+		persistLocIds = await seedLocs(100, (i) => ({
+			lat: i,
+			lng: -i,
+			heading: i * 3.6,
+			pitch: 0,
+			zoom: 1,
+			panoId: i % 10 === 0 ? `pano_${i}` : null,
+			flags: i % 4 === 0 ? 1 : 0,
+		}));
 
 		await flushAndWait();
 		await closeMap();

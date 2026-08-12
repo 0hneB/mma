@@ -1,16 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
 	closeMap,
-	addLocs,
-	createLocation,
 	createTag,
 	refreshSelections,
 	flushAndWait,
 	openMap,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
-import type { Location } from "@/bindings.gen";
 
 // ============================================================================
 // 1. Tag reordering
@@ -86,17 +84,11 @@ describe("Tag visibility affecting selections", () => {
 		const vt = await createTag("Visible Tag");
 		visTagId = vt.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					tags: i < 5 ? [visTagId] : [],
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(10, (i) => ({
+			lat: i,
+			lng: i,
+			tags: i < 5 ? [visTagId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -142,11 +134,7 @@ describe("Bulk tag add", () => {
 		const bt = await createTag("BulkTag");
 		bulkTagId = bt.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 20; i++) {
-			locs.push(createLocation({ lat: i, lng: i }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(20, (i) => ({ lat: i, lng: i }));
 	});
 	it("bulkAddTag adds tag to all selected locations", async () => {
 		const result = await withApi(async (api, tagId) => {
@@ -217,17 +205,11 @@ describe("Tag deletion cascade", () => {
 		const dt = await createTag("ToDelete");
 		delTagId = dt.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					tags: [delTagId],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({
+			lat: i,
+			lng: i,
+			tags: [delTagId],
+		}));
 	});
 	it("deleting a tag removes it from all locations", async () => {
 		await withApi(async (api, tagId) => {

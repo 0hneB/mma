@@ -5,8 +5,6 @@
  * (tag counts, selections, active location, dirty state) is fully restored.
  */
 import {
-	addLocs,
-	createLocation,
 	createTag,
 	getLoc,
 	getLocOrNull,
@@ -14,8 +12,8 @@ import {
 	refreshSelections,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
-import type { Location } from "@/bindings.gen";
 
 // ============================================================================
 // 1. Delete tagged location + undo restores tag count
@@ -30,9 +28,7 @@ describe("Delete tagged location + undo", () => {
 		const tag = await createTag("UndoTag");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(5, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("delete reduces tag count", async () => {
 		await withApi(async (api, id) => {
@@ -85,9 +81,7 @@ describe("Delete selected locations + undo restores selection", () => {
 		const tag = await createTag("SelTag");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(8, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("select tag, delete 2 selected locations, selection count drops", async () => {
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
@@ -128,9 +122,7 @@ describe("Delete active location + undo", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i * 10, lng: i * 10 }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(5, (i) => ({ lat: i * 10, lng: i * 10 }));
 	});
 	it("delete active location clears active and work area", async () => {
 		await withApi(async (api, lid) => await api.setActiveLocation(lid, false), locIds[2]);
@@ -175,19 +167,13 @@ describe("Batch delete + undo data fidelity", () => {
 		const tag = await createTag("BatchTag");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i * 5,
-					lng: i * 10,
-					heading: i * 36,
-					tags: i < 5 ? [tagId] : [],
-					panoId: i % 2 === 0 ? `pano_${i}` : null,
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({
+			lat: i * 5,
+			lng: i * 10,
+			heading: i * 36,
+			tags: i < 5 ? [tagId] : [],
+			panoId: i % 2 === 0 ? `pano_${i}` : null,
+		}));
 	});
 	it("batch delete 5 locations", async () => {
 		const toDelete = locIds.slice(0, 5);
@@ -250,9 +236,7 @@ describe("Multiple delete-undo cycles", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({ lat: i, lng: i }));
 	});
 	it("5 cycles of delete-undo leave data intact", async () => {
 		for (let cycle = 0; cycle < 5; cycle++) {

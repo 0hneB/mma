@@ -5,8 +5,6 @@
  */
 import {
 	closeMap,
-	addLocs,
-	createLocation,
 	createTag,
 	getLoc,
 	getAllLocs,
@@ -15,8 +13,8 @@ import {
 	openMap,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
-import type { Location } from "@/bindings.gen";
 
 // ============================================================================
 // 1. Tag rename propagation
@@ -31,9 +29,7 @@ describe("Tag rename propagation", () => {
 		const tag = await createTag("OriginalName");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("renaming a tag updates metadata", async () => {
 		await withApi(async (api, tid) => {
@@ -96,12 +92,10 @@ describe("Tag delete cascade — no orphans", () => {
 		const tagB = await createTag("TagB");
 		tagBId = tagB.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
+		await seedLocs(10, (i) => {
 			const tags = i < 5 ? [tagAId, tagBId] : [tagAId];
-			locs.push(createLocation({ lat: i, lng: i, tags }));
-		}
-		await addLocs(locs);
+			return { lat: i, lng: i, tags };
+		});
 	});
 	it("before delete: all 10 locations have tagA", async () => {
 		const count = await withApi(async (api, tid) => {
@@ -175,9 +169,7 @@ describe("Tag delete + undo restores all references", () => {
 		const tag = await createTag("UndoMe");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
-		await addLocs(locs);
+		await seedLocs(8, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("delete tag then undo restores tag visibility", async () => {
 		await withApi(async (api, tid) => api.deleteTags([tid]), tagId);
@@ -241,11 +233,7 @@ describe("Multi-tag delete isolation", () => {
 		const t3 = await createTag("Keep2");
 		tag3Id = t3.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 6; i++) {
-			locs.push(createLocation({ lat: i, lng: i, tags: [tag1Id, tag2Id, tag3Id] }));
-		}
-		await addLocs(locs);
+		await seedLocs(6, (i) => ({ lat: i, lng: i, tags: [tag1Id, tag2Id, tag3Id] }));
 	});
 	it("deleting one tag leaves the other two intact", async () => {
 		await withApi(async (api, tid) => api.deleteTags([tid]), tag2Id);

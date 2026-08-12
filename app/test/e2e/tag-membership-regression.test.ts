@@ -10,6 +10,7 @@ import {
 	refreshSelections,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -31,12 +32,10 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 		const tC = await createTag("SplitC");
 		tagCId = tC.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 50; i++) {
+		await seedLocs(50, (i) => {
 			const tags = i < 20 ? [tagAId] : i < 35 ? [tagBId] : [tagCId];
-			locs.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags }));
-		}
-		await addLocs(locs);
+			return { lat: i * 0.01, lng: i * 0.01, tags };
+		});
 	});
 	it("tagA count matches via getTagCounts", async () => {
 		const count = await withApi(async (api, tid) => {
@@ -97,11 +96,7 @@ describe("Remove tagged locations shrinks tag selection", () => {
 		const tag = await createTag("Shrinkable");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 20; i++) {
-			locs.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(20, (i) => ({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
 	});
 	it("selection starts at 20", async () => {
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
@@ -144,11 +139,7 @@ describe("Undo bulk remove restores tag membership", () => {
 		const tag = await createTag("UndoRemove");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 12; i++) {
-			locs.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(12, (i) => ({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
 	});
 	it("remove 6 locations then undo restores count to 12", async () => {
 		const toRemove = locIds.slice(0, 6);
@@ -206,11 +197,7 @@ describe("Add locations to existing tag accumulates membership", () => {
 		const tag = await createTag("Cumulative");
 		tagId = tag.id;
 
-		const batch1: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			batch1.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
-		}
-		await addLocs(batch1);
+		await seedLocs(10, (i) => ({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
 	});
 	it("initial batch: count is 10", async () => {
 		const count = await withApi(async (api, tid) => {
@@ -288,11 +275,11 @@ describe("Multiple tags on same location", () => {
 		const t3 = await createTag("Multi3");
 		tag3Id = t3.id;
 
-		const shared: Location[] = [];
-		for (let i = 0; i < 8; i++) {
-			shared.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags: [tag1Id, tag2Id, tag3Id] }));
-		}
-		sharedIds = await addLocs(shared);
+		sharedIds = await seedLocs(8, (i) => ({
+			lat: i * 0.01,
+			lng: i * 0.01,
+			tags: [tag1Id, tag2Id, tag3Id],
+		}));
 
 		const exclusive: Location[] = [];
 		for (let i = 8; i < 15; i++) {
@@ -375,11 +362,7 @@ describe("Full scene reset preserves selectedLocationIds", () => {
 		const tag = await createTag("ResetTag");
 		tagId = tag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 150; i++) {
-			locs.push(createLocation({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
-		}
-		await addLocs(locs);
+		await seedLocs(150, (i) => ({ lat: i * 0.01, lng: i * 0.01, tags: [tagId] }));
 	});
 
 	after(async () => {

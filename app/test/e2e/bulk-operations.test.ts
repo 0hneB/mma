@@ -7,6 +7,7 @@ import {
 	createLocation,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 import type { EnrichOutcome } from "@/lib/sv/enrich";
@@ -221,16 +222,10 @@ describe("Bulk operations -- cancel preserves progress", () => {
 
 	before(async () => {
 		// Create enough locations to span multiple batches
-		const locs = [];
-		for (let i = 0; i < 500; i++) {
-			locs.push(
-				createLocation({
-					lat: 52.109 + i * 0.0001,
-					lng: 34.901 + i * 0.0001,
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(500, (i) => ({
+			lat: 52.109 + i * 0.0001,
+			lng: 34.901 + i * 0.0001,
+		}));
 	});
 	it("enrichAll with abort preserves completed batches", async () => {
 		const result = await withApi(async (api) => {

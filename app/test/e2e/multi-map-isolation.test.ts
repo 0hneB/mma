@@ -15,6 +15,7 @@ import {
 	flushAndWait,
 	openMap,
 	withApi,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -30,9 +31,7 @@ describe("Selection isolation across maps", () => {
 		await waitForReady();
 
 		mapAId = await createAndOpenMap("E2E SelIso A");
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i }));
-		await addLocs(locs);
+		await seedLocs(10, (i) => ({ lat: i, lng: i }));
 		await flushAndWait();
 		await closeMap();
 

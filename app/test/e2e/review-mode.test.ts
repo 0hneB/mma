@@ -1,4 +1,4 @@
-import { addLocs, getLocCount, createLocation, withApi, useMap } from "./helpers";
+import { addLocs, getLocCount, createLocation, withApi, useMap, seedLocs } from "./helpers";
 
 const SETTLE = 50; // ms for React state to settle after async review ops
 
@@ -7,11 +7,7 @@ describe("Review mode", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(createLocation({ lat: i * 10, lng: i * 10, heading: i * 36 }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({ lat: i * 10, lng: i * 10, heading: i * 36 }));
 	});
 	it("beginReview sets active location to first in list", async () => {
 		const reviewIds = [locIds[3], locIds[5], locIds[7]];
@@ -162,11 +158,7 @@ describe("Review mode - delete", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs = [];
-		for (let i = 0; i < 5; i++) {
-			locs.push(createLocation({ lat: i, lng: i }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(5, (i) => ({ lat: i, lng: i }));
 	});
 	it("reviewDelete removes location and advances", async () => {
 		const reviewIds = [locIds[0], locIds[1], locIds[2]];
@@ -273,9 +265,7 @@ describe("Review mode - reviewed tracking & peek", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs = [];
-		for (let i = 0; i < 4; i++) locs.push(createLocation({ lat: i, lng: i }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(4, (i) => ({ lat: i, lng: i }));
 	});
 	it("advancing marks the departed location reviewed", async () => {
 		const qids = [locIds[0], locIds[1], locIds[2]];
@@ -380,9 +370,7 @@ describe("Review mode - resume", () => {
 	let locIds: number[];
 
 	before(async () => {
-		const locs = [];
-		for (let i = 0; i < 3; i++) locs.push(createLocation({ lat: i, lng: i }));
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(3, (i) => ({ lat: i, lng: i }));
 	});
 	it("cancel persists the session; resume restores the cursor + reviewed set", async () => {
 		const qids = [locIds[0], locIds[1], locIds[2]];

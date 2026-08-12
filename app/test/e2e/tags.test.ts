@@ -8,6 +8,7 @@ import {
 	createLocation,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 
 describe("Tag CRUD", () => {
@@ -90,11 +91,7 @@ describe("Tag operations on locations", () => {
 		bulkTagId = tagResult.bulkId;
 		otherTagId = tagResult.otherId;
 
-		const locs = [];
-		for (let i = 0; i < 50; i++) {
-			locs.push(createLocation({ lat: i, lng: i }));
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(50, (i) => ({ lat: i, lng: i }));
 	});
 	it("add tag to individual location", async () => {
 		const loc0 = await getLoc(locIds[0]);

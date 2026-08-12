@@ -9,6 +9,7 @@ import {
 	refreshSelections,
 	withApi,
 	useMap,
+	seedLocs,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -25,17 +26,11 @@ describe("Live selection correctness after add/remove", () => {
 		const tagRed = await createTag("t-red");
 		tagRedId = tagRed.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 20; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					tags: i < 10 ? [tagRedId] : [],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(20, (i) => ({
+			lat: i,
+			lng: i,
+			tags: i < 10 ? [tagRedId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -153,20 +148,14 @@ describe("Live selection correctness after update", () => {
 		const tagAlpha = await createTag("t-alpha");
 		tagAlphaId = tagAlpha.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 20; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					heading: i < 10 ? 0 : 90,
-					panoId: i < 15 ? `pano-${i}` : null,
-					flags: i < 5 ? 1 : 0,
-					tags: i < 10 ? [tagAlphaId] : [],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(20, (i) => ({
+			lat: i,
+			lng: i,
+			heading: i < 10 ? 0 : 90,
+			panoId: i < 15 ? `pano-${i}` : null,
+			flags: i < 5 ? 1 : 0,
+			tags: i < 10 ? [tagAlphaId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -276,17 +265,11 @@ describe("Review mode delete with active selections", () => {
 		const tagRv = await createTag("t-rv");
 		tagRvId = tagRv.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					tags: i < 5 ? [tagRvId] : [],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({
+			lat: i,
+			lng: i,
+			tags: i < 5 ? [tagRvId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => {
@@ -371,17 +354,11 @@ describe("Selection correctness after undo/redo", () => {
 		const tagUndo = await createTag("t-undo");
 		tagUndoId = tagUndo.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 10; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					tags: i < 5 ? [tagUndoId] : [],
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(10, (i) => ({
+			lat: i,
+			lng: i,
+			tags: i < 5 ? [tagUndoId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -641,16 +618,10 @@ describe("Bulk operations with active selections", () => {
 		const tagBulk = await createTag("t-bulk");
 		tagBulkId = tagBulk.id;
 
-		const locs = [];
-		for (let i = 0; i < 100; i++) {
-			locs.push(
-				createLocation({
-					lat: i * 0.1,
-					lng: i * 0.1,
-				}),
-			);
-		}
-		locIds = await addLocs(locs);
+		locIds = await seedLocs(100, (i) => ({
+			lat: i * 0.1,
+			lng: i * 0.1,
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -740,20 +711,14 @@ describe("Selection survives save/load cycle", () => {
 		const tagPersist = await createTag("t-persist");
 		tagPersistId = tagPersist.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 30; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					heading: i < 15 ? 0 : 90,
-					panoId: i < 20 ? `pano-${i}` : null,
-					flags: i < 10 ? 1 : 0,
-					tags: i < 12 ? [tagPersistId] : [],
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(30, (i) => ({
+			lat: i,
+			lng: i,
+			heading: i < 15 ? 0 : 90,
+			panoId: i < 20 ? `pano-${i}` : null,
+			flags: i < 10 ? 1 : 0,
+			tags: i < 12 ? [tagPersistId] : [],
+		}));
 	});
 	// FIXME: pre-existing flake — same reload race as the PanoIds note below; this
 	// variant passed locally but hit on slower CI hardware (v0.6.0 baseline run).

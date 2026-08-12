@@ -9,6 +9,7 @@ import {
 	getLocCount,
 	createLocation,
 	withApi,
+	seedLocs,
 } from "./helpers";
 import type { MapMeta } from "@/bindings.gen";
 
@@ -128,11 +129,7 @@ describe("Map management", () => {
 	it("open map with locations shows correct count", async () => {
 		await openMap(createdMapIds[0]);
 
-		const locs = [];
-		for (let i = 0; i < 25; i++) {
-			locs.push(createLocation({ lat: i, lng: i }));
-		}
-		await addLocs(locs);
+		await seedLocs(25, (i) => ({ lat: i, lng: i }));
 
 		await flushAndWait();
 		await closeMap();

@@ -1,5 +1,4 @@
-import { addLocs, createLocation, createTag, refreshSelections, withApi, useMap } from "./helpers";
-import type { Location } from "@/bindings.gen";
+import { createTag, refreshSelections, withApi, useMap, seedLocs } from "./helpers";
 
 describe("Selection composition", () => {
 	useMap("E2E Sel Compose");
@@ -12,20 +11,14 @@ describe("Selection composition", () => {
 		const tagB = await createTag("tag-b");
 		tagBId = tagB.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 100; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					heading: i < 40 ? 0 : 90,
-					panoId: i < 60 ? `p${i}` : null,
-					flags: i < 30 ? 1 : 0,
-					tags: i < 50 ? [tagAId] : i < 80 ? [tagBId] : [],
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(100, (i) => ({
+			lat: i,
+			lng: i,
+			heading: i < 40 ? 0 : 90,
+			panoId: i < 60 ? `p${i}` : null,
+			flags: i < 30 ? 1 : 0,
+			tags: i < 50 ? [tagAId] : i < 80 ? [tagBId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
@@ -133,19 +126,13 @@ describe("Selection composition edge cases", () => {
 		const edgeTag = await createTag("edge-tag");
 		edgeTagId = edgeTag.id;
 
-		const locs: Location[] = [];
-		for (let i = 0; i < 20; i++) {
-			locs.push(
-				createLocation({
-					lat: i,
-					lng: i,
-					panoId: i < 10 ? `p${i}` : null,
-					flags: i < 5 ? 1 : 0,
-					tags: i < 15 ? [edgeTagId] : [],
-				}),
-			);
-		}
-		await addLocs(locs);
+		await seedLocs(20, (i) => ({
+			lat: i,
+			lng: i,
+			panoId: i < 10 ? `p${i}` : null,
+			flags: i < 5 ? 1 : 0,
+			tags: i < 15 ? [edgeTagId] : [],
+		}));
 	});
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
