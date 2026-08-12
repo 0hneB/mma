@@ -72,6 +72,7 @@ vali-core = { path = "crates/vali/vali-core" }
 vali-data = { path = "crates/vali/vali-data" }
 vali-generate = { path = "crates/vali/vali-generate" }
 vali-geo = { path = "crates/vali/vali-geo" }
+mma-geo = { path = "crates/geo" }
 json5 = "0.4"
 
 [profile.dev]

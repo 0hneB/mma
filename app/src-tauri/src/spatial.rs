@@ -86,31 +86,30 @@ impl SpatialIndex {
         }
     }
 
-    /// Ids in every cell touching the `radius_m` disc around the point. A superset:
-    /// the caller must distance-test each candidate against current coordinates.
+    /// Ids in every cell touching the `radius_m` disc around the point (antimeridian
+    /// wrap included). A superset: the caller must distance-test each candidate
+    /// against current coordinates.
     pub(crate) fn candidates(&self, lat: f64, lng: f64, radius_m: f64, out: &mut Vec<u32>) {
-        if !lat.is_finite() || !lng.is_finite() {
-            return;
-        }
-        let d_lat = radius_m / 111_320.0;
-        let cos_lat = lat.to_radians().cos().max(1e-4);
-        let d_lng = radius_m / (111_320.0 * cos_lat);
-        let (cx0, cy0) = cell_for(lat - d_lat, lng - d_lng);
-        let (cx1, cy1) = cell_for(lat + d_lat, lng + d_lng);
-        if (cx1 as i64 - cx0 as i64) > MAX_AXIS_CELLS || (cy1 as i64 - cy0 as i64) > MAX_AXIS_CELLS
-        {
+        let cover = mma_geo::covering_cells(lat, lng, radius_m, CELL_DEG);
+        let capped = |r: &std::ops::RangeInclusive<i32>| {
+            let (start, end) = (*r.start(), *r.end());
+            let over = (end as i64 - start as i64) > MAX_AXIS_CELLS;
+            (start..=end.min(start.saturating_add(MAX_AXIS_CELLS as i32)), over)
+        };
+        let (cy, cy_over) = capped(&cover.cy);
+        if cy_over || cover.cx.iter().flatten().any(|r| capped(r).1) {
             log::warn!(
                 "[spatial] query span too large (r={}m lat={}) — clamped",
                 radius_m,
                 lat
             );
         }
-        let cx1 = cx1.min(cx0.saturating_add(MAX_AXIS_CELLS as i32));
-        let cy1 = cy1.min(cy0.saturating_add(MAX_AXIS_CELLS as i32));
-        for cy in cy0..=cy1 {
-            for cx in cx0..=cx1 {
-                if let Some(v) = self.cells.get(&(cx, cy)) {
-                    out.extend_from_slice(v);
+        for cy in cy {
+            for r in cover.cx.iter().flatten() {
+                for cx in capped(r).0 {
+                    if let Some(v) = self.cells.get(&(cx, cy)) {
+                        out.extend_from_slice(v);
+                    }
                 }
             }
         }

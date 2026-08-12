@@ -531,26 +531,6 @@ fn geometry_bbox_merges_straddling_parts_into_one_frame() {
 }
 
 // -----------------------------------------------------------------------
-// Haversine
-// -----------------------------------------------------------------------
-
-#[test]
-fn haversine_zero_distance() {
-    assert_eq!(haversine_m(0.0, 0.0, 0.0, 0.0), 0.0);
-}
-
-#[test]
-fn haversine_known_distance() {
-    // London to Paris ~ 343 km
-    let d = haversine_m(51.5074, -0.1278, 48.8566, 2.3522);
-    assert!(
-        (d - 343_500.0).abs() < 5000.0,
-        "London-Paris should be ~343km, got {:.0}m",
-        d
-    );
-}
-
-// -----------------------------------------------------------------------
 // compare_filter
 // -----------------------------------------------------------------------
 
@@ -1468,6 +1448,59 @@ fn duplicates_bitmask_matches_flattened_groups() {
         grouped.sort_unstable();
         assert_eq!(selected, grouped, "bitmask != groups at d={d}");
     }
+}
+
+// The grid broad-phase must not miss longitude-separated pairs at high latitude
+// (the old fixed 3x3 walk did, above ~48N). Oracle: brute-force nearest-neighbor
+// haversine, with a 0.5m dead band around the threshold so equirect-vs-haversine
+// rounding on borderline pairs can't flake the assert.
+#[test]
+fn duplicates_match_brute_force_at_high_latitude() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let mut rng = fastrand::Rng::with_seed(42);
+    for &lat0 in &[70.0f64, 78.0] {
+        let adds: Vec<Location> = (0..300)
+            .map(|i| {
+                let lat = lat0 + (rng.f64() - 0.5) * 0.01;
+                let lng = 20.0 + (rng.f64() - 0.5) * 0.05;
+                loc(i + 1, lat, lng)
+            })
+            .collect();
+        let d = 100.0;
+        let view = make_view(None, &dead, &patches, &adds);
+        let ids: HashSet<u32> = resolve(&view, &SelectionProps::Duplicates { distance: d })
+            .into_iter()
+            .collect();
+        for a in &adds {
+            let nn = adds
+                .iter()
+                .filter(|b| b.id != a.id)
+                .map(|b| haversine_m(a.lat, a.lng, b.lat, b.lng))
+                .fold(f64::INFINITY, f64::min);
+            if nn <= d - 0.5 {
+                assert!(ids.contains(&a.id), "missed dup id {} at lat0={} (nn={nn:.1}m)", a.id, lat0);
+            } else if nn >= d + 0.5 {
+                assert!(!ids.contains(&a.id), "false dup id {} at lat0={} (nn={nn:.1}m)", a.id, lat0);
+            }
+        }
+    }
+}
+
+// Pairs straddling the antimeridian are real neighbors (~106m here) and must be
+// detected; the third point is ~1km away on the same side and must not be.
+#[test]
+fn duplicates_detected_across_antimeridian() {
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let adds = vec![
+        loc(1, -17.8, 179.9995),
+        loc(2, -17.8, -179.9995),
+        loc(3, -17.8, 179.99),
+    ];
+    let view = make_view(None, &dead, &patches, &adds);
+    let ids = resolve(&view, &SelectionProps::Duplicates { distance: 150.0 });
+    assert_eq!(ids, vec![1, 2]);
 }
 
 // Dense cluster: every member of a same-cell stack is a duplicate at d > 0.

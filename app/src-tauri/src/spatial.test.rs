@@ -74,6 +74,27 @@ fn candidates_are_superset_never_missing() {
 }
 
 #[test]
+fn candidates_wrap_across_antimeridian() {
+    // ~106m apart across the seam; a 200m query from either side must see both.
+    let mut ix = SpatialIndex::new();
+    ix.insert(1, -17.8, 179.9995);
+    ix.insert(2, -17.8, -179.9995);
+    assert_eq!(query(&ix, -17.8, 179.9995, 200.0), vec![1, 2]);
+    assert_eq!(query(&ix, -17.8, -179.9995, 200.0), vec![1, 2]);
+}
+
+#[test]
+fn candidates_widen_at_high_latitude() {
+    // ~170m apart almost purely in longitude at 78N; must be mutually visible.
+    let mut ix = SpatialIndex::new();
+    let dlng = 170.0 / (mma_geo::M_PER_DEG * 78.0f64.to_radians().cos());
+    ix.insert(1, 78.0, 20.0);
+    ix.insert(2, 78.0, 20.0 + dlng);
+    assert_eq!(query(&ix, 78.0, 20.0, 200.0), vec![1, 2]);
+    assert_eq!(query(&ix, 78.0, 20.0 + dlng, 200.0), vec![1, 2]);
+}
+
+#[test]
 fn remove_by_coords_and_fallback() {
     let mut ix = SpatialIndex::new();
     ix.insert(1, 10.0, 10.0);
