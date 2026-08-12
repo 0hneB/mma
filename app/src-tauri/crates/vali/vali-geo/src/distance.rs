@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 pub const DEG_TO_RAD: f64 = 0.017453292519943295769236907684886127;
 const HALF_DEG_TO_RAD: f64 = DEG_TO_RAD * 0.5;
 const METERS_PER_DEGREE_SQUARED: f64 = 6371137.0 * DEG_TO_RAD * (6371137.0 * DEG_TO_RAD);
@@ -16,8 +14,12 @@ pub fn points_are_closer_than(
     if dlat * dlat > meters_squared * INVERSE_LAT_METERS_SQUARED {
         return false;
     }
-    let dlon = lon2 - lon1;
+    let dlon = (lon2 - lon1 + 180.0).rem_euclid(360.0) - 180.0;
     let cos_lat = ((lat1 + lat2) * HALF_DEG_TO_RAD).cos();
     let x = dlon * cos_lat;
     METERS_PER_DEGREE_SQUARED * (x * x + dlat * dlat) < meters_squared
 }
+
+#[cfg(test)]
+#[path = "distance.test.rs"]
+mod tests;

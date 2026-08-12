@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 use crate::distance::points_are_closer_than;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
@@ -139,7 +137,7 @@ pub fn place_spaced(
             max_abs_lat = a;
         }
     }
-    let mut cos_ref = (max_abs_lat.min(89.0) * PI / 180.0).cos();
+    let mut cos_ref = (max_abs_lat * PI / 180.0).cos();
     if cos_ref < 1e-6 {
         cos_ref = 1e-6;
     }
@@ -222,3 +220,7 @@ fn nearest_index(sorted_ascending: &[i32], target: f64) -> usize {
 fn pack(cx: i32, cy: i32) -> i64 {
     ((cx as i64) << 32) | (cy as u32 as i64)
 }
+
+#[cfg(test)]
+#[path = "distribute.test.rs"]
+mod tests;
