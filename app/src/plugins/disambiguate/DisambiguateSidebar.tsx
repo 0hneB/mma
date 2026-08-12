@@ -142,7 +142,7 @@ interface Analysis {
 }
 
 /** Resolve the active selections to labeled groups (dropping multi-group overlap)
- *  and compute field divergence. Mirrors the Rust `store_disambiguate` orchestration. */
+ *  and compute field divergence. */
 async function analyze(): Promise<Analysis> {
 	const map = MMA.getMapState().map;
 	if (!map) throw new Error("No map open");

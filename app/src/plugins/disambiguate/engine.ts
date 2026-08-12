@@ -1,6 +1,6 @@
 // Selection disambiguation engine: given N groups of locations, rank metadata
 // fields by how strongly they *separate* the groups (not by modal frequency).
-// Pure, store-free port of the Rust reference (disambiguate.rs); tested in engine.test.ts.
+// Pure and store-free; tested in engine.test.ts.
 
 import type { Location, ExtraFieldDef, ComparisonType } from "@/bindings.gen";
 import { getFieldDef, isWritableField, getBuiltinKeys } from "@/lib/data/fieldDefRegistry";
