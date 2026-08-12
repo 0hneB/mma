@@ -1,7 +1,7 @@
 import { LocationFlag, isPinnedToPano } from "@/types";
 import type { Location } from "@/bindings.gen";
 import { registerSvResolver, runResolvers, type SvResolver } from "@/lib/sv/svRunner";
-import { isOfficialPano } from "@/lib/sv/panoId";
+import { newestOfficialPano } from "@/lib/sv/panoId";
 
 export interface PinPanoConfig {
 	useLatest?: boolean;
@@ -18,8 +18,7 @@ export const pinPanoResolver: SvResolver = {
 	resolve: (loc, data, ctx) => {
 		const config = ctx.config as PinPanoConfig | undefined;
 		if (config?.useLatest && data) {
-			const timeline = (data.time ?? []).filter((t) => isOfficialPano(t.pano));
-			const latest = timeline.length > 0 ? timeline[timeline.length - 1] : null;
+			const latest = newestOfficialPano(data.time ?? []);
 			if (latest) {
 				return {
 					panoId: latest.pano,
