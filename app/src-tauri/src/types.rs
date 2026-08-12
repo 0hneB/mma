@@ -171,9 +171,20 @@ pub(crate) struct FieldSpan {
 /// Walk the top-level members of object JSON `b`, calling `f` for each; `f` returns
 /// `true` to stop early. String/escape aware, and nested objects/arrays are skipped
 /// wholesale, so a matching key inside a value is never yielded.
-pub(crate) fn scan_fields(b: &[u8], mut f: impl FnMut(&FieldSpan) -> bool) {
-    let mut i = 0usize;
-    let mut depth = 0i32;
+pub(crate) fn scan_fields(b: &[u8], f: impl FnMut(&FieldSpan) -> bool) {
+    scan_fields_from(b, 0, 0, f)
+}
+
+/// [`scan_fields`] resumed mid-document: begins at byte `start`, with `start_depth`
+/// as the nesting depth already open there.
+pub(crate) fn scan_fields_from(
+    b: &[u8],
+    start: usize,
+    start_depth: i32,
+    mut f: impl FnMut(&FieldSpan) -> bool,
+) {
+    let mut i = start;
+    let mut depth = start_depth;
     while i < b.len() {
         match b[i] {
             b'{' | b'[' => {
