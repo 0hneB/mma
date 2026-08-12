@@ -14,7 +14,7 @@ use std::collections::HashMap;
 /// ~25m cells: 1-100m queries walk a handful of cells; a 1km query walks ~80x80.
 /// Longitude cells narrow toward the poles, which only means more (empty) cells
 /// walked there — correctness always comes from the caller's distance test.
-const CELL_DEG: f64 = 25.0 / 111_320.0;
+const CELL_DEG: f64 = 25.0 / mma_geo::M_PER_DEG;
 
 #[inline]
 fn cell_for(lat: f64, lng: f64) -> (i32, i32) {

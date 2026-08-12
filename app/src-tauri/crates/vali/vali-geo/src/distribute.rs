@@ -1,4 +1,4 @@
-use crate::distance::points_are_closer_than;
+use mma_geo::{within_m2, M_PER_DEG};
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 pub const DISTANCES: [i32; 53] = [
@@ -7,7 +7,6 @@ pub const DISTANCES: [i32; 53] = [
     4200, 4500, 5000, 6000, 7000, 8000, 9000, 10000, 12500, 15000, 20000, 25000, 30000,
     35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000,
 ];
-const METRES_PER_DEGREE: f64 = 6371137.0 * PI / 180.0;
 pub fn with_max_min_distance(
     ordered_candidates: &[(f64, f64)],
     goal_count: usize,
@@ -78,7 +77,7 @@ pub fn get_some(
         for (i, &(lat, lng)) in ordered_candidates.iter().enumerate() {
             if already_in_map
                 .iter()
-                .any(|&(plat, plng)| points_are_closer_than(
+                .any(|&(plat, plng)| within_m2(
                     plat,
                     plng,
                     lat,
@@ -105,7 +104,7 @@ pub fn get_some(
         for i in cursor + 1..alive.len() {
             if alive[i] {
                 let (lat2, lng2) = ordered_candidates[i];
-                if points_are_closer_than(lat2, lng2, lat, lng, d_squared) {
+                if within_m2(lat2, lng2, lat, lng, d_squared) {
                     alive[i] = false;
                 }
             }
@@ -124,7 +123,7 @@ pub fn place_spaced(
     }
     let d = min_distance;
     let d_squared = d as f64 * d as f64;
-    let cell = d as f64 / METRES_PER_DEGREE;
+    let cell = d as f64 / M_PER_DEG;
     let key_for = |lat: f64, lng: f64| pack((lng / cell).floor() as i32, (lat / cell).floor() as i32);
     let mut grid: FxHashMap<i64, Vec<(f64, f64)>> = FxHashMap::default();
     for &(lat, lng) in already_in_map {
@@ -142,7 +141,7 @@ pub fn place_spaced(
         'scan: for (cx, cy) in cover.cells() {
             if let Some(bucket) = grid.get(&pack(cx, cy)) {
                 for &(blat, blng) in bucket {
-                    if points_are_closer_than(blat, blng, lat, lng, d_squared) {
+                    if within_m2(blat, blng, lat, lng, d_squared) {
                         ok = false;
                         break 'scan;
                     }
@@ -178,8 +177,8 @@ fn seed_index(candidates: &[(f64, f64)], distances: &[i32], goal_count: usize) -
         }
     }
     let mid_lat_rad = (min_lat + max_lat) * 0.5 * PI / 180.0;
-    let height_m = (max_lat - min_lat) * METRES_PER_DEGREE;
-    let width_m = (max_lng - min_lng) * METRES_PER_DEGREE * mid_lat_rad.cos();
+    let height_m = (max_lat - min_lat) * M_PER_DEG;
+    let width_m = (max_lng - min_lng) * M_PER_DEG * mid_lat_rad.cos();
     let area = height_m.max(1.0) * width_m.max(1.0);
     let guess_distance = (area / goal_count.max(1) as f64).sqrt();
     nearest_index(distances, guess_distance)

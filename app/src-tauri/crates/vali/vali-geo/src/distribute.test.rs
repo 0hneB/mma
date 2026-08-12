@@ -1,6 +1,5 @@
 use super::*;
-
-const M_PER_DEG: f64 = 6371137.0 * std::f64::consts::PI / 180.0;
+use mma_geo::M_PER_DEG;
 
 // Above the old 89-degree cos_ref clamp, longitude cells were undersized and the
 // 3x3 walk missed within-distance pairs, keeping both.
