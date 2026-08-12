@@ -8,7 +8,7 @@ use serde::Serialize;
 use vali_data::decode::Reader;
 
 use crate::sync::{
-    canon_tags, sync_flags, IdentityModel, NormalizedSyncLocation, PushBatch, PushedId,
+    auth_error, canon_tags, sync_flags, IdentityModel, NormalizedSyncLocation, PushBatch, PushedId,
     RemoteSnapshot, SyncProvider,
 };
 use crate::types::{AppError, AppResult};
@@ -21,18 +21,8 @@ const PUSH_CHUNK: usize = 200_000;
 /// EditActionType.Bulk from remote-types.ts.
 const EDIT_ACTION_BULK: u32 = 8;
 
-/// AppError message prefix stamped on an HTTP 401 from the API, so the engine can special-case
-/// auth failures without a typed error. `pull`/`push` are the only emitters; [`is_auth_error`]
-/// is the sole reader.
-const AUTH_ERROR_PREFIX: &str = "mma-http-401: ";
-
 pub(crate) struct MapMakingProvider {
     pub api_key: String,
-}
-
-/// Whether an [`AppError`] from this provider is a 401 (invalid/expired API key).
-pub(crate) fn is_auth_error(e: &AppError) -> bool {
-    e.0.starts_with(AUTH_ERROR_PREFIX)
 }
 
 // --- read shape (mirrors Remote.Location) -----------------------------------
@@ -228,8 +218,8 @@ impl MapMakingProvider {
 }
 
 /// Build an [`AppError`] from a non-2xx response. Prefers a JSON body's `message`, else the body
-/// text, else a status-only fallback (loosely mirrors MapMakingWebApiError). A 401 gets the
-/// [`AUTH_ERROR_PREFIX`] sentinel so [`is_auth_error`] can detect it.
+/// text, else a status-only fallback (loosely mirrors MapMakingWebApiError). A 401 becomes an
+/// [`auth_error`].
 fn api_error(status: u16, body: &[u8]) -> AppError {
     let message = match serde_json::from_slice::<serde_json::Value>(body) {
         Ok(v) => v
@@ -248,7 +238,7 @@ fn api_error(status: u16, body: &[u8]) -> AppError {
         }
     };
     if status == 401 {
-        AppError(format!("{AUTH_ERROR_PREFIX}{message}"))
+        auth_error(message)
     } else {
         AppError(message)
     }

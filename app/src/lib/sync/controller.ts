@@ -173,7 +173,7 @@ export function createSyncController(provider: SyncProvider, pluginId: string): 
 						await runReconcile();
 						liveError = null;
 					} catch (e) {
-						// The Rust reconcile marks auth failures with an "auth: " prefix; show it clean.
+						// Rust marks auth failures with an "auth: " prefix; show it clean.
 						liveError = (e instanceof Error ? e.message : String(e)).replace(/^auth: /, "");
 						// A dead credential never heals by retrying; stop the loop, keep the pref.
 						if (provider.isAuthError?.(e)) pauseLive();
