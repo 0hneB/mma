@@ -84,6 +84,7 @@ pub struct ImportedMapInfo {
 
 /// Intermediate representation produced by all parsers (JSON, CSV, ZIP entry).
 /// Locations have placeholder IDs (0) -- real IDs are assigned at insert time.
+#[derive(Default)]
 struct ParsedMap {
     name: String,
     folder: Option<String>,
@@ -104,17 +105,8 @@ use crate::util::color_for_name;
 /// Parse CSV text into locations. Supports both named columns (lat/lng/heading/etc.)
 /// and positional (first two numeric columns = lat, lng). Skips malformed rows silently.
 fn parse_csv(text: &str) -> ParsedMap {
-    let empty = || ParsedMap {
-        name: String::new(),
-        folder: None,
-        locations: Vec::new(),
-        tags: Vec::new(),
-        fields: None,
-        warnings: Vec::new(),
-        settings: serde_json::Map::new(),
-    };
     let warn = |w: &str| {
-        let mut m = empty();
+        let mut m = ParsedMap::default();
         m.warnings.push(w.into());
         m
     };
@@ -225,13 +217,8 @@ fn parse_csv(text: &str) -> ParsedMap {
     }
 
     ParsedMap {
-        name: String::new(),
-        folder: None,
         locations,
-        tags: Vec::new(),
-        fields: None,
-        warnings: Vec::new(),
-        settings: serde_json::Map::new(),
+        ..Default::default()
     }
 }
 
@@ -788,11 +775,8 @@ fn parse_single_json_mut(buf: &mut [u8]) -> ParsedMap {
             return ParsedMap {
                 name,
                 folder,
-                locations: Vec::new(),
-                tags: Vec::new(),
-                fields: None,
                 warnings,
-                settings: serde_json::Map::new(),
+                ..Default::default()
             };
         }
     };
@@ -1016,9 +1000,9 @@ fn parse_single_json_mut(buf: &mut [u8]) -> ParsedMap {
         folder,
         locations,
         tags,
-        fields: None,
         warnings,
         settings,
+        ..Default::default()
     }
 }
 
@@ -1500,13 +1484,9 @@ pub(crate) fn add_copied_to_store(
     tags: Vec<Tag>,
 ) -> AppResult<location_store::MutationResult> {
     let mut parsed = ParsedMap {
-        name: String::new(),
-        folder: None,
         locations,
         tags,
-        fields: None,
-        warnings: Vec::new(),
-        settings: serde_json::Map::new(),
+        ..Default::default()
     };
     add_parsed_to_store(store, &mut parsed, None)
 }
