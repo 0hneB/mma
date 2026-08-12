@@ -18,7 +18,7 @@ import type { Selection } from "@/bindings.gen";
 import { createPluginStorage } from "@/plugins/registry";
 import { Sidebar, Section } from "@/components/primitives/Sidebar";
 import { searchCoverage } from "../searchCoverage";
-import { MONTHS } from "@/lib/util/date";
+import { MONTHS, ymParse } from "@/lib/util/date";
 import "./generator.css";
 
 const genStore = createPluginStorage("map-generator");
@@ -77,8 +77,8 @@ let sessionPaused = false;
 let sessionTagId: number | null = null;
 
 function formatYearMonth(ym: string) {
-	const [y, m] = ym.split("-");
-	return `${MONTHS.short[parseInt(m, 10) - 1]} ${y}`;
+	const p = ymParse(ym);
+	return p ? `${MONTHS.short[p.m - 1]} ${p.y}` : ym;
 }
 
 function summarizeSettings(s: GeneratorSettings): string {

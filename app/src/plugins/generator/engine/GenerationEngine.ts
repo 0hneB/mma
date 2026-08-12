@@ -11,6 +11,7 @@ import {
 	poissonDiskSample,
 } from "./geo";
 import { blueLineSample } from "./blueLineSampler";
+import { ymFromDate } from "@/lib/util/date";
 import { passesInitialFilters, passesDateFilters, isPanoGood, computeHeading } from "./filters";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { distMeters, lerpLng, unionBounds } from "@/lib/geo/geo";
@@ -531,7 +532,7 @@ export class GenerationEngine {
 						const entry = pano.time[idx];
 						const d = Object.values(entry).find((v): v is Date => v instanceof Date);
 						if (d) {
-							const ym = d.getFullYear() + "-" + (d.getMonth() > 8 ? "" : "0") + (d.getMonth() + 1);
+							const ym = ymFromDate(d);
 							if (
 								Date.parse(ym) < Date.parse(s.fromDate) ||
 								Date.parse(ym) > Date.parse(s.toDate)
@@ -552,7 +553,7 @@ export class GenerationEngine {
 							if (s.rejectUnofficial && entry.pano.length !== 22) continue;
 							const d = Object.values(entry).find((v): v is Date => v instanceof Date);
 							if (!d) continue;
-							const ym = d.getFullYear() + "-" + (d.getMonth() > 8 ? "" : "0") + (d.getMonth() + 1);
+							const ym = ymFromDate(d);
 							if (Date.parse(ym) >= fromDate && Date.parse(ym) <= toDate) {
 								this.getPanoDeep(entry.pano, region, 0);
 							}
@@ -601,7 +602,7 @@ export class GenerationEngine {
 						if (s.rejectUnofficial && entry.pano.length !== 22) continue;
 						const d = Object.values(entry).find((v): v is Date => v instanceof Date);
 						if (!d) continue;
-						const ym = d.getFullYear() + "-" + (d.getMonth() > 8 ? "" : "0") + (d.getMonth() + 1);
+						const ym = ymFromDate(d);
 						if (Date.parse(ym) >= fromDate && Date.parse(ym) <= toDate) {
 							this.getPanoDeep(entry.pano, region, good ? 1 : depth + 1);
 						}
