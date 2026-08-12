@@ -79,10 +79,18 @@ pub fn covering_cells(lat: f64, lng: f64, radius_m: f64, cell_deg: f64) -> CellC
         |lo: f64, hi: f64| ((lo / cell_deg).floor() as i32)..=((hi / cell_deg).floor() as i32);
     let d_lat = radius_m / M_PER_DEG;
     let cy = to_range(lat - d_lat, lat + d_lat);
-    let d_lng = radius_m / (M_PER_DEG * lat.to_radians().cos().max(1e-9));
-    let cx = if d_lng >= 180.0 {
+    // Longitude extent of the spherical cap: asin(sin(r/R)/cos(lat)). The cap's extreme
+    // longitudes sit poleward of `lat`, so the linear r/(R*cos(lat)) underestimates at
+    // large radii. Cap touching a pole -> full circle.
+    let sin_r = (radius_m / EARTH_R_M).sin();
+    let cos_lat = lat.to_radians().cos();
+    let full_circle = lat.abs() + d_lat >= 90.0
+        || radius_m >= EARTH_R_M * std::f64::consts::FRAC_PI_2
+        || sin_r >= cos_lat;
+    let cx = if full_circle {
         [Some(to_range(-180.0, 180.0)), None]
     } else {
+        let d_lng = (sin_r / cos_lat).asin().to_degrees();
         let (lo, hi) = (lng - d_lng, lng + d_lng);
         if lo < -180.0 {
             [Some(to_range(-180.0, hi)), Some(to_range(lo + 360.0, 180.0))]

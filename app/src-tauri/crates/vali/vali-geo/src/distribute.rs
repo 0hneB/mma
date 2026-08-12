@@ -124,29 +124,11 @@ pub fn place_spaced(
     }
     let d = min_distance;
     let d_squared = d as f64 * d as f64;
-    let mut max_abs_lat = 0.0f64;
-    for &(lat, _) in ordered_candidates {
-        let a = lat.abs();
-        if a > max_abs_lat {
-            max_abs_lat = a;
-        }
-    }
-    for &(lat, _) in already_in_map {
-        let a = lat.abs();
-        if a > max_abs_lat {
-            max_abs_lat = a;
-        }
-    }
-    let mut cos_ref = (max_abs_lat * PI / 180.0).cos();
-    if cos_ref < 1e-6 {
-        cos_ref = 1e-6;
-    }
-    let cell_lat = d as f64 / METRES_PER_DEGREE;
-    let cell_lng = d as f64 / (METRES_PER_DEGREE * cos_ref);
+    let cell = d as f64 / METRES_PER_DEGREE;
+    let key_for = |lat: f64, lng: f64| pack((lng / cell).floor() as i32, (lat / cell).floor() as i32);
     let mut grid: FxHashMap<i64, Vec<(f64, f64)>> = FxHashMap::default();
     for &(lat, lng) in already_in_map {
-        let key = pack((lng / cell_lng).floor() as i32, (lat / cell_lat).floor() as i32);
-        grid.entry(key).or_insert_with(|| Vec::with_capacity(1)).push((lat, lng));
+        grid.entry(key_for(lat, lng)).or_insert_with(|| Vec::with_capacity(1)).push((lat, lng));
     }
     let mut result: Vec<u32> = Vec::with_capacity(
         goal_count.min(ordered_candidates.len()),
@@ -155,24 +137,21 @@ pub fn place_spaced(
         if result.len() >= goal_count {
             break;
         }
-        let cx = (lng / cell_lng).floor() as i32;
-        let cy = (lat / cell_lat).floor() as i32;
+        let cover = mma_geo::covering_cells(lat, lng, d as f64, cell);
         let mut ok = true;
-        'scan: for dx in -1..=1 {
-            for dy in -1..=1 {
-                if let Some(bucket) = grid.get(&pack(cx + dx, cy + dy)) {
-                    for &(blat, blng) in bucket {
-                        if points_are_closer_than(blat, blng, lat, lng, d_squared) {
-                            ok = false;
-                            break 'scan;
-                        }
+        'scan: for (cx, cy) in cover.cells() {
+            if let Some(bucket) = grid.get(&pack(cx, cy)) {
+                for &(blat, blng) in bucket {
+                    if points_are_closer_than(blat, blng, lat, lng, d_squared) {
+                        ok = false;
+                        break 'scan;
                     }
                 }
             }
         }
         if ok {
             result.push(i as u32);
-            grid.entry(pack(cx, cy))
+            grid.entry(key_for(lat, lng))
                 .or_insert_with(|| Vec::with_capacity(1))
                 .push((lat, lng));
         }

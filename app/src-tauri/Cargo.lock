@@ -7128,6 +7128,7 @@ dependencies = [
 name = "vali-geo"
 version = "0.1.0"
 dependencies = [
+ "mma-geo",
  "rustc-hash",
 ]
 
