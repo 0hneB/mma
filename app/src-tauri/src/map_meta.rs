@@ -790,6 +790,16 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
+    fn map_settings_never_serializes_absent_keys() {
+        // JS reads settings with no fallback, so every key must survive an old
+        // settings row: missing on disk means the Rust default, present on the wire.
+        let settings: MapSettings = serde_json::from_str(r#"{"pointAlongRoad":true}"#).unwrap();
+        assert!(!settings.enrich_metadata);
+        let value: serde_json::Value = serde_json::to_value(&settings).unwrap();
+        assert_eq!(value["enrichMetadata"], serde_json::Value::Bool(false));
+    }
+
+    #[test]
     fn map_settings_key_bindings_default_empty() {
         // Old settings JSON (no keyBindings) must deserialize with an empty list.
         let old_json = r#"{"pointAlongRoad":true}"#;

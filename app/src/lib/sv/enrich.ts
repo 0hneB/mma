@@ -66,7 +66,7 @@ export async function enrich(
 		if (!data) return false;
 	}
 	const map = getMapState().map;
-	if (!map || !(map.meta.settings.enrichMetadata ?? true)) return false;
+	if (!map || !map.meta.settings.enrichMetadata) return false;
 	const enrichFields = map.meta.settings.enrichFields ?? getDefaultEnrichKeys();
 	const write = (extra: Record<string, unknown>) =>
 		updateLocations([{ id: loc.id, patch: { extra } }], { undoable: false });
