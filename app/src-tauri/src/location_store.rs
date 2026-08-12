@@ -3033,9 +3033,18 @@ pub async fn store_save_dirty(
 
     let size = delta_data.as_ref().map_or(0, |d| d.len());
     let wrote_delta = delta_data.is_some();
+    let wrote_tags = tags_json.is_some();
     let map_id2 = map_id.clone();
-    tokio::task::spawn_blocking(move || persist_dirty(&map_id2, delta_data, alive, tags_json))
-        .await??;
+    let write = tokio::task::spawn_blocking(move || persist_dirty(&map_id2, delta_data, alive, tags_json))
+        .await
+        .map_err(AppError::from)
+        .and_then(|r| r);
+    if write.is_err() && wrote_tags {
+        if let Ok(store) = state.lock()?.store_for_window(webview.label()) {
+            store.tags.dirty = true;
+        }
+    }
+    write?;
 
     if wrote_delta {
         let mut mgr = state.lock()?;
