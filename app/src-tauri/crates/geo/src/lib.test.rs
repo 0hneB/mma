@@ -88,6 +88,19 @@ fn cover_degrades_to_full_circle_at_pole() {
 }
 
 #[test]
+fn cover_contains_and_len_agree_with_cells() {
+    let cell = 100.0 / M_PER_DEG * 1.5;
+    // Seam-splitting cover: two cx ranges; len/contains must agree with cells().
+    let c = covering_cells(0.0, 179.9999, 100.0, cell);
+    let listed: Vec<(i32, i32)> = c.cells().collect();
+    assert_eq!(c.len(), listed.len() as u64);
+    for &(cx, cy) in &listed {
+        assert!(c.contains(cx, cy), "({cx},{cy}) listed but not contained");
+    }
+    assert!(!c.contains(0, 0));
+}
+
+#[test]
 fn cover_empty_for_non_finite() {
     assert_eq!(covering_cells(f64::NAN, 0.0, 100.0, 0.1).cells().count(), 0);
     assert_eq!(covering_cells(0.0, f64::INFINITY, 100.0, 0.1).cells().count(), 0);

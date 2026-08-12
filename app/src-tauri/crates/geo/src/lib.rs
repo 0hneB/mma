@@ -62,6 +62,26 @@ impl CellCover {
                 .flat_map(move |r| r.clone().map(move |cx| (cx, cy)))
         })
     }
+
+    pub fn contains(&self, cx: i32, cy: i32) -> bool {
+        self.cy.contains(&cy) && self.cx.iter().flatten().any(|r| r.contains(&cx))
+    }
+
+    /// Number of cells `cells()` would yield. Saturating; never overflows.
+    pub fn len(&self) -> u64 {
+        let rows = (*self.cy.end() as i64 - *self.cy.start() as i64 + 1).max(0) as u64;
+        let cols: u64 = self
+            .cx
+            .iter()
+            .flatten()
+            .map(|r| (*r.end() as i64 - *r.start() as i64 + 1).max(0) as u64)
+            .sum();
+        rows.saturating_mul(cols)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// At extreme latitudes the span degrades to the full circle of columns — correct

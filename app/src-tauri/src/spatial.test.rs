@@ -94,6 +94,21 @@ fn candidates_widen_at_high_latitude() {
     assert_eq!(query(&ix, 78.0, 20.0 + dlng, 200.0), vec![1, 2]);
 }
 
+// A covering radius far beyond the window a bounded walk could afford (the old
+// MAX_AXIS_CELLS clamp silently dropped candidates past ~102km) must still return
+// every point; huge windows scan the occupied cells instead.
+#[test]
+fn huge_radius_returns_far_candidates() {
+    let mut ix = SpatialIndex::new();
+    ix.insert(1, 45.0, 7.0);
+    ix.insert(2, 46.35, 7.0); // ~150km north
+    ix.insert(3, 45.0, 9.0); // ~157km east
+    ix.insert(4, 50.0, 20.0); // ~1100km away, outside the 200km disc
+    let cand = query(&ix, 45.0, 7.0, 200_000.0);
+    assert!(cand.contains(&1) && cand.contains(&2) && cand.contains(&3), "got {cand:?}");
+    // 4 may or may not appear (superset semantics); the near ones must.
+}
+
 #[test]
 fn remove_by_coords_and_fallback() {
     let mut ix = SpatialIndex::new();
