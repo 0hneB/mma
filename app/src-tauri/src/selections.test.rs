@@ -847,6 +847,63 @@ fn resolve_untagged() {
     assert_eq!(ids, vec![2]);
 }
 
+// The built-in field vocabulary is one table. All three resolver paths (Location, Arrow
+// columns, and the single-parse tz path) must cover exactly its keys: extras shadow every
+// builtin key here, so a key missing from a path resolves to the sentinel instead.
+#[test]
+fn builtin_fields_resolve_on_every_path() {
+    let mut l = loc(1, 12.0, 34.0);
+    l.tags = vec![10, 11];
+    l.modified_at = Some(99);
+    let shadow: serde_json::Map<String, serde_json::Value> = BUILTIN_FIELDS
+        .iter()
+        .map(|f| (f.key.to_string(), serde_json::json!("SHADOW")))
+        .chain(std::iter::once((
+            "timezone".to_string(),
+            serde_json::json!("UTC"),
+        )))
+        .collect();
+    l.extra = crate::types::RawExtra::from_map(&shadow);
+
+    let batch = locations_to_batch(std::slice::from_ref(&l));
+    let dead = HashSet::new();
+    let patches = HashMap::new();
+    let view = make_view(Some(&batch), &dead, &patches, &[]);
+    let base_row = RowRef {
+        inner: RowInner::Base(&view, 0),
+    };
+
+    let sentinel = Some(serde_json::json!("SHADOW"));
+    for f in BUILTIN_FIELDS {
+        assert!(is_builtin_field(f.key), "{} not a builtin", f.key);
+        assert_ne!(
+            resolve_field_loc(&l, f.key),
+            sentinel,
+            "{} falls through to extras on the Location path",
+            f.key
+        );
+        assert_ne!(
+            resolve_field_arrow(&view, 0, f.key),
+            sentinel,
+            "{} falls through to extras on the Arrow path",
+            f.key
+        );
+        assert_ne!(
+            base_row.resolve_field_and_tz(f.key).0,
+            sentinel,
+            "{} falls through to extras on the tz path",
+            f.key
+        );
+    }
+
+    // Non-builtin keys still come from extras on every path.
+    assert!(!is_builtin_field("timezone"));
+    let utc = Some(serde_json::json!("UTC"));
+    assert_eq!(resolve_field_loc(&l, "timezone"), utc);
+    assert_eq!(resolve_field_arrow(&view, 0, "timezone"), utc);
+    assert_eq!(base_row.resolve_field_and_tz("timezone").0, utc);
+}
+
 // tagCount is a virtual field: filtered through the Filter primitive, resolved as the
 // length of the tag list. Counts every assigned tag (visibility is a display concern).
 // Covers both resolution paths: base-batch rows (resolve_field_arrow) and overlay adds

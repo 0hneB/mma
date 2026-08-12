@@ -316,11 +316,11 @@ impl<'a, 'v> RowRef<'a, 'v> {
                         tz.is_some() && fv_extra.is_some()
                     });
                 }
-                // Built-in names come from their columns; keep in sync with resolve_field_arrow.
-                let fv = match field {
-                    "lat" | "lng" | "heading" | "pitch" | "zoom" | "id" | "createdAt"
-                    | "modifiedAt" => resolve_field_arrow(v, *i, field),
-                    _ => fv_extra,
+                // Built-in names come from their columns, not the extras blob.
+                let fv = if is_builtin_field(field) {
+                    resolve_field_arrow(v, *i, field)
+                } else {
+                    fv_extra
                 };
                 (fv, tz)
             }
@@ -1349,54 +1349,115 @@ fn prune_thinning(locs: &[&Location], distance_m: f64) -> Vec<u32> {
 
 // --- Filter: field-level comparison predicates ---
 
-/// Resolve a field name to its JSON value from a `Location` struct.
-/// Built-in fields (lat, lng, heading, etc.) are accessed directly;
-/// unknown fields fall through to `loc.extra`.
-fn resolve_field_loc(loc: &Location, field: &str) -> Option<serde_json::Value> {
-    match field {
-        "lat" => Some(serde_json::json!(loc.lat)),
-        "lng" => Some(serde_json::json!(loc.lng)),
-        "heading" => Some(serde_json::json!(loc.heading)),
-        "pitch" => Some(serde_json::json!(loc.pitch)),
-        "zoom" => Some(serde_json::json!(loc.zoom)),
-        "id" => Some(serde_json::json!(loc.id)),
-        "createdAt" => Some(serde_json::json!(loc.created_at as f64)),
-        "modifiedAt" => loc.modified_at.map(|ts| serde_json::json!(ts as f64)),
-        "tagCount" => Some(serde_json::json!(loc.tags.len())),
-        _ => loc.extra.as_ref().and_then(|e| e.get(field)),
-    }
+/// How a built-in field may be accessed by the field system on the TS side.
+/// `None` means listable and filterable but read-only.
+#[derive(Clone, Serialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum BuiltinFieldKind {
+    /// Composes the location itself: never writable, never offered in pickers.
+    Identity,
+    /// Derived, not stored on the location. Never writable.
+    Virtual,
+    /// Explicitly bulk-editable top-level field.
+    Writable,
 }
 
-/// Resolve a field name to its JSON value directly from Arrow columns (avoids
-/// materializing a full `Location`). Falls through to `extras` JSON for unknown fields.
-fn resolve_field_arrow(view: &LocView, idx: usize, field: &str) -> Option<serde_json::Value> {
-    match field {
-        "lat" => view.lats.map(|c| serde_json::json!(c.value(idx))),
-        "lng" => view.lngs.map(|c| serde_json::json!(c.value(idx))),
-        "heading" => view.headings.map(|c| serde_json::json!(c.value(idx))),
-        "pitch" => view.pitches.map(|c| serde_json::json!(c.value(idx))),
-        "zoom" => view.zooms.map(|c| serde_json::json!(c.value(idx))),
-        "id" => view.ids.map(|c| serde_json::json!(c.value(idx))),
-        "createdAt" => view
-            .created_ats
-            .map(|c| serde_json::json!(c.value(idx) as f64)),
-        "modifiedAt" => view.modified_ats.and_then(|c| {
-            if c.is_null(idx) {
-                return None;
-            }
-            Some(serde_json::json!(c.value(idx) as f64))
-        }),
-        "tagCount" => view.tags.map(|c| serde_json::json!(c.value(idx).len())),
-        _ => {
-            let extras = view.extras?;
-            if extras.is_null(idx) {
-                return None;
-            }
-            // Byte-scan for the one key; parses only its value slice instead of the
-            // whole extras document per row.
-            crate::types::json_field(extras.value(idx), field)
+/// One entry of the built-in field vocabulary. Exported to TS as a specta constant so
+/// `fieldDefRegistry` derives its table from here rather than restating it.
+#[derive(Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BuiltinField {
+    pub key: &'static str,
+    pub label: &'static str,
+    #[serde(rename = "type")]
+    pub field_type: crate::map_meta::ExtraFieldType,
+    pub kind: Option<BuiltinFieldKind>,
+    pub comparison: Option<crate::map_meta::ComparisonType>,
+}
+
+/// Single source of truth for the built-in field vocabulary: the exported table, the two
+/// per-row resolvers, and the "is this a column, not an extras key" test all expand from
+/// one list. Match arms are literal-keyed, so resolution stays allocation-free.
+macro_rules! builtin_fields {
+    ($(
+        $key:literal, $label:literal, $ty:expr, $kind:expr, $cmp:expr,
+        |$l:ident| $loc_expr:expr,
+        |$v:ident, $i:ident| $arrow_expr:expr;
+    )*) => {
+        pub const BUILTIN_FIELDS: &[BuiltinField] = &[$(BuiltinField {
+            key: $key,
+            label: $label,
+            field_type: $ty,
+            kind: $kind,
+            comparison: $cmp,
+        }),*];
+
+        /// True for fields backed by a Location column rather than the `extras` blob.
+        pub fn is_builtin_field(field: &str) -> bool {
+            matches!(field, $($key)|*)
         }
-    }
+
+        /// Resolve a field name to its JSON value from a `Location` struct.
+        /// Unknown fields fall through to `loc.extra`.
+        fn resolve_field_loc(loc: &Location, field: &str) -> Option<serde_json::Value> {
+            match field {
+                $($key => { let $l = loc; $loc_expr })*
+                _ => loc.extra.as_ref().and_then(|e| e.get(field)),
+            }
+        }
+
+        /// Resolve a field name to its JSON value directly from Arrow columns (avoids
+        /// materializing a full `Location`). Falls through to `extras` JSON otherwise.
+        fn resolve_field_arrow(view: &LocView, idx: usize, field: &str) -> Option<serde_json::Value> {
+            match field {
+                $($key => { let ($v, $i) = (view, idx); $arrow_expr })*
+                _ => {
+                    let extras = view.extras?;
+                    if extras.is_null(idx) {
+                        return None;
+                    }
+                    // Byte-scan for the one key; parses only its value slice instead of
+                    // the whole extras document per row.
+                    crate::types::json_field(extras.value(idx), field)
+                }
+            }
+        }
+    };
+}
+
+use crate::map_meta::{ComparisonType, ExtraFieldType};
+
+builtin_fields! {
+    "lat", "Latitude", ExtraFieldType::Number, Some(BuiltinFieldKind::Identity), None,
+        |l| Some(serde_json::json!(l.lat)),
+        |v, i| v.lats.map(|c| serde_json::json!(c.value(i)));
+    "lng", "Longitude", ExtraFieldType::Number, Some(BuiltinFieldKind::Identity), None,
+        |l| Some(serde_json::json!(l.lng)),
+        |v, i| v.lngs.map(|c| serde_json::json!(c.value(i)));
+    "heading", "Heading", ExtraFieldType::Number, Some(BuiltinFieldKind::Writable),
+        Some(ComparisonType::Circular { period: 360.0 }),
+        |l| Some(serde_json::json!(l.heading)),
+        |v, i| v.headings.map(|c| serde_json::json!(c.value(i)));
+    "pitch", "Pitch", ExtraFieldType::Number, Some(BuiltinFieldKind::Writable), None,
+        |l| Some(serde_json::json!(l.pitch)),
+        |v, i| v.pitches.map(|c| serde_json::json!(c.value(i)));
+    "zoom", "Zoom", ExtraFieldType::Number, Some(BuiltinFieldKind::Writable), None,
+        |l| Some(serde_json::json!(l.zoom)),
+        |v, i| v.zooms.map(|c| serde_json::json!(c.value(i)));
+    "id", "ID", ExtraFieldType::Number, Some(BuiltinFieldKind::Identity), None,
+        |l| Some(serde_json::json!(l.id)),
+        |v, i| v.ids.map(|c| serde_json::json!(c.value(i)));
+    "createdAt", "Created", ExtraFieldType::Date, None, None,
+        |l| Some(serde_json::json!(l.created_at as f64)),
+        |v, i| v.created_ats.map(|c| serde_json::json!(c.value(i) as f64));
+    "modifiedAt", "Modified", ExtraFieldType::Date, None, None,
+        |l| l.modified_at.map(|ts| serde_json::json!(ts as f64)),
+        |v, i| v.modified_ats.and_then(|c| {
+            (!c.is_null(i)).then(|| serde_json::json!(c.value(i) as f64))
+        });
+    "tagCount", "Tag count", ExtraFieldType::Number, Some(BuiltinFieldKind::Virtual), None,
+        |l| Some(serde_json::json!(l.tags.len())),
+        |v, i| v.tags.map(|c| serde_json::json!(c.value(i).len()));
 }
 
 /// Core comparison dispatch. Supports eq, neq, has, nothas, gt, lt, gte, lte, between,

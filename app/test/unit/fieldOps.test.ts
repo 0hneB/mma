@@ -196,6 +196,8 @@ describe("field expressions", () => {
 		expect(fieldValue(loc, "heading")).toBe(33);
 		expect(fieldValue(loc, "foo")).toBe(7);
 		expect(fieldValue(loc, "missing")).toBeUndefined();
+		// `id` is a builtin column, so it must not fall through to `extra`.
+		expect(fieldValue(loc, "id")).toBe(1);
 	});
 
 	it("supports functions: mod wraps negatives, clamp bounds", () => {
