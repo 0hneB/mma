@@ -1,25 +1,12 @@
-import {
-	waitForReady,
-	createAndOpenMap,
-	closeMap,
-	deleteMap,
-	addLocs,
-	createLocation,
-	createTag,
-	refreshSelections,
-	withApi,
-} from "./helpers";
+import { addLocs, createLocation, createTag, refreshSelections, withApi, useMap } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
 describe("Selection composition", () => {
-	let mapId: string;
+	useMap("E2E Sel Compose");
 	let tagAId: number;
 	let tagBId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Sel Compose");
-
 		const tagA = await createTag("tag-a");
 		tagAId = tagA.id;
 		const tagB = await createTag("tag-b");
@@ -40,12 +27,6 @@ describe("Selection composition", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -145,13 +126,10 @@ describe("Selection composition", () => {
 });
 
 describe("Selection composition edge cases", () => {
-	let mapId: string;
+	useMap("E2E Sel Compose Edge");
 	let edgeTagId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Sel Compose Edge");
-
 		const edgeTag = await createTag("edge-tag");
 		edgeTagId = edgeTag.id;
 
@@ -169,12 +147,6 @@ describe("Selection composition edge cases", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});

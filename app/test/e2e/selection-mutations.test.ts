@@ -1,8 +1,5 @@
 import {
-	waitForReady,
-	createAndOpenMap,
 	closeMap,
-	deleteMap,
 	flushAndWait,
 	openMap,
 	addLocs,
@@ -11,6 +8,7 @@ import {
 	getLoc,
 	refreshSelections,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -19,14 +17,11 @@ import type { Location } from "@/bindings.gen";
 // ============================================================================
 
 describe("Live selection correctness after add/remove", () => {
-	let mapId: string;
+	useMap("E2E SelMut AddRemove");
 	let locIds: number[];
 	let tagRedId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut AddRemove");
-
 		const tagRed = await createTag("t-red");
 		tagRedId = tagRed.id;
 
@@ -42,12 +37,6 @@ describe("Live selection correctness after add/remove", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -156,14 +145,11 @@ describe("Live selection correctness after add/remove", () => {
 // ============================================================================
 
 describe("Live selection correctness after update", () => {
-	let mapId: string;
+	useMap("E2E SelMut Update");
 	let locIds: number[];
 	let tagAlphaId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Update");
-
 		const tagAlpha = await createTag("t-alpha");
 		tagAlphaId = tagAlpha.id;
 
@@ -182,12 +168,6 @@ describe("Live selection correctness after update", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -288,14 +268,11 @@ describe("Live selection correctness after update", () => {
 // ============================================================================
 
 describe("Review mode delete with active selections", () => {
-	let mapId: string;
+	useMap("E2E SelMut Review");
 	let locIds: number[];
 	let tagRvId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Review");
-
 		const tagRv = await createTag("t-rv");
 		tagRvId = tagRv.id;
 
@@ -311,12 +288,6 @@ describe("Review mode delete with active selections", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => {
 			api.resetSelections();
@@ -392,14 +363,11 @@ describe("Review mode delete with active selections", () => {
 // ============================================================================
 
 describe("Selection correctness after undo/redo", () => {
-	let mapId: string;
+	useMap("E2E SelMut Undo");
 	let locIds: number[];
 	let tagUndoId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Undo");
-
 		const tagUndo = await createTag("t-undo");
 		tagUndoId = tagUndo.id;
 
@@ -415,12 +383,6 @@ describe("Selection correctness after undo/redo", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -550,15 +512,12 @@ describe("Selection correctness after undo/redo", () => {
 // ============================================================================
 
 describe("Composite selection correctness after mutations", () => {
-	let mapId: string;
+	useMap("E2E SelMut Composite");
 	let locIds: number[];
 	let tagCompAId: number;
 	let tagCompBId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Composite");
-
 		const tagCompA = await createTag("t-comp-a");
 		tagCompAId = tagCompA.id;
 		const tagCompB = await createTag("t-comp-b");
@@ -583,12 +542,6 @@ describe("Composite selection correctness after mutations", () => {
 		// cp-15..19: []
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -680,14 +633,11 @@ describe("Composite selection correctness after mutations", () => {
 // ============================================================================
 
 describe("Bulk operations with active selections", () => {
-	let mapId: string;
+	useMap("E2E SelMut Bulk");
 	let locIds: number[];
 	let tagBulkId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Bulk");
-
 		const tagBulk = await createTag("t-bulk");
 		tagBulkId = tagBulk.id;
 
@@ -702,12 +652,6 @@ describe("Bulk operations with active selections", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -789,13 +733,10 @@ describe("Bulk operations with active selections", () => {
 // ============================================================================
 
 describe("Selection survives save/load cycle", () => {
-	let mapId: string;
+	const map = useMap("E2E SelMut Persist");
 	let tagPersistId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Persist");
-
 		const tagPersist = await createTag("t-persist");
 		tagPersistId = tagPersist.id;
 
@@ -814,12 +755,6 @@ describe("Selection survives save/load cycle", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	// FIXME: pre-existing flake — same reload race as the PanoIds note below; this
 	// variant passed locally but hit on slower CI hardware (v0.6.0 baseline run).
 	it.skip("tag selection produces same results after save/close/reopen", async () => {
@@ -830,7 +765,7 @@ describe("Selection survives save/load cycle", () => {
 
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const afterCount = await withApi(async (api, tagId: number) => {
 			await api.addSelections([{ type: "Tag", tagId: tagId }]);
@@ -852,7 +787,7 @@ describe("Selection survives save/load cycle", () => {
 
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const afterCount = await withApi(async (api) => {
 			await api.addSelections([{ type: "PanoIds" }]);
@@ -872,7 +807,7 @@ describe("Selection survives save/load cycle", () => {
 
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const afterCount = await withApi(async (api) => {
 			await api.addSelections([{ type: "Everything" }]);
@@ -892,7 +827,7 @@ describe("Selection survives save/load cycle", () => {
 
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const afterCount = await withApi(async (api) => {
 			await api.addSelections([{ type: "Unpanned" }]);
@@ -908,22 +843,13 @@ describe("Selection survives save/load cycle", () => {
 // ============================================================================
 
 describe("Slot reuse correctness", () => {
-	let mapId: string;
+	useMap("E2E SelMut Slots");
 	let tagSlotId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E SelMut Slots");
-
 		const tagSlot = await createTag("t-slot");
 		tagSlotId = tagSlot.id;
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});

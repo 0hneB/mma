@@ -68,6 +68,27 @@ export async function createAndOpenMap(name: string): Promise<string> {
 	return id;
 }
 
+/**
+ * Mocha fixture for the standard describe lifecycle: boot, create + open a map before the
+ * block, close + delete it after. Returns a ref whose `id` is filled in by the before hook.
+ *
+ * Usage: `const map = useMap("E2E Tags");` then `map.id` inside tests.
+ * Pass `{ closeLocation: true }` when the block leaves a location open.
+ */
+export function useMap(name: string, opts: { closeLocation?: boolean } = {}) {
+	const ref = { id: "" };
+	before(async () => {
+		await waitForReady();
+		ref.id = await createAndOpenMap(name);
+	});
+	after(async () => {
+		if (opts.closeLocation) await closeLocation();
+		await closeMap();
+		await deleteMap(ref.id);
+	});
+	return ref;
+}
+
 export async function openMap(id: string) {
 	await withApi(async (api, mapId) => api._test.openMap(mapId), id);
 }

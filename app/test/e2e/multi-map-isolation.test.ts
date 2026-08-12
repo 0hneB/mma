@@ -291,6 +291,7 @@ describe("Per-map settings isolation", () => {
 describe("Active location isolation across maps", () => {
 	let mapAId: string;
 	let mapBId: string;
+
 	before(async () => {
 		await waitForReady();
 

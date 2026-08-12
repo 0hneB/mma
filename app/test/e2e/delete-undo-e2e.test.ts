@@ -5,10 +5,6 @@
  * (tag counts, selections, active location, dirty state) is fully restored.
  */
 import {
-	waitForReady,
-	createAndOpenMap,
-	closeMap,
-	deleteMap,
 	addLocs,
 	createLocation,
 	createTag,
@@ -17,6 +13,7 @@ import {
 	getLocCount,
 	refreshSelections,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -25,13 +22,11 @@ import type { Location } from "@/bindings.gen";
 // ============================================================================
 
 describe("Delete tagged location + undo", () => {
-	let mapId: string;
+	useMap("E2E DelUndo Tagged");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E DelUndo Tagged");
 		const tag = await createTag("UndoTag");
 		tagId = tag.id;
 
@@ -39,12 +34,6 @@ describe("Delete tagged location + undo", () => {
 		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("delete reduces tag count", async () => {
 		await withApi(async (api, id) => {
 			await api.removeLocations(new Set([id]));
@@ -88,13 +77,11 @@ describe("Delete tagged location + undo", () => {
 // ============================================================================
 
 describe("Delete selected locations + undo restores selection", () => {
-	let mapId: string;
+	useMap("E2E DelUndo Selection");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E DelUndo Selection");
 		const tag = await createTag("SelTag");
 		tagId = tag.id;
 
@@ -102,12 +89,6 @@ describe("Delete selected locations + undo restores selection", () => {
 		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("select tag, delete 2 selected locations, selection count drops", async () => {
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const before = await refreshSelections();
@@ -143,22 +124,14 @@ describe("Delete selected locations + undo restores selection", () => {
 // ============================================================================
 
 describe("Delete active location + undo", () => {
-	let mapId: string;
+	useMap("E2E DelUndo Active");
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E DelUndo Active");
 		const locs: Location[] = [];
 		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i * 10, lng: i * 10 }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("delete active location clears active and work area", async () => {
 		await withApi(async (api, lid) => await api.setActiveLocation(lid, false), locIds[2]);
 		const activeBefore = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
@@ -194,13 +167,11 @@ describe("Delete active location + undo", () => {
 // ============================================================================
 
 describe("Batch delete + undo data fidelity", () => {
-	let mapId: string;
+	useMap("E2E Batch DelUndo");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Batch DelUndo");
 		const tag = await createTag("BatchTag");
 		tagId = tag.id;
 
@@ -218,12 +189,6 @@ describe("Batch delete + undo data fidelity", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("batch delete 5 locations", async () => {
 		const toDelete = locIds.slice(0, 5);
 		await withApi(async (api, ids) => {
@@ -281,22 +246,14 @@ describe("Batch delete + undo data fidelity", () => {
 // ============================================================================
 
 describe("Multiple delete-undo cycles", () => {
-	let mapId: string;
+	useMap("E2E DelUndo Cycles");
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E DelUndo Cycles");
 		const locs: Location[] = [];
 		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("5 cycles of delete-undo leave data intact", async () => {
 		for (let cycle = 0; cycle < 5; cycle++) {
 			const targetId = locIds[cycle % locIds.length];

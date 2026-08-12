@@ -1,22 +1,10 @@
-import {
-	waitForReady,
-	createAndOpenMap,
-	closeMap,
-	deleteMap,
-	addLocs,
-	createLocation,
-	refreshSelections,
-	withApi,
-} from "./helpers";
+import { addLocs, createLocation, refreshSelections, withApi, useMap } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
 describe("Selection filters — extra field operations", () => {
-	let mapId: string;
+	useMap("E2E Filter Extras");
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Filter Extras");
-
 		// Create locations with various extra fields
 		const locs: Location[] = [];
 		for (let i = 0; i < 20; i++) {
@@ -34,12 +22,6 @@ describe("Selection filters — extra field operations", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -202,12 +184,9 @@ describe("Selection filters — extra field operations", () => {
 });
 
 describe("Selection filters — core field operations", () => {
-	let mapId: string;
+	useMap("E2E Filter Core");
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Filter Core");
-
 		const locs: Location[] = [];
 		for (let i = 0; i < 30; i++) {
 			locs.push(
@@ -224,12 +203,6 @@ describe("Selection filters — core field operations", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});

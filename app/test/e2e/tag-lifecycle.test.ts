@@ -4,10 +4,7 @@
  * tag count consistency, and tag operations through save/load cycles.
  */
 import {
-	waitForReady,
-	createAndOpenMap,
 	closeMap,
-	deleteMap,
 	addLocs,
 	createLocation,
 	createTag,
@@ -17,6 +14,7 @@ import {
 	flushAndWait,
 	openMap,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -25,13 +23,11 @@ import type { Location } from "@/bindings.gen";
 // ============================================================================
 
 describe("Tag rename propagation", () => {
-	let mapId: string;
+	const map = useMap("E2E Tag Rename");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Rename");
 		const tag = await createTag("OriginalName");
 		tagId = tag.id;
 
@@ -39,12 +35,6 @@ describe("Tag rename propagation", () => {
 		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("renaming a tag updates metadata", async () => {
 		await withApi(async (api, tid) => {
 			await api.updateTags([{ id: tid, patch: { name: "RenamedTag" } }]);
@@ -72,7 +62,7 @@ describe("Tag rename propagation", () => {
 	it("rename persists after save/close/reopen", async () => {
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const name = await withApi(async (api, tid) => {
 			return (api.getMapState().tags as any)[String(tid)]?.name;
@@ -96,13 +86,11 @@ describe("Tag rename propagation", () => {
 // ============================================================================
 
 describe("Tag delete cascade — no orphans", () => {
-	let mapId: string;
+	const map = useMap("E2E Tag Cascade");
 	let tagAId: number;
 	let tagBId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Cascade");
 		const tagA = await createTag("TagA");
 		tagAId = tagA.id;
 		const tagB = await createTag("TagB");
@@ -115,12 +103,6 @@ describe("Tag delete cascade — no orphans", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("before delete: all 10 locations have tagA", async () => {
 		const count = await withApi(async (api, tid) => {
 			const counts = api.getMapState().tagCounts;
@@ -166,7 +148,7 @@ describe("Tag delete cascade — no orphans", () => {
 	it("no orphans after save/close/reopen", async () => {
 		await flushAndWait();
 		await closeMap();
-		await openMap(mapId);
+		await openMap(map.id);
 
 		const allLocs = await getAllLocs();
 		for (const loc of allLocs) {
@@ -186,12 +168,10 @@ describe("Tag delete cascade — no orphans", () => {
 // ============================================================================
 
 describe("Tag delete + undo restores all references", () => {
-	let mapId: string;
+	useMap("E2E Tag Delete Undo");
 	let tagId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Delete Undo");
 		const tag = await createTag("UndoMe");
 		tagId = tag.id;
 
@@ -199,12 +179,6 @@ describe("Tag delete + undo restores all references", () => {
 		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("delete tag then undo restores tag visibility", async () => {
 		await withApi(async (api, tid) => api.deleteTags([tid]), tagId);
 
@@ -254,14 +228,12 @@ describe("Tag delete + undo restores all references", () => {
 // ============================================================================
 
 describe("Multi-tag delete isolation", () => {
-	let mapId: string;
+	useMap("E2E Multi Tag");
 	let tag1Id: number;
 	let tag2Id: number;
 	let tag3Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Multi Tag");
 		const t1 = await createTag("Keep1");
 		tag1Id = t1.id;
 		const t2 = await createTag("DeleteMe");
@@ -275,12 +247,6 @@ describe("Multi-tag delete isolation", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("deleting one tag leaves the other two intact", async () => {
 		await withApi(async (api, tid) => api.deleteTags([tid]), tag2Id);
 

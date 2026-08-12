@@ -5,10 +5,6 @@
  * selection sync, and tag counts.
  */
 import {
-	waitForReady,
-	createAndOpenMap,
-	closeMap,
-	deleteMap,
 	addLocs,
 	createLocation,
 	createTag,
@@ -18,6 +14,7 @@ import {
 	flushAndWait,
 	openLocation,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -26,23 +23,15 @@ import type { Location } from "@/bindings.gen";
 // ============================================================================
 
 describe("Delete marks store dirty", () => {
-	let mapId: string;
+	useMap("E2E Delete Dirty");
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Delete Dirty");
 		const locs: Location[] = [];
 		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i, lng: i }));
 		locIds = await addLocs(locs);
 		await flushAndWait();
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("store is dirty after delete", async () => {
 		await withApi(async (api, id) => {
 			await api.removeLocations(new Set([id]));
@@ -59,23 +48,15 @@ describe("Delete marks store dirty", () => {
 // ============================================================================
 
 describe("Delete updates location count", () => {
-	let mapId: string;
+	useMap("E2E Delete LocCount");
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Delete LocCount");
 		const locs: Location[] = [];
 		for (let i = 0; i < 10; i++) locs.push(createLocation({ lat: i, lng: i }));
 		locIds = await addLocs(locs);
 		await flushAndWait();
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("location count decreases by 1 after single delete", async () => {
 		const before = await getLocCount();
 		await withApi(async (api, id) => {
@@ -108,22 +89,14 @@ describe("Delete updates location count", () => {
 // ============================================================================
 
 describe("Delete clears active location", () => {
-	let mapId: string;
+	useMap("E2E Delete Active");
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Delete Active");
 		const locs: Location[] = [];
 		for (let i = 0; i < 5; i++) locs.push(createLocation({ lat: i * 10, lng: i * 10 }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("active location cleared when it is deleted", async () => {
 		await openLocation(locIds[0]);
 		const activeBefore = await withApi(async (api) => api.getMapState().activeLocation?.id ?? null);
@@ -167,14 +140,12 @@ describe("Delete clears active location", () => {
 // ============================================================================
 
 describe("Delete syncs with selections", () => {
-	let mapId: string;
+	useMap("E2E Delete Selections");
 	let tagId: number;
 	let taggedIds: number[];
 	let untaggedIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Delete Selections");
 		const tag = await createTag("DelSelTag");
 		tagId = tag.id;
 
@@ -186,12 +157,6 @@ describe("Delete syncs with selections", () => {
 		for (let i = 10; i < 15; i++) untagged.push(createLocation({ lat: i, lng: i }));
 		untaggedIds = await addLocs(untagged);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -227,13 +192,11 @@ describe("Delete syncs with selections", () => {
 // ============================================================================
 
 describe("Delete updates tag counts", () => {
-	let mapId: string;
+	useMap("E2E Delete TagCounts");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Delete TagCounts");
 		const tag = await createTag("CountTag");
 		tagId = tag.id;
 
@@ -241,12 +204,6 @@ describe("Delete updates tag counts", () => {
 		for (let i = 0; i < 8; i++) locs.push(createLocation({ lat: i, lng: i, tags: [tagId] }));
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("tag count starts correct", async () => {
 		const count = await withApi(async (api, tid) => {
 			const counts = api.getMapState().tagCounts;

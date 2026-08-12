@@ -1,27 +1,21 @@
 import {
-	waitForReady,
-	createAndOpenMap,
-	closeMap,
-	deleteMap,
 	addLocs,
 	createLocation,
 	createTag,
 	getLoc,
 	refreshSelections,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
 describe("Selections - basic types", () => {
-	let mapId: string;
+	useMap("E2E Selections");
 	let locIds: number[];
 	let tagRedId: number;
 	let tagBlueId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Selections");
-
 		const tagRed = await createTag("tag-red");
 		tagRedId = tagRed.id;
 		const tagBlue = await createTag("tag-blue");
@@ -43,12 +37,6 @@ describe("Selections - basic types", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -204,13 +192,10 @@ describe("Selections - basic types", () => {
 });
 
 describe("Selection operations", () => {
-	let mapId: string;
+	useMap("E2E Selection Ops");
 	let tagAId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Selection Ops");
-
 		const tagA = await createTag("tag-a");
 		tagAId = tagA.id;
 
@@ -228,12 +213,6 @@ describe("Selection operations", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});
@@ -318,18 +297,8 @@ describe("Selection operations", () => {
 });
 
 describe("Selection correctness after mutations", () => {
-	let mapId: string;
+	useMap("E2E Sel Mutations");
 	let locIds: number[];
-
-	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Sel Mutations");
-	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
 
 	it("PanoIds selection updates after flag change", async () => {
 		const locs: Location[] = [];
@@ -435,12 +404,9 @@ describe("Selection correctness after mutations", () => {
 });
 
 describe("Selection with Filter", () => {
-	let mapId: string;
+	useMap("E2E Filter");
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Filter");
-
 		const locs: Location[] = [];
 		for (let i = 0; i < 50; i++) {
 			locs.push(
@@ -453,12 +419,6 @@ describe("Selection with Filter", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	beforeEach(async () => {
 		await withApi(async (api) => api.resetSelections());
 	});

@@ -9,6 +9,7 @@ import {
 	createTag,
 	refreshSelections,
 	withApi,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -17,15 +18,12 @@ import type { Location } from "@/bindings.gen";
 // ============================================================================
 
 describe("Bulk add 50 locations split across 3 tags", () => {
-	let mapId: string;
+	useMap("E2E Tag Membership Bulk");
 	let tagAId: number;
 	let tagBId: number;
 	let tagCId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Membership Bulk");
-
 		const tA = await createTag("SplitA");
 		tagAId = tA.id;
 		const tB = await createTag("SplitB");
@@ -40,12 +38,6 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 		}
 		await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("tagA count matches via getTagCounts", async () => {
 		const count = await withApi(async (api, tid) => {
 			const counts = api.getMapState().tagCounts;
@@ -97,14 +89,11 @@ describe("Bulk add 50 locations split across 3 tags", () => {
 // ============================================================================
 
 describe("Remove tagged locations shrinks tag selection", () => {
-	let mapId: string;
+	useMap("E2E Tag Remove Shrink");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Remove Shrink");
-
 		const tag = await createTag("Shrinkable");
 		tagId = tag.id;
 
@@ -114,12 +103,6 @@ describe("Remove tagged locations shrinks tag selection", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("selection starts at 20", async () => {
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
 		const ids = await refreshSelections();
@@ -153,14 +136,11 @@ describe("Remove tagged locations shrinks tag selection", () => {
 // ============================================================================
 
 describe("Undo bulk remove restores tag membership", () => {
-	let mapId: string;
+	useMap("E2E Tag Undo Remove");
 	let tagId: number;
 	let locIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Undo Remove");
-
 		const tag = await createTag("UndoRemove");
 		tagId = tag.id;
 
@@ -170,12 +150,6 @@ describe("Undo bulk remove restores tag membership", () => {
 		}
 		locIds = await addLocs(locs);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("remove 6 locations then undo restores count to 12", async () => {
 		const toRemove = locIds.slice(0, 6);
 		await withApi(async (api, ids) => {
@@ -225,13 +199,10 @@ describe("Undo bulk remove restores tag membership", () => {
 // ============================================================================
 
 describe("Add locations to existing tag accumulates membership", () => {
-	let mapId: string;
+	useMap("E2E Tag Cumulative");
 	let tagId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Cumulative");
-
 		const tag = await createTag("Cumulative");
 		tagId = tag.id;
 
@@ -241,12 +212,6 @@ describe("Add locations to existing tag accumulates membership", () => {
 		}
 		await addLocs(batch1);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("initial batch: count is 10", async () => {
 		const count = await withApi(async (api, tid) => {
 			const counts = api.getMapState().tagCounts;
@@ -309,16 +274,13 @@ describe("Add locations to existing tag accumulates membership", () => {
 // ============================================================================
 
 describe("Multiple tags on same location", () => {
-	let mapId: string;
+	useMap("E2E Tag Multi Membership");
 	let tag1Id: number;
 	let tag2Id: number;
 	let tag3Id: number;
 	let sharedIds: number[];
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E Tag Multi Membership");
-
 		const t1 = await createTag("Multi1");
 		tag1Id = t1.id;
 		const t2 = await createTag("Multi2");
@@ -338,12 +300,6 @@ describe("Multiple tags on same location", () => {
 		}
 		await addLocs(exclusive);
 	});
-
-	after(async () => {
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	it("tag1 selection includes shared + exclusive = 15", async () => {
 		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tag1Id);
 		const ids = await refreshSelections();

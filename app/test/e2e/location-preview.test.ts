@@ -19,6 +19,7 @@ import {
 	waitForActive,
 	waitForWorkArea,
 	waitForLocCount,
+	useMap,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -111,13 +112,11 @@ async function readLocation(id: number): Promise<any> {
 // ============================================================================
 
 describe("LocationPreview — basics", () => {
-	let mapId: string;
+	useMap("E2E LP Basics", { closeLocation: true });
 	let basicCoordId: number;
 	let basicDeleteId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Basics");
 		const ids = await addLocs([
 			loc({ lat: COORD_ONLY.lat, lng: COORD_ONLY.lng }),
 			loc({ lat: 35, lng: 139 }),
@@ -125,13 +124,6 @@ describe("LocationPreview — basics", () => {
 		basicCoordId = ids[0];
 		basicDeleteId = ids[1];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -175,13 +167,11 @@ describe("LocationPreview — basics", () => {
 // ============================================================================
 
 describe("LocationPreview — official pano", () => {
-	let mapId: string;
+	useMap("E2E LP Official", { closeLocation: true });
 	let offDefaultId: number;
 	let offPinnedId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Official");
 		await withApi(async (api) => {
 			const map = api.getMapState().map!;
 			await api.updateMapMeta({ settings: { ...map.meta.settings, enrichMetadata: true } });
@@ -199,13 +189,6 @@ describe("LocationPreview — official pano", () => {
 		offDefaultId = ids[0];
 		offPinnedId = ids[1];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -324,12 +307,10 @@ describe("LocationPreview — official pano", () => {
 // ============================================================================
 
 describe("LocationPreview — unofficial pano", () => {
-	let mapId: string;
+	useMap("E2E LP Unofficial", { closeLocation: true });
 	let unoff1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Unofficial");
 		const ids = await addLocs([
 			loc({
 				lat: UNOFFICIAL_COORDS.lat,
@@ -340,13 +321,6 @@ describe("LocationPreview — unofficial pano", () => {
 		]);
 		unoff1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -394,12 +368,10 @@ describe("LocationPreview — unofficial pano", () => {
 // ============================================================================
 
 describe("LocationPreview — trekker pano", () => {
-	let mapId: string;
+	useMap("E2E LP Trekker", { closeLocation: true });
 	let trek1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Trekker");
 		const ids = await addLocs([
 			loc({
 				lat: TREKKER_COORDS.lat,
@@ -410,13 +382,6 @@ describe("LocationPreview — trekker pano", () => {
 		]);
 		trek1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -451,12 +416,10 @@ describe("LocationPreview — trekker pano", () => {
 // ============================================================================
 
 describe("LocationPreview — dead pano (fallback)", () => {
-	let mapId: string;
+	useMap("E2E LP Dead Pano", { closeLocation: true });
 	let dead1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Dead Pano");
 		const ids = await addLocs([
 			// Dead pano with valid fallback coords (Times Square)
 			loc({
@@ -468,13 +431,6 @@ describe("LocationPreview — dead pano (fallback)", () => {
 		]);
 		dead1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -513,22 +469,13 @@ describe("LocationPreview — dead pano (fallback)", () => {
 // ============================================================================
 
 describe("LocationPreview — coord-only location (no panoId)", () => {
-	let mapId: string;
+	useMap("E2E LP Coord Only", { closeLocation: true });
 	let coord1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Coord Only");
 		const ids = await addLocs([loc({ lat: COORD_ONLY.lat, lng: COORD_ONLY.lng })]);
 		coord1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -556,14 +503,12 @@ describe("LocationPreview — coord-only location (no panoId)", () => {
 // ============================================================================
 
 describe("LocationPreview — switching between pano types", () => {
-	let mapId: string;
+	useMap("E2E LP Switching", { closeLocation: true });
 	let swOfficialId: number;
 	let swTrekkerId: number;
 	let swCoordId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Switching");
 		const ids = await addLocs([
 			loc({
 				lat: OFFICIAL_COORDS.lat,
@@ -583,13 +528,6 @@ describe("LocationPreview — switching between pano types", () => {
 		swTrekkerId = ids[1];
 		swCoordId = ids[2];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -641,14 +579,12 @@ describe("LocationPreview — switching between pano types", () => {
 // ============================================================================
 
 describe("LocationPreview — location with tags", () => {
-	let mapId: string;
+	useMap("E2E LP Tags", { closeLocation: true });
 	let tagRedId: number;
 	let tagBlueId: number;
 	let tagged1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Tags");
 		const tagRed = await createTag("Red");
 		tagRedId = tagRed.id;
 		const tagBlue = await createTag("Blue");
@@ -662,13 +598,6 @@ describe("LocationPreview — location with tags", () => {
 		]);
 		tagged1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -700,12 +629,10 @@ describe("LocationPreview — location with tags", () => {
 // ============================================================================
 
 describe("LocationPreview — exact date resolution", () => {
-	let mapId: string;
+	useMap("E2E LP Exact Date", { closeLocation: true });
 	let exact1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Exact Date");
 		await withApi(async (api) => {
 			const map = api.getMapState().map!;
 			await api.updateMapMeta({
@@ -730,13 +657,6 @@ describe("LocationPreview — exact date resolution", () => {
 		]);
 		exact1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -811,24 +731,15 @@ describe("LocationPreview — exact date resolution", () => {
 // ============================================================================
 
 describe("LocationPreview — save captures full pano state", () => {
-	let mapId: string;
+	useMap("E2E LP Save State", { closeLocation: true });
 	let saveFullId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Save State");
 		const ids = await addLocs([
 			loc({ lat: OFFICIAL_COORDS.lat, lng: OFFICIAL_COORDS.lng, panoId: OFFICIAL_PANO }),
 		]);
 		saveFullId = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -863,12 +774,10 @@ describe("LocationPreview — save captures full pano state", () => {
 // ============================================================================
 
 describe("LocationPreview — return to spawn", () => {
-	let mapId: string;
+	useMap("E2E LP Return Spawn", { closeLocation: true });
 	let spawn1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Return Spawn");
 		const ids = await addLocs([
 			loc({
 				lat: OFFICIAL_COORDS.lat,
@@ -882,13 +791,6 @@ describe("LocationPreview — return to spawn", () => {
 		]);
 		spawn1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -918,12 +820,10 @@ describe("LocationPreview — return to spawn", () => {
 // ============================================================================
 
 describe("LocationPreview — next/prev date hotkeys", () => {
-	let mapId: string;
+	useMap("E2E LP Date Hotkeys", { closeLocation: true });
 	let hotkeyDatesId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Date Hotkeys");
 		const ids = await addLocs([
 			loc({
 				lat: OFFICIAL_COORDS.lat,
@@ -934,13 +834,6 @@ describe("LocationPreview — next/prev date hotkeys", () => {
 		]);
 		hotkeyDatesId = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -990,12 +883,10 @@ describe("LocationPreview — next/prev date hotkeys", () => {
 // ============================================================================
 
 describe("LocationPreview — duplicate location", () => {
-	let mapId: string;
+	useMap("E2E LP Duplicate", { closeLocation: true });
 	let dupSrcId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Duplicate");
 		const ids = await addLocs([
 			loc({
 				lat: OFFICIAL_COORDS.lat,
@@ -1007,13 +898,6 @@ describe("LocationPreview — duplicate location", () => {
 		]);
 		dupSrcId = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -1056,14 +940,12 @@ describe("LocationPreview — duplicate location", () => {
 // ============================================================================
 
 describe("LocationPreview — tag management in preview", () => {
-	let mapId: string;
+	useMap("E2E LP Tag Mgmt", { closeLocation: true });
 	let mgmtTagAId: number;
 	let mgmtTagBId: number;
 	let tagmgmt1Id: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Tag Mgmt");
 		const tagA = await createTag("Alpha");
 		mgmtTagAId = tagA.id;
 		const tagB = await createTag("Beta");
@@ -1075,13 +957,6 @@ describe("LocationPreview — tag management in preview", () => {
 		const ids = await addLocs([loc({ lat: COORD_ONLY.lat, lng: COORD_ONLY.lng, tags: [] })]);
 		tagmgmt1Id = ids[0];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
@@ -1491,15 +1366,13 @@ describe("LocationPreview — settings toggles", () => {
 // ============================================================================
 
 describe("LocationPreview — edge cases", () => {
-	let mapId: string;
+	useMap("E2E LP Edge Cases", { closeLocation: true });
 	let edgeAId: number;
 	let edgeBId: number;
 	let edgeSaveIdemId: number;
 	let edgeExtraId: number;
 
 	before(async () => {
-		await waitForReady();
-		mapId = await createAndOpenMap("E2E LP Edge Cases");
 		await withApi(async (api) => {
 			const map = api.getMapState().map!;
 			await api.updateMapMeta({ settings: { ...map.meta.settings, enrichMetadata: true } });
@@ -1537,13 +1410,6 @@ describe("LocationPreview — edge cases", () => {
 		edgeSaveIdemId = ids[2];
 		edgeExtraId = ids[3];
 	});
-
-	after(async () => {
-		await closeLocation();
-		await closeMap();
-		await deleteMap(mapId);
-	});
-
 	afterEach(async () => {
 		await closeLocation();
 	});
