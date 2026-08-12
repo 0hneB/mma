@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent } from "react";
 
 type DialogPayloads = {
+	commit: void;
 	export: void;
 	import: void;
 	history: void;

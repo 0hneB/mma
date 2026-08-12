@@ -3819,6 +3819,19 @@ body:not(.mm-tag-dragging) .tag-tree__edit:hover {
 .map-meta__spacer {
 	flex-grow: 1;
 }
+.commit-dialog {
+	width: 22rem;
+}
+.commit-dialog__message {
+	width: 100%;
+	margin-top: 0.75rem;
+}
+.commit-dialog__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 1rem;
+}
 .map-meta__actions {
 	gap: 1rem;
 	display: flex;

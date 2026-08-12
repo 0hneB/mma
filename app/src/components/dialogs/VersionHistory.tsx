@@ -129,7 +129,9 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 													color: diff ? undefined : msg ? undefined : "var(--text-3)",
 												}}
 											>
-												{diff ?? msg ?? (i === 0 ? "(latest)" : "(no changes)")}
+												{msg}
+												{msg && diff && " "}
+												{diff ?? (msg ? null : i === 0 ? "(latest)" : "(no changes)")}
 											</td>
 											<td className="mono" style={{ padding: "6px 8px", textAlign: "right" }}>
 												{fmt.format(c.locationCount)}

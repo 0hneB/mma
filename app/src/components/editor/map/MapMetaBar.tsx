@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import { useMapState, undo, redo, commitMap } from "@/store/useMapStore";
+import { useMapState, undo, redo } from "@/store/useMapStore";
+import { CommitDialog } from "@/components/dialogs/CommitDialog";
 import { useCommitDiff, hasCommitDiff } from "@/store/commitDiff";
 import { beginImportFromPath } from "@/store/importStaging";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
@@ -28,11 +29,14 @@ function LocationTotal() {
 function CommitControls() {
 	const diff = useCommitDiff();
 	const hasDiff = hasCommitDiff();
+	const [showCommit, setShowCommit] = useState(false);
+	useDialog("commit", () => hasCommitDiff() && setShowCommit(true));
 	return (
 		<>
-			<Button variant="primary" disabled={!hasDiff} onClick={() => commitMap()}>
+			<Button variant="primary" disabled={!hasDiff} onClick={() => setShowCommit(true)}>
 				Commit
 			</Button>
+			{showCommit && <CommitDialog onClose={() => setShowCommit(false)} />}
 			{hasDiff && (
 				<span className="map-meta__count mono">
 					<span className="map-meta__count--added">+{fmt.format(diff.added)}</span>{" "}

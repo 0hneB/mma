@@ -56,7 +56,6 @@ import {
 	selectIntersection,
 	selectUnion,
 	resetSelections,
-	commitMap,
 	getMapState,
 	deleteTags,
 	getActiveSelections,
@@ -85,7 +84,7 @@ const COMMANDS = {
 		group: "Map",
 		defaultBinding: "Mod+s",
 		aliases: ["save", "snapshot"],
-		execute: () => commitMap(),
+		execute: () => openDialog("commit"),
 		enabled: () => requiresMap() && hasCommitDiff(),
 	},
 	import: {

@@ -179,3 +179,33 @@ describe("Version control - checkout revives soft-deleted tags", () => {
 		expect(count).toBe(1);
 	});
 });
+
+// Commit dialog: the Commit button opens a dialog whose typed message must land
+// on the commit; the dialog closes after committing.
+describe("Version control - commit message dialog", () => {
+	let mapId: string;
+
+	before(async () => {
+		await waitForReady();
+		mapId = await createAndOpenMap("E2E VCS Message UI");
+	});
+
+	after(async () => {
+		await closeMap();
+		await deleteMap(mapId);
+	});
+
+	it("typed message lands on the commit", async () => {
+		await addLocs([createLocation({ lat: 5, lng: 5, heading: 0, panoId: null, flags: 0 })]);
+		await browser.$("button=Commit").click();
+		const input = await browser.$(".commit-dialog__message");
+		await input.waitForExist();
+		await input.setValue("from the commit dialog");
+		await browser.$(".commit-dialog").$("button=Commit").click();
+		await browser.waitUntil(async () => {
+			const commits = await withApi(async (api, id) => api.cmd.storeListCommits(id), mapId);
+			return commits.length >= 1 && commits[0].message === "from the commit dialog";
+		});
+		await input.waitForExist({ reverse: true });
+	});
+});
