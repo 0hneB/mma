@@ -21,7 +21,9 @@ import type {
 
 const DEFAULT_CURSOR = "crosshair";
 
-type GmEvent = { srcEvent?: { domEvent?: Event } };
+// GoogleMapsOverlay builds mock mjolnir events with Google's wrapper as srcEvent, so
+// mjolnir.js's own event types (srcEvent: DOM event) are wrong here - don't import them.
+type GmEvent = { srcEvent?: google.maps.MapMouseEvent };
 
 const EVENT_NAMES: Record<keyof MapHostEvents, string> = {
 	mousemove: "mousemove",

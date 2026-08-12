@@ -9,7 +9,7 @@
 // source uses a fake `mma-sv://{z}/{x}/{y}` template and `transformRequest`
 // rewrites each request through the current SV tile source.
 
-import maplibregl from "maplibre-gl";
+import maplibregl, { type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
@@ -52,15 +52,12 @@ const EVENT_NAMES: Record<keyof MapHostEvents, MlEventName> = {
 
 const LATLNG_EVENTS = new Set<keyof MapHostEvents>(["mousemove", "mousedown", "mouseup"]);
 
-// MapboxOverlay proxies map events, so srcEvent is MapLibre's wrapper; the native
-// DOM event lives at srcEvent.originalEvent.
-// TODO
-type DeckEvent = { srcEvent?: Event | { originalEvent?: Event } };
+// MapboxOverlay builds mock mjolnir events with MapLibre's wrapper as srcEvent, so
+// mjolnir.js's own event types (srcEvent: DOM event) are wrong here - don't import them.
+type DeckEvent = { srcEvent?: MapMouseEvent };
 
 function domEventOf(ev: DeckEvent): Event | undefined {
-	const src = ev?.srcEvent;
-	if (src && "originalEvent" in src) return src.originalEvent;
-	return src as Event | undefined;
+	return ev?.srcEvent?.originalEvent;
 }
 
 class MapLibreDeckOverlay implements DeckOverlayHandle {
