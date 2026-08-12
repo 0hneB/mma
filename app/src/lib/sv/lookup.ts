@@ -7,6 +7,7 @@ import { LocationFlag, hasLoadAsPanoId, createLocation } from "@/types";
 import type { LatLng } from "@/types";
 import type { Location } from "@/bindings.gen";
 import { runConcurrent } from "@/lib/util/concurrent";
+import { ymToDate } from "@/lib/util/date";
 
 import { SV_SEARCH_RADIUS, SV_CONCURRENCY } from "@/lib/sv/constants";
 import { type RequireNonNull } from "@/types/util";
@@ -23,9 +24,9 @@ export function parsePanoDate(d: Date | { year?: number; month?: number } | stri
 	if (d && typeof d === "object" && "year" in d) {
 		return new Date(d.year ?? 0, (d.month ?? 1) - 1);
 	}
-	if (typeof d === "string" && d.includes("-")) {
-		const [y, m] = d.split("-").map(Number);
-		return new Date(y, (m ?? 1) - 1);
+	if (typeof d === "string") {
+		const ym = ymToDate(d);
+		if (ym) return ym;
 	}
 	return new Date(0);
 }

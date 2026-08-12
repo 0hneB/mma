@@ -1,6 +1,7 @@
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { resolveExactTimestamp } from "@/lib/sv/exactDate";
 import { resolveTimezone } from "@/lib/util/timezone";
+import { ymFromDate } from "@/lib/util/date";
 import { getMapState, updateLocations, fetchLocationsByIds } from "@/store/useMapStore";
 import {
 	filterEnrichPatch,
@@ -30,7 +31,6 @@ export function buildPatch(
 	enrichFields: string[] | null,
 ): Record<string, unknown> | null {
 	if (!data.extra) return null;
-	const pad2 = (n: number) => String(n).padStart(2, "0");
 	const fullPatch: Record<string, unknown> = {
 		altitude: data.extra.altitude ?? 0,
 		countryCode: data.extra.countryCode ?? null,
@@ -42,7 +42,7 @@ export function buildPatch(
 		coverageDates:
 			data.time
 				?.filter((t) => t.date)
-				.map((t) => `${t.date!.getFullYear()}-${pad2(t.date!.getMonth() + 1)}`) ?? [],
+				.map((t) => ymFromDate(t.date!)) ?? [],
 	};
 	const filtered = filterEnrichPatch(fullPatch, enrichFields);
 	// Stale exact-date data is wrong once imageDate changes; clear it regardless of the

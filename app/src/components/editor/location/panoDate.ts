@@ -1,4 +1,5 @@
 import { type PanoReference, parsePanoDate } from "@/lib/sv/lookup";
+import { ymFromDate } from "@/lib/util/date";
 
 type CurrentPano = Pick<google.maps.StreetViewPanoramaData, "location" | "imageDate"> | null;
 
@@ -39,8 +40,6 @@ export function derivePanoDateState(
 		currentPano?.location?.pano ??
 		sorted[sorted.length - 1]?.pano ??
 		defaultPanoId;
-	const yearMonth = displayDate
-		? `${displayDate.getFullYear()}-${String(displayDate.getMonth() + 1).padStart(2, "0")}`
-		: null;
+	const yearMonth = displayDate ? ymFromDate(displayDate) : null;
 	return { defaultEntry, sorted, currentEntry, isDefault, displayDate, triggerPanoId, yearMonth };
 }
