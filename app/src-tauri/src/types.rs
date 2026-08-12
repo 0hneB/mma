@@ -384,6 +384,25 @@ pub struct Location {
     pub modified_at: Option<u32>,
 }
 
+impl Default for Location {
+    fn default() -> Self {
+        Location {
+            id: 0,
+            lat: 0.0,
+            lng: 0.0,
+            heading: 0.0,
+            pitch: 0.0,
+            zoom: 0.0,
+            pano_id: None,
+            flags: LocationFlags::empty(),
+            tags: Vec::new(),
+            extra: None,
+            created_at: 0,
+            modified_at: None,
+        }
+    }
+}
+
 bitflags::bitflags! {
     /// Per-location bitfield. Serializes as a plain `u32` over IPC and Arrow so the
     /// JS side (which models the bits with its own `LocationFlag` enum) is unaffected.

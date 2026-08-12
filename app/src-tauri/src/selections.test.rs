@@ -1,24 +1,8 @@
 use super::*;
 use crate::arrow_bridge::locations_to_batch;
+use crate::test_util::loc;
 use crate::types::Location;
 use chrono::TimeZone;
-
-fn loc(id: u32, lat: f64, lng: f64) -> Location {
-    Location {
-        id,
-        lat,
-        lng,
-        heading: 0.0,
-        pitch: 0.0,
-        zoom: 1.0,
-        pano_id: None,
-        flags: crate::types::LocationFlags::empty(),
-        tags: vec![],
-        extra: None,
-        created_at: 0,
-        modified_at: None,
-    }
-}
 
 fn make_view<'a>(
     batch: Option<&'a RecordBatch>,

@@ -11,15 +11,9 @@ fn loc(id: u32) -> Location {
         id,
         lat: 1.0,
         lng: 2.0,
-        heading: 0.0,
-        pitch: 0.0,
-        zoom: 0.0,
-        pano_id: None,
-        flags: crate::types::LocationFlags::empty(),
         tags: vec![1],
-        extra: None,
         created_at: crate::util::iso_to_unix("2024-01-01T00:00:00Z").unwrap() as u32,
-        modified_at: None,
+        ..Default::default()
     }
 }
 

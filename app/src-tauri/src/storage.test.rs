@@ -46,17 +46,7 @@ fn timestamps_serialize_as_numbers_not_iso() {
 fn location_data_null_optionals() {
     let loc = Location {
         id: 1,
-        lat: 0.0,
-        lng: 0.0,
-        heading: 0.0,
-        pitch: 0.0,
-        zoom: 0.0,
-        pano_id: None,
-        flags: crate::types::LocationFlags::empty(),
-        tags: vec![],
-        extra: None,
-        created_at: 0,
-        modified_at: None,
+        ..Default::default()
     };
     let json = serde_json::to_string(&loc).unwrap();
     assert!(json.contains(r#""extra":null"#));
@@ -194,15 +184,11 @@ fn make_test_batch(ids: &[u32]) -> arrow_array::RecordBatch {
             id,
             lat: id as f64,
             lng: id as f64 * 2.0,
-            heading: 0.0,
-            pitch: 0.0,
             zoom: 1.0,
             pano_id: Some(format!("pano_{id}")),
-            flags: crate::types::LocationFlags::empty(),
             tags: vec![1],
-            extra: None,
             created_at: crate::util::iso_to_unix("2024-01-01T00:00:00Z").unwrap() as u32,
-            modified_at: None,
+            ..Default::default()
         })
         .collect();
     arrow_bridge::locations_to_batch(&locs)
@@ -303,31 +289,19 @@ fn mmap_preserves_nullable_fields() {
     let locs = vec![
         Location {
             id: 1,
-            lat: 0.0,
-            lng: 0.0,
-            heading: 0.0,
-            pitch: 0.0,
-            zoom: 0.0,
-            pano_id: None,
-            flags: crate::types::LocationFlags::empty(),
-            tags: vec![],
-            extra: None,
             created_at: crate::util::iso_to_unix("2024-01-01T00:00:00Z").unwrap() as u32,
-            modified_at: None,
+            ..Default::default()
         },
         Location {
             id: 2,
             lat: 1.0,
             lng: 1.0,
-            heading: 0.0,
-            pitch: 0.0,
-            zoom: 0.0,
             pano_id: Some("abc".into()),
-            flags: crate::types::LocationFlags::empty(),
             tags: vec![1, 2],
             extra: Some(serde_json::from_str(r#"{"key":"val"}"#).unwrap()),
             created_at: crate::util::iso_to_unix("2024-01-01T00:00:00Z").unwrap() as u32,
             modified_at: Some(crate::util::iso_to_unix("2024-06-01T00:00:00Z").unwrap() as u32),
+            ..Default::default()
         },
     ];
     let batch = arrow_bridge::locations_to_batch(&locs);

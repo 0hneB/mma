@@ -20,15 +20,9 @@ fn sample_locations() -> Vec<Location> {
             id: 2,
             lat: -33.8688,
             lng: 151.2093,
-            heading: 0.0,
-            pitch: 0.0,
             zoom: 1.0,
-            pano_id: None,
-            flags: crate::types::LocationFlags::empty(),
-            tags: vec![],
-            extra: None,
             created_at: crate::util::iso_to_unix("2024-06-20T15:00:00Z").unwrap() as u32,
-            modified_at: None,
+            ..Default::default()
         },
     ]
 }

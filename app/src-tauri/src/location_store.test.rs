@@ -1,22 +1,5 @@
 use super::*;
-use crate::test_util::patch;
-
-fn loc(id: u32, lat: f64, lng: f64) -> Location {
-    Location {
-        id,
-        lat,
-        lng,
-        heading: 0.0,
-        pitch: 0.0,
-        zoom: 1.0,
-        pano_id: None,
-        flags: crate::types::LocationFlags::empty(),
-        tags: vec![],
-        extra: None,
-        created_at: 0,
-        modified_at: None,
-    }
-}
+use crate::test_util::{loc, patch};
 
 fn loc_with_tags(id: u32, lat: f64, lng: f64, tags: Vec<u32>) -> Location {
     Location {

@@ -16,17 +16,9 @@ fn tag(id: u32, name: &str) -> Tag {
 fn loc_with_tags(id: u32, tags: Vec<u32>) -> Location {
     Location {
         id,
-        lat: 0.0,
-        lng: 0.0,
-        heading: 0.0,
-        pitch: 0.0,
         zoom: 1.0,
-        pano_id: None,
-        flags: crate::types::LocationFlags::empty(),
         tags,
-        extra: None,
-        created_at: 0,
-        modified_at: None,
+        ..Default::default()
     }
 }
 
