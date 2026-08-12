@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 use crate::country_weights as cw;
 use crate::geometry::{self, GeometrySource, PreparedGeometryFilter};
 use crate::goals::subdivision_weights;

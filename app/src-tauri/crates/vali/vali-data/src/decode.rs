@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 use vali_core::{GoogleData, Location, NominatimData, OsmData};
 struct Reader<'a> {
     buf: &'a [u8],

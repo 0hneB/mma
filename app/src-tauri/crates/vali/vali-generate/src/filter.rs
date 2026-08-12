@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 use rustc_hash::FxHashSet;
 use vali_core::Location;
 use vali_expr::error::ExprError;

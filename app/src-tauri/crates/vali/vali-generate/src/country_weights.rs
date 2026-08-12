@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 pub static WORLD: &[(&str, i32)] = &[
     ("AL", 35),
     ("AS", 4),

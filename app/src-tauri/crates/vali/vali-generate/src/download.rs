@@ -1,5 +1,3 @@
-// Vendored from vali-rs @ e70fadd. Do not edit; regenerate instead.
-
 use crate::progress::{emit, CancelToken, Event, Progress};
 use anyhow::{bail, Context};
 use serde::Deserialize;
