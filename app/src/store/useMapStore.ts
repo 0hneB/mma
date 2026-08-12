@@ -1098,7 +1098,7 @@ async function modifyTagOnLocations(
 		if (next) updates.push({ id: l.id, patch: { tags: next } });
 	}
 	if (updates.length === 0) return;
-	await mutate(() => cmd.storeUpdateLocations(updates, true));
+	await updateLocations(updates);
 }
 
 /** Add a tag to locations (skips ones that already have it). Undoable. */
