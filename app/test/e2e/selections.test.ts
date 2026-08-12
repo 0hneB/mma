@@ -7,6 +7,7 @@ import {
 	withApi,
 	useMap,
 	seedLocs,
+	selectCount,
 } from "./helpers";
 
 describe("Selections - basic types", () => {
@@ -38,10 +39,7 @@ describe("Selections - basic types", () => {
 	// --- Everything ---
 
 	it("selectEverything selects all locations", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([{ type: "Everything" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Everything" });
 		expect(result).toBe(200);
 	});
 
@@ -58,10 +56,7 @@ describe("Selections - basic types", () => {
 	});
 
 	it("selectNotPanoIds selects locations without LoadAsPanoId flag", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([{ type: "NotPanoIds" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "NotPanoIds" });
 		expect(result).toBe(150);
 	});
 
@@ -77,20 +72,14 @@ describe("Selections - basic types", () => {
 	// --- Untagged ---
 
 	it("selectUntagged selects locations with no tags", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([{ type: "Untagged" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Untagged" });
 		expect(result).toBe(80); // indices 120-199 have no tags
 	});
 
 	// --- Unpanned ---
 
 	it("selectUnpanned selects locations with heading=0", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([{ type: "Unpanned" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Unpanned" });
 		// All 200 seeded locations have heading=0
 		expect(result).toBe(200);
 	});
@@ -98,18 +87,12 @@ describe("Selections - basic types", () => {
 	// --- Tag selection ---
 
 	it("selectTag selects locations with specific tag", async () => {
-		const result = await withApi(async (api, tagId: number) => {
-			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			return api.getMapState().selectedLocationIds.size;
-		}, tagRedId);
+		const result = await selectCount({ type: "Tag", tagId: tagRedId });
 		expect(result).toBe(60);
 	});
 
 	it("selectTag for nonexistent tag selects none", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([{ type: "Tag", tagId: 999999 }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Tag", tagId: 999999 });
 		expect(result).toBe(0);
 	});
 
@@ -145,25 +128,20 @@ describe("Selections - basic types", () => {
 	// --- Polygon selection ---
 
 	it("selectPolygon selects locations within polygon", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Polygon",
-					polygon: {
-						coordinates: [
-							[
-								[-180, -10],
-								[-90, -10],
-								[-90, 0],
-								[-180, 0],
-								[-180, -10],
-							],
-						],
-					},
-					includeInformational: false,
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
+		const result = await selectCount({
+			type: "Polygon",
+			polygon: {
+				coordinates: [
+					[
+						[-180, -10],
+						[-90, -10],
+						[-90, 0],
+						[-180, 0],
+						[-180, -10],
+					],
+				],
+			},
+			includeInformational: false,
 		});
 		expect(result).toBeGreaterThan(0);
 	});
@@ -400,77 +378,32 @@ describe("Selection with Filter", () => {
 	});
 
 	it("filter by string equality", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Filter",
-					field: "country",
-					op: "eq",
-					value: "US",
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Filter", field: "country", op: "eq", value: "US" });
 		expect(result).toBe(25);
 	});
 
 	it("filter by string inequality", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Filter",
-					field: "country",
-					op: "neq",
-					value: "US",
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Filter", field: "country", op: "neq", value: "US" });
 		expect(result).toBe(25);
 	});
 
 	it("filter by numeric greater than", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Filter",
-					field: "altitude",
-					op: "gt",
-					value: 200,
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Filter", field: "altitude", op: "gt", value: 200 });
 		expect(result).toBe(29);
 	});
 
 	it("filter by numeric less than", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Filter",
-					field: "altitude",
-					op: "lt",
-					value: 100,
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const result = await selectCount({ type: "Filter", field: "altitude", op: "lt", value: 100 });
 		expect(result).toBe(10);
 	});
 
 	it("filter by between", async () => {
-		const result = await withApi(async (api) => {
-			await api.addSelections([
-				{
-					type: "Filter",
-					field: "altitude",
-					op: "between",
-					value: 100,
-					value2: 200,
-				},
-			]);
-			return api.getMapState().selectedLocationIds.size;
+		const result = await selectCount({
+			type: "Filter",
+			field: "altitude",
+			op: "between",
+			value: 100,
+			value2: 200,
 		});
 		expect(result).toBe(11);
 	});

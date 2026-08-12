@@ -17,6 +17,8 @@ import {
 	withApi,
 	useMap,
 	seedLocs,
+	select,
+	selectCount,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -565,7 +567,7 @@ describe("Export with scope", () => {
 		}));
 
 		// Select by tag (first 5 have the tag)
-		await withApi((api, tId) => api.addSelections([{ type: "Tag", tagId: tId }]), tagId);
+		await select({ type: "Tag", tagId });
 
 		const selectedIds: number[] = await withApi((api) => [
 			...api.getMapState().selectedLocationIds,
@@ -1038,10 +1040,7 @@ describe("Selection during mutation", () => {
 		await addLocs(locs);
 
 		// Select by tag -- should get 30
-		const count1 = await withApi(async (api, tid) => {
-			await api.addSelections([{ type: "Tag", tagId: tid }]);
-			return api.getMapState().selectedLocationIds.size;
-		}, tag.id);
+		const count1 = await selectCount({ type: "Tag", tagId: tag.id });
 		expect(count1).toBe(30);
 
 		// Add 10 more tagged locations while selection is active

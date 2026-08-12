@@ -10,6 +10,7 @@ import {
 	createLocation,
 	withApi,
 	seedLocs,
+	selectCount,
 } from "./helpers";
 import type { MapMeta } from "@/bindings.gen";
 
@@ -199,10 +200,7 @@ describe("Empty map edge cases", () => {
 	});
 
 	it("selectEverything on empty map selects nothing", async () => {
-		const count = await withApi(async (api) => {
-			await api.addSelections([{ type: "Everything" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const count = await selectCount({ type: "Everything" });
 		expect(count).toBe(0);
 	});
 

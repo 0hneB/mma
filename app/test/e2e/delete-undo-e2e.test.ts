@@ -13,6 +13,7 @@ import {
 	withApi,
 	useMap,
 	seedLocs,
+	select,
 } from "./helpers";
 
 // ============================================================================
@@ -84,7 +85,7 @@ describe("Delete selected locations + undo restores selection", () => {
 		locIds = await seedLocs(8, (i) => ({ lat: i, lng: i, tags: [tagId] }));
 	});
 	it("select tag, delete 2 selected locations, selection count drops", async () => {
-		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
+		await select({ type: "Tag", tagId });
 		const before = await refreshSelections();
 		expect(before.length).toBe(8);
 

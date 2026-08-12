@@ -5,7 +5,7 @@
 
 import type { MMA } from "@/api";
 import { createLocation } from "../../src/types";
-import type { Location } from "@/bindings.gen";
+import type { Location, SelectionProps } from "@/bindings.gen";
 
 /**
  * Run an async function in the browser with the MMA API injected as `api`.
@@ -183,6 +183,19 @@ export async function getAllLocs(): Promise<Location[]> {
 
 export async function getLocCount(): Promise<number> {
 	return withApi(async (api) => (await api.cmd.storeGetSummary()).locationCount);
+}
+
+/** Add selections to the live map. */
+export async function select(...props: SelectionProps[]) {
+	await withApi(async (api, p) => api.addSelections(p), props);
+}
+
+/** Add selections and return how many locations they resolve to. */
+export async function selectCount(...props: SelectionProps[]): Promise<number> {
+	return withApi(async (api, p) => {
+		await api.addSelections(p);
+		return api.getMapState().selectedLocationIds.size;
+	}, props);
 }
 
 export async function refreshSelections(): Promise<number[]> {

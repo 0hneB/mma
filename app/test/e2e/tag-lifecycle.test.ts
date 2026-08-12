@@ -14,6 +14,7 @@ import {
 	withApi,
 	useMap,
 	seedLocs,
+	select,
 } from "./helpers";
 
 // ============================================================================
@@ -70,7 +71,7 @@ describe("Tag rename propagation", () => {
 	});
 
 	it("tag selection still works after rename", async () => {
-		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
+		await select({ type: "Tag", tagId });
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(10);
 		await withApi(async (api) => api.resetSelections());
@@ -208,7 +209,7 @@ describe("Tag delete + undo restores all references", () => {
 	});
 
 	it("tag selection works after undo", async () => {
-		await withApi(async (api, tid) => api.addSelections([{ type: "Tag", tagId: tid }]), tagId);
+		await select({ type: "Tag", tagId });
 		const ids = await refreshSelections();
 		expect(ids.length).toBe(8);
 		await withApi(async (api) => api.resetSelections());

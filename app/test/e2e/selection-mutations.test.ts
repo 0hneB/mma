@@ -10,6 +10,7 @@ import {
 	withApi,
 	useMap,
 	seedLocs,
+	selectCount,
 } from "./helpers";
 import type { Location } from "@/bindings.gen";
 
@@ -108,10 +109,7 @@ describe("Live selection correctness after add/remove", () => {
 	});
 
 	it("add then remove in sequence, final count correct (no reset between)", async () => {
-		const initial = await withApi(async (api, tagId: number) => {
-			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			return api.getMapState().selectedLocationIds.size;
-		}, tagRedId);
+		const initial = await selectCount({ type: "Tag", tagId: tagRedId });
 
 		const afterAddIds = await withApi(async (api, tagId: number) => {
 			const newLocs = [
@@ -723,19 +721,13 @@ describe("Selection survives save/load cycle", () => {
 	// FIXME: pre-existing flake — same reload race as the PanoIds note below; this
 	// variant passed locally but hit on slower CI hardware (v0.6.0 baseline run).
 	it.skip("tag selection produces same results after save/close/reopen", async () => {
-		const beforeCount = await withApi(async (api, tagId: number) => {
-			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			return api.getMapState().selectedLocationIds.size;
-		}, tagPersistId);
+		const beforeCount = await selectCount({ type: "Tag", tagId: tagPersistId });
 
 		await flushAndWait();
 		await closeMap();
 		await openMap(map.id);
 
-		const afterCount = await withApi(async (api, tagId: number) => {
-			await api.addSelections([{ type: "Tag", tagId: tagId }]);
-			return api.getMapState().selectedLocationIds.size;
-		}, tagPersistId);
+		const afterCount = await selectCount({ type: "Tag", tagId: tagPersistId });
 
 		expect(afterCount).toBe(beforeCount);
 	});
@@ -754,10 +746,7 @@ describe("Selection survives save/load cycle", () => {
 		await closeMap();
 		await openMap(map.id);
 
-		const afterCount = await withApi(async (api) => {
-			await api.addSelections([{ type: "PanoIds" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const afterCount = await selectCount({ type: "PanoIds" });
 
 		expect(afterCount).toBe(beforeCount);
 	});
@@ -774,10 +763,7 @@ describe("Selection survives save/load cycle", () => {
 		await closeMap();
 		await openMap(map.id);
 
-		const afterCount = await withApi(async (api) => {
-			await api.addSelections([{ type: "Everything" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const afterCount = await selectCount({ type: "Everything" });
 
 		expect(afterCount).toBe(beforeCount);
 	});
@@ -794,10 +780,7 @@ describe("Selection survives save/load cycle", () => {
 		await closeMap();
 		await openMap(map.id);
 
-		const afterCount = await withApi(async (api) => {
-			await api.addSelections([{ type: "Unpanned" }]);
-			return api.getMapState().selectedLocationIds.size;
-		});
+		const afterCount = await selectCount({ type: "Unpanned" });
 
 		expect(afterCount).toBe(beforeCount);
 	});
