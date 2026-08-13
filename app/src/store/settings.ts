@@ -13,7 +13,10 @@ import type { RGB } from "@/lib/util/color";
 export const LANGUAGES = {
 	en: "English",
 	de: "Deutsch",
+	es: "Español",
 	fr: "Français",
+	ja: "日本語",
+	pl: "Polski",
 	ru: "Русский",
 	"zh-Hans": "简体中文",
 	"en-XA": msg("Pseudolocale"),
