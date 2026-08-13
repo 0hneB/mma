@@ -57,11 +57,12 @@ async function fetchPanoTile(
 	x: number,
 	y: number,
 	z: number,
+	signal?: AbortSignal,
 ): Promise<ImageBitmap | null> {
 	const url = panoTileUrl(panoId, x, y, z);
-	for (let attempt = 0; attempt < 2; attempt++) {
+	for (let attempt = 0; attempt < 2 && !signal?.aborted; attempt++) {
 		try {
-			const resp = await fetch(url);
+			const resp = await fetch(url, { signal });
 			if (!resp.ok) continue;
 			return await createImageBitmap(await resp.blob());
 		} catch {
@@ -76,6 +77,7 @@ export async function stitchPano(
 	panoId: string,
 	meta: PanoData | null | undefined,
 	zoom: number,
+	signal?: AbortSignal,
 ): Promise<HTMLCanvasElement | null> {
 	const { zoom: z, cols, rows, width, height, tile } = panoTileLayout(zoom, meta?.tiles?.worldSize);
 
@@ -91,7 +93,7 @@ export async function stitchPano(
 		for (let x = 0; x < cols; x++) {
 			loads.push(
 				(async () => {
-					const bmp = await fetchPanoTile(panoId, x, y, z);
+					const bmp = await fetchPanoTile(panoId, x, y, z, signal);
 					if (!bmp) return;
 					ctx.drawImage(bmp, x * tile, y * tile);
 					bmp.close();
@@ -101,6 +103,7 @@ export async function stitchPano(
 		}
 	}
 	await Promise.all(loads);
+	signal?.throwIfAborted();
 	return loaded > 0 ? canvas : null;
 }
 
@@ -248,9 +251,9 @@ function canvasToBlob(
 	return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-async function fetchImage(url: string): Promise<Blob | null> {
+async function fetchImage(url: string, signal?: AbortSignal): Promise<Blob | null> {
 	try {
-		const resp = await fetch(url);
+		const resp = await fetch(url, { signal });
 		return resp.ok ? await resp.blob() : null;
 	} catch {
 		return null;
@@ -263,24 +266,28 @@ async function renderLocationImage(
 	panoId: string,
 	meta: PanoData | null,
 	config: PanoDownloadConfig,
+	signal?: AbortSignal,
 ): Promise<RenderedImage | null> {
 	const name = panoId;
 
 	if (config.mode === "thumbnail") {
 		const url = new URL(svThumbnailUrl(panoId, loc.heading, 1024, 768));
 		url.searchParams.set("pitch", String(loc.pitch));
-		const blob = await fetchImage(url.toString());
+		const blob = await fetchImage(url.toString(), signal);
 		return blob ? { blob, fileName: `${name}.png` } : null;
 	}
 
 	if (config.mode === "tile") {
-		const blob = await fetchImage(panoTileUrl(panoId, config.tileX, config.tileY, config.zoom));
+		const blob = await fetchImage(
+			panoTileUrl(panoId, config.tileX, config.tileY, config.zoom),
+			signal,
+		);
 		return blob
 			? { blob, fileName: `${name}_z${config.zoom}_x${config.tileX}_y${config.tileY}.jpg` }
 			: null;
 	}
 
-	const canvas = await stitchPano(panoId, meta, config.zoom);
+	const canvas = await stitchPano(panoId, meta, config.zoom, signal);
 	if (!canvas) return null;
 
 	if (config.mode === "perspective") {
@@ -385,7 +392,13 @@ export async function bulkDownloadPanoramas(
 		await runConcurrent(
 			pending,
 			async ({ loc, panoId }) => {
-				const image = await renderLocationImage(loc, panoId, metaMap.get(panoId) ?? null, config);
+				const image = await renderLocationImage(
+					loc,
+					panoId,
+					metaMap.get(panoId) ?? null,
+					config,
+					signal,
+				);
 				let ok = false;
 				if (image) {
 					const fileName = uniqueName(image.fileName);

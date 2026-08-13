@@ -232,6 +232,7 @@ export function parseResult(
 /** Fetch full pano metadata directly from Google's internal RPC (bypasses StreetViewService). */
 export async function fetchSvMetadata(
 	panoIds: string[],
+	signal?: AbortSignal,
 ): Promise<(google.maps.StreetViewResolvedPanoramaData | null)[]> {
 	if (panoIds.length === 0) return [];
 	const writer = new PbfWriter();
@@ -246,6 +247,7 @@ export async function fetchSvMetadata(
 		body: writer.finish().slice(),
 		mode: "cors",
 		credentials: "omit",
+		signal,
 	});
 	if (!res.ok) return panoIds.map(() => null);
 	const resp = readGetMetadataResponse(new PbfReader(new Uint8Array(await res.arrayBuffer())));
@@ -270,7 +272,7 @@ async function fetchInto(
 	signal?: AbortSignal,
 ): Promise<void> {
 	signal?.throwIfAborted();
-	const datas = await fetchSvMetadata(panoIds.slice(start, start + len));
+	const datas = await fetchSvMetadata(panoIds.slice(start, start + len), signal);
 	signal?.throwIfAborted();
 	if (len > 1 && datas.every((d) => d == null)) {
 		const mid = Math.ceil(len / 2);
