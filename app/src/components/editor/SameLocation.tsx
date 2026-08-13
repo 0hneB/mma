@@ -100,7 +100,7 @@ export default function SameLocation() {
 	);
 
 	const keepSelected = useCallback(() => {
-		const toDelete = new Set(locations.filter((l) => !selected.has(l.id)).map((l) => l.id));
+		const toDelete = new Set(locations.map((l) => l.id)).difference(selected);
 		removeLocations(toDelete);
 		const remaining = locations.find((l) => selected.has(l.id));
 		if (remaining) openDuplicateLocation(remaining);

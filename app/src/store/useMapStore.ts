@@ -627,7 +627,7 @@ async function applySelectionUpdate(updater: (sels: Selection[]) => Selection[])
 function pruneGhosted(selections: Selection[], ghosted: ReadonlySet<string>): ReadonlySet<string> {
 	if (ghosted.size === 0) return ghosted;
 	const live = new Set(selections.map((s) => s.key));
-	const pruned = new Set([...ghosted].filter((k) => live.has(k)));
+	const pruned = ghosted.intersection(live);
 	return pruned.size !== ghosted.size ? pruned : ghosted;
 }
 
@@ -655,10 +655,10 @@ export function isolateSelection(key: string) {
 
 /** Ghost every top-level selection; if all are already ghosted, un-ghost them all. */
 export function toggleGhostAllSelections() {
-	const keys = state.selections.map((s) => s.key);
-	const allGhosted = keys.length > 0 && keys.every((k) => state.ghostedSelections.has(k));
+	const keys = new Set(state.selections.map((s) => s.key));
+	const allGhosted = keys.size > 0 && keys.isSubsetOf(state.ghostedSelections);
 	setState({
-		ghostedSelections: allGhosted ? new Set() : new Set([...state.ghostedSelections, ...keys]),
+		ghostedSelections: allGhosted ? new Set() : state.ghostedSelections.union(keys),
 	});
 	return applySelectionUpdate((sels) => sels);
 }

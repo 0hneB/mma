@@ -82,7 +82,7 @@ interface FieldRow {
 function buildRows(): FieldRow[] {
 	const known = new Set(getMapState().knownFieldKeys);
 	const enrichable = new Map(getEnrichFieldOptions().map((f) => [f.key, f]));
-	const keys = [...new Set([...known, ...enrichable.keys()])].sort();
+	const keys = [...known.union(enrichable)].sort();
 	return keys.map((key) => {
 		const def = getFieldDef(key);
 		const present = known.has(key);

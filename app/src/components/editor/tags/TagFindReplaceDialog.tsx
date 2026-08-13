@@ -19,10 +19,7 @@ export function TagFindReplaceDialog({ open, onOpenChange }: DialogProps) {
 		const patches = matches.map((t) => ({
 			id: t.id,
 			patch: {
-				name: t.name.replaceAll(
-					new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
-					replace,
-				),
+				name: t.name.replaceAll(new RegExp(RegExp.escape(find), "gi"), replace),
 			},
 		}));
 		await updateTags(patches);
@@ -86,10 +83,7 @@ export function TagFindReplaceDialog({ open, onOpenChange }: DialogProps) {
 								}}
 							>
 								{matches.map((t) => {
-									const newName = t.name.replaceAll(
-										new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
-										replace,
-									);
+									const newName = t.name.replaceAll(new RegExp(RegExp.escape(find), "gi"), replace);
 									return (
 										<li
 											key={t.id}
