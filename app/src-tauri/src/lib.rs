@@ -146,44 +146,30 @@ fn set_data_location(path: Option<String>) -> AppResult<()> {
     storage::set_data_location(path.as_deref().map(std::path::Path::new))
 }
 
+/// Hand a path to the OS shell (file explorer / default handler).
+fn os_open(path: &std::path::Path) -> AppResult<()> {
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(target_os = "linux")]
+    let program = "xdg-open";
+    std::process::Command::new(program).arg(path).spawn()?;
+    Ok(())
+}
+
 /// Open the app data directory in the OS file explorer.
 #[tauri::command]
 #[specta::specta]
 fn open_data_folder() -> AppResult<()> {
-    let dir = storage::app_data_dir()?;
-    #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("explorer").arg(&dir).spawn()?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open").arg(&dir).spawn()?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open").arg(&dir).spawn()?;
-    }
-    Ok(())
+    os_open(&storage::app_data_dir()?)
 }
 
 /// Open the current log file in the OS default handler.
 #[tauri::command]
 #[specta::specta]
 fn open_log_file(app: tauri::AppHandle) -> AppResult<()> {
-    let path = app.path().app_log_dir()?.join("mma.log");
-    #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("explorer").arg(&path).spawn()?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open").arg(&path).spawn()?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open").arg(&path).spawn()?;
-    }
-    Ok(())
+    os_open(&app.path().app_log_dir()?.join("mma.log"))
 }
 
 /// A plugin's declared sidecar binary (downloaded from GitHub Releases on install).
@@ -427,13 +413,27 @@ fn resolve_client() -> &'static reqwest::blocking::Client {
     C.get_or_init(|| build_http_client(false))
 }
 
+/// Response builder pre-seeded with the CORS header every scheme handler sends.
+fn cors() -> tauri::http::response::Builder {
+    tauri::http::Response::builder().header("Access-Control-Allow-Origin", "*")
+}
+
+/// CORS response with a status and body, no content type.
+fn cors_resp(status: u16, body: Vec<u8>) -> tauri::http::Response<Vec<u8>> {
+    cors().status(status).body(body).unwrap()
+}
+
+/// Run a blocking scheme-handler body off the webview thread.
+fn respond_async(
+    responder: tauri::UriSchemeResponder,
+    f: impl FnOnce() -> tauri::http::Response<Vec<u8>> + Send + 'static,
+) {
+    std::thread::spawn(move || responder.respond(f()));
+}
+
 /// Build a 502 error response with CORS headers for failed proxy requests.
 pub(crate) fn proxy_error(msg: String) -> tauri::http::Response<Vec<u8>> {
-    tauri::http::Response::builder()
-        .status(502)
-        .header("Access-Control-Allow-Origin", "*")
-        .body(msg.into_bytes())
-        .unwrap()
+    cors_resp(502, msg.into_bytes())
 }
 
 /// Relays an upstream response body + content-type back to the webview with CORS.
@@ -449,10 +449,9 @@ pub(crate) fn relay(
         .unwrap_or(default_ct)
         .to_string();
     match resp.bytes() {
-        Ok(body) => tauri::http::Response::builder()
+        Ok(body) => cors()
             .status(status)
             .header("Content-Type", content_type)
-            .header("Access-Control-Allow-Origin", "*")
             .body(body.to_vec())
             .unwrap(),
         Err(e) => proxy_error(format!("read error: {e}")),
@@ -468,19 +467,12 @@ pub(crate) fn write_upload(path: &str, body: &[u8]) -> tauri::http::Response<Vec
         .parent()
         .and_then(|p| p.to_str())
         .is_some_and(|p| crate::export::upload_session_dir(p).is_ok());
-    let resp = tauri::http::Response::builder().header("Access-Control-Allow-Origin", "*");
     if !session_ok {
-        return resp
-            .status(403)
-            .body(b"upload outside session dir".to_vec())
-            .unwrap();
+        return cors_resp(403, b"upload outside session dir".to_vec());
     }
     match std::fs::write(target, body) {
-        Ok(()) => resp.status(200).body(vec![]).unwrap(),
-        Err(e) => resp
-            .status(500)
-            .body(format!("upload write failed: {e}").into_bytes())
-            .unwrap(),
+        Ok(()) => cors_resp(200, vec![]),
+        Err(e) => cors_resp(500, format!("upload write failed: {e}").into_bytes()),
     }
 }
 
@@ -533,21 +525,16 @@ pub(crate) fn resolve_googl(id: &str, mapsapp: bool) -> tauri::http::Response<Ve
             .get(reqwest::header::LOCATION)
             .and_then(|v| v.to_str().ok())
         {
-            Some(location) => tauri::http::Response::builder()
+            Some(location) => cors()
                 .status(200)
                 .header("Content-Type", "application/json")
-                .header("Access-Control-Allow-Origin", "*")
                 .body(
                     serde_json::to_string(location)
                         .unwrap_or_default()
                         .into_bytes(),
                 )
                 .unwrap(),
-            None => tauri::http::Response::builder()
-                .status(404)
-                .header("Access-Control-Allow-Origin", "*")
-                .body(Vec::new())
-                .unwrap(),
+            None => cors_resp(404, Vec::new()),
         },
         Err(e) => proxy_error(format!("googl fetch error: {e}")),
     }
@@ -734,9 +721,8 @@ pub fn run() {
             // preflight the cross-origin request first.
             if req.method() == tauri::http::Method::OPTIONS {
                 responder.respond(
-                    tauri::http::Response::builder()
+                    cors()
                         .status(204)
-                        .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                         .header("Access-Control-Allow-Headers", "*")
                         .body(Vec::new())
@@ -745,7 +731,7 @@ pub fn run() {
                 return;
             }
             let post_body = (req.method() == tauri::http::Method::POST).then(|| req.body().clone());
-            std::thread::spawn(move || {
+            respond_async(responder, move || {
                 let _t = std::time::Instant::now();
                 let trimmed = raw.trim_start_matches('/');
                 let clean = if trimmed.starts_with(|c: char| c.is_ascii_alphabetic())
@@ -756,29 +742,22 @@ pub fn run() {
                     &raw
                 };
                 if let Some(body) = post_body {
-                    responder.respond(write_upload(clean, &body));
-                    return;
+                    return write_upload(clean, &body);
                 }
-                let resp = match std::fs::read(clean) {
+                match std::fs::read(clean) {
                     Ok(data) => {
                         log::debug!(
                             "[mma-buf] read {} bytes in {:.1}ms",
                             data.len(),
                             _t.elapsed().as_secs_f64() * 1000.0
                         );
-                        tauri::http::Response::builder()
-                            .header("Access-Control-Allow-Origin", "*")
+                        cors()
                             .header("Content-Type", "application/octet-stream")
                             .body(data)
                             .unwrap()
                     }
-                    Err(e) => tauri::http::Response::builder()
-                        .status(404)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .body(format!("file not found: {clean} — {e}").into_bytes())
-                        .unwrap(),
-                };
-                responder.respond(resp);
+                    Err(e) => cors_resp(404, format!("file not found: {clean} — {e}").into_bytes()),
+                }
             });
         })
         .register_uri_scheme_protocol("mma-plugin", |_ctx, req| {
@@ -802,11 +781,7 @@ pub fn run() {
                     } else {
                         "application/octet-stream"
                     };
-                    tauri::http::Response::builder()
-                        .header("Content-Type", mime)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .body(data)
-                        .unwrap()
+                    cors().header("Content-Type", mime).body(data).unwrap()
                 }
                 Err(_) => tauri::http::Response::builder()
                     .status(404)
@@ -822,7 +797,7 @@ pub fn run() {
                 .map(|q| format!("?{q}"))
                 .unwrap_or_default();
             let url = format!("https://lh3.ggpht.com/jsapi2/a/b/c/{path}{query}");
-            std::thread::spawn(move || responder.respond(fetch_svtile(&url)));
+            respond_async(responder, move || fetch_svtile(&url));
         })
         .register_asynchronous_uri_scheme_protocol("gmaps", |_ctx, req, responder| {
             let path = req.uri().path().to_string();
@@ -846,16 +821,15 @@ pub fn run() {
                 .unwrap_or("")
                 .to_string();
             let body = req.body().clone();
-            std::thread::spawn(move || {
-                responder.respond(proxy_gmaps(method, &url, content_type, user_agent, body))
+            respond_async(responder, move || {
+                proxy_gmaps(method, &url, content_type, user_agent, body)
             });
         })
         .register_asynchronous_uri_scheme_protocol("ggapi", |_ctx, req, responder| {
             if req.method() == tauri::http::Method::OPTIONS {
                 responder.respond(
-                    tauri::http::Response::builder()
+                    cors()
                         .status(204)
-                        .header("Access-Control-Allow-Origin", "*")
                         .header(
                             "Access-Control-Allow-Methods",
                             "GET, POST, PUT, PATCH, DELETE, OPTIONS",
@@ -875,19 +849,13 @@ pub fn run() {
                 .and_then(|v| v.to_str().ok())
                 .map(str::to_string);
             let body = req.body().clone();
-            std::thread::spawn(move || {
-                responder.respond(geoguessr::proxy(
-                    method,
-                    &path,
-                    query.as_deref(),
-                    content_type,
-                    body,
-                ))
+            respond_async(responder, move || {
+                geoguessr::proxy(method, &path, query.as_deref(), content_type, body)
             });
         })
         .register_asynchronous_uri_scheme_protocol("gdoc", |_ctx, req, responder| {
             let doc_id = req.uri().path().trim_start_matches('/').to_string();
-            std::thread::spawn(move || responder.respond(gdoc::fetch_gdoc(&doc_id)));
+            respond_async(responder, move || gdoc::fetch_gdoc(&doc_id));
         })
         .register_asynchronous_uri_scheme_protocol("googl", |_ctx, req, responder| {
             let id = req.uri().path().trim_start_matches('/').to_string();
@@ -897,7 +865,7 @@ pub fn run() {
                 .unwrap_or("")
                 .split('&')
                 .any(|kv| kv == "source=mapsapp");
-            std::thread::spawn(move || responder.respond(resolve_googl(&id, mapsapp)));
+            respond_async(responder, move || resolve_googl(&id, mapsapp));
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
