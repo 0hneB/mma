@@ -1,0 +1,548 @@
+.lg-sidebar__actions {
+	display: flex;
+	gap: 8px;
+	padding: 12px 0;
+}
+
+.lg-sidebar__actions .button {
+	flex: 1;
+}
+
+.lg-sidebar__resume {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+	color: var(--text-2);
+}
+
+/* ---- Game overlay ---- */
+
+/* Portaled to body. .page-map-editor sets no z-index, so its .split-handle (10)
+   escapes to the root and has to be matched here. */
+.lg-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10;
+	background: var(--surface-0);
+}
+
+/* Belongs to the editor underneath; its col-resize cursor is meaningless here. */
+body:has(.lg-overlay) .split-handle {
+	display: none;
+}
+
+.lg-round {
+	position: absolute;
+	inset: 0;
+}
+
+.lg-round__pano,
+.lg-pano,
+.lg-pano__host {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* The pano stays mounted through the result phase; it is only hidden. */
+.lg-round--result .lg-round__pano {
+	visibility: hidden;
+}
+
+.lg-pano__shield {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+}
+
+/* Covers the outgoing round. Fade declared on the revealed state only: fading in
+   would show the previous location through it. */
+.lg-pano__loading {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	background: var(--surface-0);
+}
+
+.lg-pano__loading.is-revealed {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.28s ease;
+}
+
+.lg-pano__error {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--text-2);
+	background: var(--surface-0);
+}
+
+/* ---- HUD ---- */
+
+.lg-hud {
+	position: absolute;
+	top: 12px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 5;
+	display: flex;
+	gap: 2px;
+	padding: 2px;
+	border-radius: var(--radius-3);
+	background: #0009;
+	backdrop-filter: blur(6px);
+}
+
+.lg-hud__item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 76px;
+	padding: 4px 12px;
+}
+
+.lg-hud__label {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-2);
+}
+
+.lg-hud__value {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--text-1);
+	font-variant-numeric: tabular-nums;
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lg-timer--low {
+	color: var(--destructive);
+}
+
+.lg-round__close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	z-index: 5;
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 50%;
+	background: #0009;
+	color: var(--text-1);
+	cursor: pointer;
+}
+
+.lg-round__tools {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	transform: translateY(-50%);
+	z-index: 5;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.lg-round__tool {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border: none;
+	border-radius: 50%;
+	background: #0009;
+	color: var(--text-1);
+	cursor: pointer;
+}
+
+.lg-round__tool:hover,
+.lg-round__close:hover {
+	background: #000c;
+}
+
+.lg-round__tool.is-active {
+	background: var(--accent);
+}
+
+/* ---- Guess map ---- */
+
+.lg-round__map-slot {
+	position: absolute;
+	right: 12px;
+	bottom: 12px;
+	z-index: 6;
+}
+
+/* Grows in layout, never by transform -- transform desyncs click coordinates. */
+.lg-guess-map {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+	opacity: 0.85;
+	transition: opacity 0.12s ease;
+}
+
+/* is-expanded only. :focus-within kept it open, since guessing leaves focus inside. */
+.lg-guess-map.is-expanded {
+	opacity: 1;
+}
+
+.lg-guess-map__canvas-wrap {
+	position: relative;
+	width: max(250px, 23.15vmin);
+	height: max(200px, 18.52vmin);
+	overflow: hidden;
+	border-radius: var(--radius-2);
+	box-shadow: 0 4px 18px #0007;
+}
+
+/* Hover animates; the result boundary must not, or the round-start fit measures a
+   container that is still moving. */
+.lg-guess-map:not(.is-instant) .lg-guess-map__canvas-wrap {
+	transition:
+		width 0.2s,
+		height 0.2s;
+}
+
+.lg-guess-map.is-expanded .lg-guess-map__canvas-wrap {
+	width: min(var(--lg-map-w, 800px), calc(100vw - 24px));
+	height: min(var(--lg-map-h, 600px), calc(100vh - 120px));
+}
+
+.lg-guess-map__controls {
+	display: flex;
+	justify-content: flex-end;
+	gap: 4px;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+
+.lg-guess-map.is-expanded .lg-guess-map__controls {
+	opacity: 1;
+}
+
+.lg-guess-map__canvas {
+	position: absolute;
+	inset: 0;
+}
+
+.lg-guess-map__control {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: var(--radius-1);
+	background: #000a;
+	color: var(--text-1);
+	cursor: pointer;
+}
+
+.lg-guess-map__control:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.lg-guess-map__control.is-active {
+	background: var(--accent);
+}
+
+.lg-guess-map__zoom {
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.lg-guess-map__zoom button {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: var(--radius-1);
+	background: #000a;
+	color: var(--text-1);
+	cursor: pointer;
+}
+
+.lg-guess-map__submit {
+	align-self: stretch;
+	padding: 10px;
+	border: none;
+	border-radius: var(--radius-2);
+	background: var(--action);
+	color: var(--on-action);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: width 0.2s;
+}
+
+.lg-guess-map__submit:disabled {
+	background: var(--surface-3);
+	color: var(--text-2);
+	cursor: default;
+}
+
+/* ---- Result ---- */
+
+.lg-round__result {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	z-index: 4;
+}
+
+.lg-round__result .lg-guess-map {
+	flex: 1;
+	/* min-height:0 stops the map pushing the result bar off-screen. */
+	min-height: 0;
+	align-items: stretch;
+	opacity: 1;
+	gap: 0;
+}
+
+.lg-round__result .lg-guess-map__canvas-wrap {
+	width: 100%;
+	height: 100%;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+/* In flow above the result bar so toggling pushes the map up. */
+.lg-round__tagbar {
+	flex: 0 0 auto;
+}
+
+/* One centred column: numbers sit with the Next button, not at the far edges. */
+.lg-result-bar {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 16px 24px;
+	background: var(--surface-1);
+	border-top: 1px solid var(--border-subtle);
+}
+
+.lg-result-bar__stats {
+	display: flex;
+	align-items: baseline;
+	gap: 32px;
+}
+
+.lg-result-bar__stat {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.lg-result-bar__value {
+	font-size: 30px;
+	font-weight: 700;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.lg-result-bar__stat--distance .lg-result-bar__value {
+	color: var(--accent);
+}
+
+.lg-result-bar__stat--score .lg-result-bar__value {
+	color: var(--action);
+}
+
+.lg-result-bar__label {
+	font-size: 12px;
+	color: var(--text-2);
+}
+
+.lg-result-bar__place {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 14px;
+}
+
+.lg-result-bar__streak {
+	font-size: 13px;
+	color: var(--text-2);
+	text-align: center;
+}
+
+.lg-result-bar__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.lg-result-bar__hint {
+	margin: 0;
+	font-size: 11px;
+	color: var(--text-2);
+}
+
+/* ---- Summary ---- */
+
+.lg-summary {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	max-width: var(--size-md);
+	margin: 0 auto;
+	padding: 32px 24px;
+	gap: 20px;
+}
+
+.lg-summary__hero {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+}
+
+.lg-summary__label {
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-2);
+}
+
+.lg-summary__score {
+	font-size: 44px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.lg-summary__meta {
+	text-align: right;
+	font-size: 13px;
+	color: var(--text-2);
+}
+
+.lg-summary__rounds {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.lg-summary__row {
+	display: grid;
+	grid-template-columns: 32px 64px 88px 1fr auto auto;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: var(--radius-1);
+	background: var(--surface-1);
+	font-size: 13px;
+}
+
+.lg-summary__row-n {
+	color: var(--text-2);
+}
+
+.lg-summary__row-score,
+.lg-summary__row-dist {
+	font-variant-numeric: tabular-nums;
+}
+
+.lg-summary__row-place {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.lg-summary__row-streak.is-hit {
+	color: var(--constructive);
+}
+
+.lg-summary__row-streak.is-miss {
+	color: var(--destructive);
+}
+
+.lg-summary__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* ---- Tagging ---- */
+
+.lg-tag-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius-1);
+	background: transparent;
+	color: var(--text-1);
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.lg-tag-btn:hover {
+	background: var(--surface-2);
+}
+
+.lg-tag-btn.is-active {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+.lg-tag-dialog__form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 320px;
+}
+
+.lg-tag-dialog__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.lg-tag-dialog__chip {
+	padding: 4px 8px;
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius-1);
+	background: transparent;
+	color: var(--text-1);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.lg-tag-dialog__chip:hover {
+	background: var(--surface-3);
+}
+
+.lg-tag-dialog__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
