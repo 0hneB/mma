@@ -23,67 +23,67 @@ export const LANGUAGES = {
 } as const;
 
 export const MOVEMENT_MODES = {
-	moving: "Moving",
-	"no-move": "No Move",
+	moving: msg("Moving"),
+	"no-move": msg("No Move"),
 	nmpz: "NMPZ",
 } as const;
 export const SEEN_RESOLUTIONS = {
-	low: "Low (160x90)",
-	medium: "Medium (320x180)",
-	high: "High (640x360)",
+	low: msg("Low (160x90)"),
+	medium: msg("Medium (320x180)"),
+	high: msg("High (640x360)"),
 } as const;
 export const EXACT_DATE_FORMATS = {
-	date: "Date only",
-	datetime: "Date + time",
+	date: msg("Date only"),
+	datetime: msg("Date + time"),
 } as const;
 export const DATE_TIMEZONES = {
-	location: "Location timezone",
+	location: msg("Location timezone"),
 	utc: "UTC",
 } as const;
 export const MAP_LIST_FIELDS = {
-	locationCount: "Location count",
-	lastOpened: "Last opened",
-	created: "Date created",
+	locationCount: msg("Location count"),
+	lastOpened: msg("Last opened"),
+	created: msg("Date created"),
 } as const;
 export const DISCORD_PRESENCE_MODES = {
-	off: "Off",
-	generic: "Generic (no map name)",
-	full: "Full (map name + count)",
+	off: msg("Off"),
+	generic: msg("Generic (no map name)"),
+	full: msg("Full (map name + count)"),
 } as const;
 export const GEOCODE_PROVIDERS = {
-	local: "Local (offline)",
+	local: msg("Local (offline)"),
 	nominatim: "Nominatim",
-	google: "Google (from panorama)",
+	google: msg("Google (from panorama)"),
 } as const;
 export const GEOCODE_PROVIDER_LABELS: Record<keyof typeof GEOCODE_PROVIDERS, string> = {
-	local: "Local reverse geocode",
-	nominatim: "OpenStreetMap (Nominatim)",
-	google: "Google Street View",
+	local: msg("Local reverse geocode"),
+	nominatim: msg("OpenStreetMap (Nominatim)"),
+	google: msg("Google Street View"),
 };
 export const TAG_VIEW_MODES = {
-	flat: "Flat",
-	tree: "Tree",
+	flat: msg("Flat"),
+	tree: msg("Tree"),
 } as const;
 export const TAG_FOLDER_COLOR_MODES = {
-	direct: "Fixed color",
-	firstChild: "Inherit first child",
+	direct: msg("Fixed color"),
+	firstChild: msg("Inherit first child"),
 } as const;
 export const OPACITY_TOGGLE_MODES = {
-	previous: "Last used opacity",
-	full: "Full opacity",
+	previous: msg("Last used opacity"),
+	full: msg("Full opacity"),
 } as const;
 export const POLYGON_COLOR_MODES = {
-	random: "Random",
-	fixed: "Fixed color",
+	random: msg("Random"),
+	fixed: msg("Fixed color"),
 } as const;
 export const BORDER_DETAILS = {
-	light: "Standard (bundled)",
-	medium: "High (~10MB)",
-	heavy: "Ultra (~46MB)",
+	light: msg("Standard (bundled)"),
+	medium: msg("High (~10MB)"),
+	heavy: msg("Ultra (~46MB)"),
 } as const;
 export const SUBDIVISION_DETAILS = {
-	off: "Off",
-	adm1: "States / provinces",
+	off: msg("Off"),
+	adm1: msg("States / provinces"),
 } as const;
 /** Tag-suggestion list cap stops (slider indices); 0 = unlimited ("All"). */
 export const TAG_SUGGESTION_LIMITS = [5, 10, 25, 50, 0] as const;
@@ -93,7 +93,7 @@ export const PREVIEW_ASPECT_RATIOS = {
 	"16 / 9": "16:9",
 	"21 / 9": "21:9",
 	"32 / 9": "32:9",
-	free: "Free",
+	free: msg("Free"),
 } as const;
 
 export type Language = keyof typeof LANGUAGES;

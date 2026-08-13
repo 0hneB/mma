@@ -19,12 +19,12 @@ function rgb(c: [number, number, number]) {
 }
 
 function badgeText(field: FieldDivergence): string {
-	if (field.format === "month") return "Month";
-	if (field.format === "dateTime") return "Date";
+	if (field.format === "month") return t("Month");
+	if (field.format === "dateTime") return t("Date");
 	const c = field.comparison;
-	if (c.type === "circular") return `Circular ${Math.round(c.period)}`;
-	if (c.type === "linear") return "Numeric";
-	return "Categorical";
+	if (c.type === "circular") return t("Circular {period}", { period: Math.round(c.period) });
+	if (c.type === "linear") return t("Numeric");
+	return t("Categorical");
 }
 
 function fmtNum(n: number | null | undefined): string {
@@ -148,9 +148,9 @@ interface Analysis {
  *  and compute field divergence. */
 async function analyze(): Promise<Analysis> {
 	const map = MMA.getMapState().map;
-	if (!map) throw new Error("No map open");
+	if (!map) throw new Error(t("No map open"));
 	const sels: Selection[] = MMA.getActiveSelections();
-	if (sels.length < 2) throw new Error("Select at least 2 groups to disambiguate.");
+	if (sels.length < 2) throw new Error(t("Select at least 2 groups to disambiguate."));
 
 	const colors = sels.map((s) => s.color);
 	const idSets = await Promise.all(

@@ -191,7 +191,7 @@ function FilterValueInput({
 			<TextInput
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				placeholder={placeholder ?? "Value"}
+				placeholder={placeholder ?? t("Value")}
 			/>
 		);
 	}
@@ -202,7 +202,7 @@ function FilterValueInput({
 				type="number"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				placeholder={placeholder ?? (type === "array" ? "Length" : "Value")}
+				placeholder={placeholder ?? (type === "array" ? t("Length") : t("Value"))}
 			/>
 		);
 	}
@@ -211,7 +211,7 @@ function FilterValueInput({
 		<TextInput
 			value={value}
 			onChange={(e) => onChange(e.target.value)}
-			placeholder={placeholder ?? "Value"}
+			placeholder={placeholder ?? t("Value")}
 		/>
 	);
 }
@@ -557,7 +557,7 @@ export function FilterBuilder({ mapId }: { mapId: string }) {
 	return (
 		<FilterForm
 			persistKey={mapId}
-			submitLabel="Add filter"
+			submitLabel={t("Add filter")}
 			onSubmit={(field, op, value, value2, tzLocal) =>
 				addSelections([{ type: "Filter", field, op, value, value2, tzLocal }])
 			}

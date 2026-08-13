@@ -39,7 +39,10 @@ export function MergeDuplicatesModal({ open, onOpenChange, distance }: Props) {
 		try {
 			await mergeDuplicates(distance);
 			toast(
-				`Merged ${fmt.format(preview?.mergedAway ?? 0)} duplicates into ${fmt.format(preview?.groups ?? 0)} locations`,
+				t("Merged {merged} duplicates into {groups} locations", {
+					merged: fmt.format(preview?.mergedAway ?? 0),
+					groups: fmt.format(preview?.groups ?? 0),
+				}),
 			);
 			onOpenChange(false);
 		} catch (e) {

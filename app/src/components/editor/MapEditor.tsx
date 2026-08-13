@@ -77,7 +77,7 @@ function usePasteHandler() {
 			// list of urls overwrites the payload with a "proxy JSON"
 			let payload = text;
 			const urlLocs = await parseUrlList(text);
-			if (urlLocs.length > 0) payload = parsedLocationsToImportJson(urlLocs, "Pasted URLs");
+			if (urlLocs.length > 0) payload = parsedLocationsToImportJson(urlLocs, t("Pasted URLs"));
 
 			try {
 				await beginImportPaste(payload);
@@ -334,7 +334,7 @@ export function MapEditor() {
 					>
 						{!appSettings.fullscreenMap && <SplitHandle onSplitChange={setSplit} />}
 						<header>
-							<Tooltip content="Back to map list" side="bottom" align="start">
+							<Tooltip content={t("Back to map list")} side="bottom" align="start">
 								<a
 									href="#"
 									style={{ textDecoration: "none" }}
@@ -349,7 +349,7 @@ export function MapEditor() {
 							</Tooltip>
 							<h1>{map.meta.name}</h1>
 							<Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-								<Tooltip content="Edit map" side="bottom">
+								<Tooltip content={t("Edit map")} side="bottom">
 									<DialogTrigger asChild>
 										<button className="icon-button" type="button" aria-label={t("Edit map")}>
 											<Icon path={mdiPencil} />
@@ -364,7 +364,7 @@ export function MapEditor() {
 						</header>
 						<div className="side-header">
 							{hasDoclinks && (
-								<Tooltip content="Doclinks" side="bottom">
+								<Tooltip content={t("Doclinks")} side="bottom">
 									<button
 										className="icon-button"
 										type="button"

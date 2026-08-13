@@ -706,7 +706,7 @@ function VirtualTagDialog({
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title={`Edit folder "${segment}"`}>
+			<DialogContent title={t('Edit folder "{name}"', { name: segment })}>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
@@ -798,7 +798,11 @@ function NewFolderDialog({
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title={parentPath ? `New folder in "${parentPath}"` : "New folder"}>
+			<DialogContent
+				title={
+					parentPath ? t('New folder in "{parent}"', { parent: parentPath }) : t("New folder")
+				}
+			>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
@@ -890,7 +894,7 @@ function AddAliasDialog({
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title={`Alias "${segment}"`}>
+			<DialogContent title={t('Alias "{name}"', { name: segment })}>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();

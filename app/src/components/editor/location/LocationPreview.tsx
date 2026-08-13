@@ -368,7 +368,7 @@ export function LocationPreview() {
 					| HTMLElement
 					| undefined;
 				if (root)
-					toast("Configured pano ID could not be found. Falling back to lat/lng.", 3000, root);
+					toast(t("Configured pano ID could not be found. Falling back to lat/lng."), 3000, root);
 			}
 			// Populate currentPano from the resolve result immediately.
 			// Covers the case where setPano() with the same ID doesn't trigger status_changed.
@@ -713,11 +713,11 @@ export function LocationPreview() {
 					</div>
 					<div className="location-preview__actions">
 						<Button variant="primary" onClick={handleSave} data-qa="location-save">
-							{isSeenPreview(location) ? "Add to map" : "Save"}
+							{isSeenPreview(location) ? t("Add to map") : t("Save")}
 						</Button>
 						{isReviewMode ? (
 							<div style={{ display: "flex", justifyContent: "space-around" }}>
-								<Tooltip content="Go to previous location (Control+Left)">
+								<Tooltip content={t("Go to previous location (Control+Left)")}>
 									<Button
 										onClick={() => reviewPrev()}
 										disabled={reviewSession ? isAtStart(reviewSession) : true}
@@ -727,7 +727,7 @@ export function LocationPreview() {
 										<Icon path={mdiChevronLeft} />
 									</Button>
 								</Tooltip>
-								<Tooltip content="Go to next location (Control+Right)">
+								<Tooltip content={t("Go to next location (Control+Right)")}>
 									<Button
 										onClick={handleClose}
 										aria-label={t("Go to next location (Control+Right)")}
@@ -765,7 +765,7 @@ function GeoSummary({ geo, provider }: { geo: GeoDisplay | null; provider: Geoco
 	return (
 		<>
 			{geo.countryCode && (
-				<Tooltip content={GEOCODE_PROVIDER_LABELS[provider]}>
+				<Tooltip content={t(GEOCODE_PROVIDER_LABELS[provider])}>
 					<span>
 						<img
 							height={15}

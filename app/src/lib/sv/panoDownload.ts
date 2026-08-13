@@ -5,6 +5,7 @@ import { fetchSvMetadata, fetchSvMetadataBatched } from "@/lib/sv/svMeta";
 import type { PanoData } from "@/lib/sv/svRunner";
 import { runConcurrent } from "@/lib/util/concurrent";
 import { toast } from "@/lib/util/toast";
+import { t } from "@/lib/i18n";
 import { clamp } from "@/types/util";
 import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
 
@@ -114,9 +115,9 @@ export async function downloadPano(panoId: string, zoom = 5): Promise<void> {
 		if (!blob) throw new Error("encode failed");
 
 		downloadBlob(blob, `${panoId}.jpg`);
-		toast("Panorama downloaded");
+		toast(t("Panorama downloaded"));
 	} catch {
-		toast("Panorama download failed");
+		toast(t("Panorama download failed"));
 	}
 }
 
@@ -332,10 +333,10 @@ export async function bulkDownloadPanoramas(
 	const needResolve = locations.filter((l) => !l.panoId);
 	const resolvedMap = new Map<number, string>();
 	if (needResolve.length > 0) {
-		onProgress?.(0, needResolve.length, "Resolving pano IDs");
+		onProgress?.(0, needResolve.length, t("Resolving pano IDs"));
 		const res = await resolvePanoIds(needResolve, {
 			signal,
-			onProgress: (d, t) => onProgress?.(d, t, "Resolving pano IDs"),
+			onProgress: (d, total) => onProgress?.(d, total, t("Resolving pano IDs")),
 		});
 		for (const r of res.resolved) resolvedMap.set(r.id, r.panoId);
 		failed.push(...res.failed);
@@ -352,7 +353,7 @@ export async function bulkDownloadPanoramas(
 	// Metadata drives tile layout and center heading; thumbnail/tile modes need neither.
 	let metaMap = new Map<string, PanoData>();
 	if (config.mode === "equirectangular" || config.mode === "perspective") {
-		onProgress?.(0, pending.length, "Fetching metadata");
+		onProgress?.(0, pending.length, t("Fetching metadata"));
 		metaMap = await fetchMetadataMap(
 			pending.map((p) => p.panoId),
 			signal,
@@ -380,7 +381,7 @@ export async function bulkDownloadPanoramas(
 	};
 
 	try {
-		onProgress?.(0, pending.length, "Downloading");
+		onProgress?.(0, pending.length, t("Downloading"));
 		await runConcurrent(
 			pending,
 			async ({ loc, panoId }) => {
@@ -397,7 +398,7 @@ export async function bulkDownloadPanoramas(
 				}
 				(ok ? succeeded : failed).push(loc.id);
 				done++;
-				onProgress?.(done, pending.length, "Downloading");
+				onProgress?.(done, pending.length, t("Downloading"));
 			},
 			{ concurrency: DOWNLOAD_CONCURRENCY, signal },
 		);

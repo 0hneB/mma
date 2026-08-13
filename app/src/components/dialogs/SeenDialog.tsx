@@ -150,7 +150,7 @@ export function SeenDialog({
 
 	return (
 		<Dialog open={open && ready} onOpenChange={onOpenChange}>
-			<DialogContent title={`Seen (${total})`} className="seen-dialog">
+			<DialogContent title={t("Seen ({n})", { n: total })} className="seen-dialog">
 				<div className="seen-dialog__filters">
 					<NSelect
 						className="seen-dialog__select"
@@ -197,7 +197,7 @@ export function SeenDialog({
 						onClick={handleClear}
 						onBlur={() => setConfirmingClear(false)}
 					>
-						{confirmingClear ? "Are you sure?" : "Clear"}
+						{confirmingClear ? t("Are you sure?") : t("Clear")}
 					</Button>
 					<div className="seen-dialog__pagination">
 						<Button disabled={page === 0 || loading} onClick={() => load(page - 1, buildFilter())}>

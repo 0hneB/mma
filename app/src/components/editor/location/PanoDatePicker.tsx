@@ -49,7 +49,7 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 	const prevLabelRef = useRef("");
 	const displayLabel = displayDate
 		? isDefault
-			? `Default (${dateFmt.format(displayDate)})`
+			? t("Default ({date})", { date: dateFmt.format(displayDate) })
 			: dateFmt.format(displayDate)
 		: prevLabelRef.current;
 	if (displayLabel) prevLabelRef.current = displayLabel;

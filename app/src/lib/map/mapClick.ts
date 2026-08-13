@@ -5,6 +5,7 @@ import { LOCATION_LAYER_ID } from "@/lib/render/buildSceneLayers";
 import { cmd } from "@/lib/commands";
 import { lookupStreetView } from "@/lib/sv/lookup";
 import { toast } from "@/lib/util/toast";
+import { t } from "@/lib/i18n";
 import { tryInterceptClick, fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
 import type { ParsedLocation } from "@/lib/data/importExport";
@@ -88,7 +89,7 @@ export async function createLocationAtLatLng(
 	const active = getMapState().activeLocation;
 	if (active != null && isImportPreview(active)) return null;
 
-	const t = trace("add");
+	const tr = trace("add");
 	const ms = getMapState().map?.meta.settings;
 	const loc = await lookupStreetView(lat, lng, zoom, {
 		preferOfficial: ms?.preferOfficial,
@@ -100,15 +101,15 @@ export async function createLocationAtLatLng(
 		minRadius: ms?.searchRadius ?? undefined,
 	});
 	if (!loc) {
-		if (opts?.container) toast("No coverage found at this location.", 1500, opts.container);
+		if (opts?.container) toast(t("No coverage found at this location."), 1500, opts.container);
 		return null;
 	}
-	t.step("lookup");
+	tr.step("lookup");
 	await addLocations([loc]);
-	t.step("addLocations");
+	tr.step("addLocations");
 	setActiveLocation(loc);
-	t.step("setActive");
-	t.end();
+	tr.step("setActive");
+	tr.end();
 	return loc;
 }
 
@@ -189,7 +190,7 @@ export async function handleMapClick(
 	if (info.coordinate) {
 		const container = ctx.host?.container ?? null;
 		if (ctx.selectOnly) {
-			if (container) toast("Select-only mode is on.", 1500, container);
+			if (container) toast(t("Select-only mode is on."), 1500, container);
 			return;
 		}
 		await createLocationAtLatLng(info.coordinate[1], info.coordinate[0], ctx.host?.getZoom() ?? 2, {

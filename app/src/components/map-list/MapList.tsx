@@ -400,7 +400,7 @@ function MapEditForm({ id, name, labels }: { id: string; name: string; labels: s
 								<ColorPicker
 									color={{ r, g, b }}
 									onChange={(rgb) => setLabelColor(l, rgbToHex(rgb))}
-									ariaLabel={`Color for ${l}`}
+									ariaLabel={t("Color for {label}", { label: l })}
 								/>
 								{l}
 								<button
@@ -801,7 +801,7 @@ export function BulkActions() {
 
 	const handleExport = useCallback(async () => {
 		setExporting(true);
-		const progress = progressToast("Exporting maps...");
+		const progress = progressToast(t("Exporting maps..."));
 		const unlisten = await events.bulkExportProgress.listen((e) =>
 			progress.update(
 				e.payload.current / e.payload.total,
@@ -812,7 +812,7 @@ export function BulkActions() {
 			const path = await cmd.storeExportBulkZip();
 			const res = await fetch(mmaBufUrl(path));
 			downloadBlob(await res.blob(), `mma-backup-${new Date().toISOString().slice(0, 10)}.zip`);
-			progress.finish("Export saved");
+			progress.finish(t("Export saved"));
 		} catch {
 			progress.finish();
 		} finally {
@@ -824,7 +824,7 @@ export function BulkActions() {
 	const handleImport = useCallback(async () => {
 		const selection = await openDialog({
 			multiple: true,
-			filters: [{ name: "Map data", extensions: ["json", "zip", "mmafolders"] }],
+			filters: [{ name: t("Map data"), extensions: ["json", "zip", "mmafolders"] }],
 		});
 		if (!selection) return;
 		const paths = Array.isArray(selection) ? selection : [selection];
@@ -837,7 +837,7 @@ export function BulkActions() {
 		}
 		if (mapFiles.length === 0) return;
 
-		setParseStatus(mapFiles.length > 1 ? "Scanning files..." : "Scanning file...");
+		setParseStatus(mapFiles.length > 1 ? t("Scanning files...") : t("Scanning file..."));
 		try {
 			const aggregated: ImportEntry[] = [];
 			const warnings: string[] = [];
@@ -895,7 +895,7 @@ export function BulkActions() {
 		setPreview(null);
 		const total = indices.length;
 		let base = 0; // maps confirmed in prior files, for global progress across the per-file loop
-		const progress = progressToast("Importing maps...");
+		const progress = progressToast(t("Importing maps..."));
 		const unlisten = await events.bulkImportProgress.listen((e) =>
 			progress.update((base + e.payload.current) / total, `${base + e.payload.current} / ${total}`),
 		);
@@ -911,7 +911,11 @@ export function BulkActions() {
 				base += localIndices.length;
 			}
 			await invalidateMapList();
-			progress.finish(failed ? `Imported ${total - failed}, ${failed} failed` : "Import complete");
+			progress.finish(
+				failed
+					? t("Imported {imported}, {failed} failed", { imported: total - failed, failed })
+					: t("Import complete"),
+			);
 		} catch (e) {
 			log.error("[bulk import] confirm failed:", e);
 			progress.finish();
@@ -928,7 +932,7 @@ export function BulkActions() {
 				className="settings-gear"
 				onClick={handleExport}
 				disabled={exporting}
-				title={exporting ? "Exporting..." : "Export all maps"}
+				title={exporting ? t("Exporting...") : t("Export all maps")}
 			>
 				<Icon path={mdiExport} />
 			</button>
@@ -936,7 +940,7 @@ export function BulkActions() {
 				className="settings-gear"
 				onClick={handleImport}
 				disabled={importing || parseStatus !== null}
-				title={parseStatus ?? (importing ? "Importing..." : "Import maps")}
+				title={parseStatus ?? (importing ? t("Importing...") : t("Import maps"))}
 			>
 				<Icon path={mdiImport} />
 			</button>
@@ -1224,7 +1228,7 @@ export function MapList() {
 						onClick={() => {
 							const name = filterInputRef.current?.value.trim();
 							if (!name) {
-								toast("Type a name to create a folder");
+								toast(t("Type a name to create a folder"));
 								return;
 							}
 							setSyntheticFolders((prev) => (prev.includes(name) ? prev : [...prev, name]));
@@ -1238,7 +1242,7 @@ export function MapList() {
 						onClick={() => {
 							const name = filterInputRef.current?.value.trim();
 							if (!name) {
-								toast("Type a name to create a map");
+								toast(t("Type a name to create a map"));
 								return;
 							}
 							createMap(name);
@@ -1327,12 +1331,12 @@ export function MapList() {
 					<DialogContent
 						title={
 							activeAction.type === "edit"
-								? "Edit map"
+								? t("Edit map")
 								: activeAction.type === "delete"
-									? "Delete map"
+									? t("Delete map")
 									: activeAction.type === "rename-folder"
-										? "Rename folder"
-										: "Delete folder"
+										? t("Rename folder")
+										: t("Delete folder")
 						}
 						className="edit-map-modal"
 					>

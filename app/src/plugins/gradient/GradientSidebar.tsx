@@ -240,7 +240,8 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 								value: n,
 								label: String(n),
 								disabled: projectionId !== RANGE_ID,
-								title: projectionId !== RANGE_ID ? "Only applies to Range grouping" : undefined,
+								title:
+									projectionId !== RANGE_ID ? t("Only applies to Range grouping") : undefined,
 							}))}
 						/>
 					</Field>
@@ -287,10 +288,16 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 						{lastResult != null && (
 							<span className="gradient-sidebar__result">
 								{!lastResult.applied
-									? `${lastResult.groups} groups. Too many to color (max ${MAX_GROUPS}).`
+									? t("{n} groups. Too many to color (max {max}).", {
+											n: lastResult.groups,
+											max: MAX_GROUPS,
+										})
 									: lastResult.groups === 0
-										? "No groups found"
-										: `${lastResult.groups} group${lastResult.groups === 1 ? "" : "s"} applied`}
+										? t("No groups found")
+										: t(
+												{ one: "{n} group applied", other: "{n} groups applied" },
+												{ n: lastResult.groups },
+											)}
 							</span>
 						)}
 					</div>

@@ -189,8 +189,8 @@ async function computePivot(
 
 	const extraLabels = fieldDef?.labels ?? {};
 	const columnLabels = columns.map((c) => {
-		if (c === NA_KEY) return "N/A";
-		if (isTags) return tagMap[Number(c)]?.name ?? `Tag ${c}`;
+		if (c === NA_KEY) return t("N/A");
+		if (isTags) return tagMap[Number(c)]?.name ?? t("Tag {id}", { id: c });
 		return extraLabels[c] ?? c;
 	});
 
@@ -322,7 +322,7 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 							}
 						>
 							<option value="off" disabled={bucketForced}>
-								{bucketForced ? "Off (too many values)" : "Off"}
+								{bucketForced ? t("Off (too many values)") : t("Off")}
 							</option>
 							<option value="5">{t("5 buckets")}</option>
 							<option value="10">{t("10 buckets")}</option>
@@ -358,10 +358,10 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 				{fields.length > 0 && !data && !loading && (
 					<EmptyState>
 						{rowSource === "active"
-							? "No active selections. Add selections to see pivot data."
+							? t("No active selections. Add selections to see pivot data.")
 							: rowSource === "all"
-								? "No locations on this map."
-								: "Saved selection could not be resolved."}
+								? t("No locations on this map.")
+								: t("Saved selection could not be resolved.")}
 					</EmptyState>
 				)}
 				{loading && !view && <EmptyState>{t("Computing...")}</EmptyState>}

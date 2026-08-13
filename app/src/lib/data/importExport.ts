@@ -3,6 +3,7 @@ import { fovToZoom, schemeBase } from "@/lib/util/util";
 import { runConcurrent } from "@/lib/util/concurrent";
 import { LocationFlag } from "@/types";
 import type { Location } from "@/bindings.gen";
+import { t } from "@/lib/i18n";
 
 /** A single location parsed out of a pasted Maps URL or a bare coordinate. */
 export type ParsedLocation = Pick<
@@ -21,7 +22,7 @@ async function resolveShortUrl(url: URL): Promise<URL> {
 	// server-side), so it works in dev and release.
 	const proxyUrl = `${schemeBase("googl")}${id}${source ? `?source=${source}` : ""}`;
 	const res = await fetch(proxyUrl, { headers: { accept: "application/json" } });
-	if (!res.ok) throw new Error("Failed to resolve short URL");
+	if (!res.ok) throw new Error(t("Failed to resolve short URL"));
 	return new URL(await res.json());
 }
 

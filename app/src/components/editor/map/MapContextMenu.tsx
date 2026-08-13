@@ -38,7 +38,7 @@ async function copyLocationLink(loc: Location) {
 	} catch {
 		await navigator.clipboard.writeText(long).catch(() => {});
 	}
-	toast("Link copied", 1500);
+	toast(t("Link copied"), 1500);
 }
 
 export const MapContextMenuContent = forwardRef<HTMLDivElement>((_props, ref) => {
@@ -131,7 +131,9 @@ export const MapContextMenuContent = forwardRef<HTMLDivElement>((_props, ref) =>
 					disabled={polygonCount === 0}
 					onClick={() => deletePolygonsAt(latLng.lat, latLng.lng)}
 				>
-					{polygonCount > 1 ? `Delete ${polygonCount} polygons here` : "Delete this polygon"}
+					{polygonCount > 1
+						? t("Delete {n} polygons here", { n: polygonCount })
+						: t("Delete this polygon")}
 				</ContextMenu.Item>
 				<ContextMenu.Item className="context-menu__item" onClick={() => setLatLngAnchor(latLng)}>
 					{t("Set latitude/longitude anchors")}

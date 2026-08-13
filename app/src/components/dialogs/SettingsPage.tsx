@@ -63,6 +63,7 @@ import { useAsync } from "@/lib/hooks/useAsync";
 import { useUpdateState, checkForUpdate, installUpdate, relaunchApp } from "@/lib/util/updateCheck";
 import { ColorPicker } from "@/components/primitives/ColorPicker";
 import { t, msg } from "@/lib/i18n";
+import { errText } from "@/lib/util/util";
 import { Trans } from "@/components/primitives/Trans";
 
 /** Non-row section content. Hidden during search unless the section title
@@ -680,7 +681,7 @@ function BorderDetailGroup() {
 			else setHeavyReady(true);
 			setSetting("borderDetail", level);
 		} catch (e) {
-			setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
+			setError(t("Download failed: {error}", { error: errText(e) }));
 		} finally {
 			setDownloading(null);
 		}
@@ -698,7 +699,7 @@ function BorderDetailGroup() {
 			setAdm1Ready(true);
 			setSetting("subdivisionDetail", level);
 		} catch (e) {
-			setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
+			setError(t("Download failed: {error}", { error: errText(e) }));
 		} finally {
 			setDownloading(null);
 		}
@@ -731,7 +732,7 @@ function BorderDetailGroup() {
 					>
 						{Object.entries(BORDER_DETAILS).map(([value, label]) => (
 							<option key={value} value={value}>
-								{label}
+								{t(label)}
 								{value !== "light" && statusLabel(value as "medium" | "heavy")}
 							</option>
 						))}
@@ -749,7 +750,7 @@ function BorderDetailGroup() {
 					>
 						{Object.entries(SUBDIVISION_DETAILS).map(([value, label]) => (
 							<option key={value} value={value}>
-								{label}
+								{t(label)}
 								{value !== "off" && subdivisionStatus()}
 							</option>
 						))}
@@ -906,7 +907,7 @@ function MapListBlock() {
 						checked={fields.includes(value as MapListField)}
 						onChange={() => toggle(value as MapListField)}
 					/>
-					{label}
+					{t(label)}
 				</label>
 			))}
 		</Aux>
@@ -932,7 +933,7 @@ function UpdateBlock() {
 		update.phase === "available"
 			? t("Version {version} is available.", { version: update.version ?? "" })
 			: update.phase === "error"
-				? (update.error ?? "Update check failed.")
+				? (update.error ?? t("Update check failed."))
 				: t(UPDATE_STATUS[update.phase]);
 
 	return (
@@ -1154,7 +1155,7 @@ function DataBody() {
 			await relaunchApp();
 		} catch (e) {
 			log.error("data folder relaunch failed", e);
-			toast("Couldn't relaunch automatically -- restart the app to apply.");
+			toast(t("Couldn't relaunch automatically -- restart the app to apply."));
 			setBusy(false);
 		}
 	}, [pending]);

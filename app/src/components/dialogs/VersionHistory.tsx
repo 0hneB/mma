@@ -103,7 +103,7 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 										<tr
 											key={c.id}
 											onClick={() => hasDiff && viewDiff(c)}
-											title={hasDiff ? "View changes on the map" : undefined}
+											title={hasDiff ? t("View changes on the map") : undefined}
 											style={{
 												borderBottom: "1px solid var(--border-subtle)",
 												cursor: hasDiff ? "pointer" : "default",
@@ -145,12 +145,12 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 													onBlur={() => confirmingId === c.id && setConfirmingId(null)}
 												>
 													{restoring === c.id
-														? "Restoring..."
+														? t("Restoring...")
 														: confirmingId === c.id
-															? "Are you sure?"
+															? t("Are you sure?")
 															: i === 0
-																? "Revert"
-																: "Restore"}
+																? t("Revert")
+																: t("Restore")}
 												</Button>
 											</td>
 										</tr>

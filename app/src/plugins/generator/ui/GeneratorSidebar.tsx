@@ -56,7 +56,7 @@ async function resolveTagByName(name: string): Promise<number | null> {
 function selectionToRegion(sel: Selection, meta: GeneratorRegionMeta): GeneratorRegion | null {
 	if (sel.props.type !== "Polygon") return null;
 	const poly = sel.props.polygon;
-	const name = poly.properties?.name || "Unnamed polygon";
+	const name = poly.properties?.name || t("Unnamed polygon");
 	const geometry = poly.extraPolygons
 		? { type: "MultiPolygon" as const, coordinates: [poly.coordinates, ...poly.extraPolygons] }
 		: { type: "Polygon" as const, coordinates: poly.coordinates };
@@ -320,7 +320,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 
 	return (
 		<Sidebar title={t("Map Generator")} onBack={handleClose} className="generator-sidebar">
-			<Section title={`Regions (${polygonSelections.length})`}>
+			<Section title={t("Regions ({n})", { n: polygonSelections.length })}>
 				<RegionSelector
 					defaultTarget={settings.defaultTarget}
 					onDefaultTargetChange={(v) => updateSettings({ defaultTarget: v })}
@@ -367,7 +367,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 					) : (
 						<>
 							<button className="button" onClick={handlePause}>
-								{paused ? "Resume" : "Pause"}
+								{paused ? t("Resume") : t("Pause")}
 							</button>
 							<button className="button" onClick={handleStop}>
 								{t("Stop")}

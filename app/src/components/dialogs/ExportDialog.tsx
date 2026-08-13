@@ -61,33 +61,33 @@ export function ExportDialog({ onClose }: Props) {
 			if (ok !== false) toast(success);
 		} catch (e) {
 			log.error("[export] failed:", e);
-			toast("Export failed");
+			toast(t("Export failed"));
 		}
 	};
 
 	const copyJson = withFeedback(
 		async () =>
 			navigator.clipboard.writeText(await (await fetch(mmaBufUrl(await jsonPath()))).text()),
-		"Copied JSON to clipboard",
+		t("Copied JSON to clipboard"),
 	);
 	const downloadJson = withFeedback(
 		async () => saveToFile(await jsonPath(), "json"),
-		`Downloaded ${baseName}.json`,
+		t("Downloaded {file}", { file: `${baseName}.json` }),
 	);
 
 	const copyCsv = withFeedback(
 		async () =>
 			navigator.clipboard.writeText(await (await fetch(mmaBufUrl(await csvPath()))).text()),
-		"Copied CSV to clipboard",
+		t("Copied CSV to clipboard"),
 	);
 	const downloadCsv = withFeedback(
 		async () => saveToFile(await csvPath(), "csv"),
-		`Downloaded ${baseName}.csv`,
+		t("Downloaded {file}", { file: `${baseName}.csv` }),
 	);
 
 	const downloadGeoJson = withFeedback(
 		async () => saveToFile(await geojsonPath(), "geojson"),
-		`Downloaded ${baseName}.geojson`,
+		t("Downloaded {file}", { file: `${baseName}.geojson` }),
 	);
 
 	return (

@@ -166,7 +166,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 		[onWidthChange],
 	);
 
-	const title = shown?.docTitle ?? selTag?.name ?? "Doclink";
+	const title = shown?.docTitle ?? selTag?.name ?? t("Doclink");
 
 	return (
 		<aside className="doclink-panel" style={{ width }} ref={panelRef}>
@@ -175,7 +175,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 				<span className="doclink-panel__title" title={title}>
 					{title}
 				</span>
-				<Tooltip content="Re-fetch document (bypass cache)" side="bottom">
+				<Tooltip content={t("Re-fetch document (bypass cache)")} side="bottom">
 					<button
 						className="icon-button"
 						type="button"
@@ -187,7 +187,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					</button>
 				</Tooltip>
 				<Tooltip
-					content={wholeDoc ? "Show linked section only" : "Show whole document"}
+					content={wholeDoc ? t("Show linked section only") : t("Show whole document")}
 					side="bottom"
 				>
 					<button
@@ -201,7 +201,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					</button>
 				</Tooltip>
 				<Tooltip
-					content={pinned ? "Unpin (follow selected tags)" : "Pin current section"}
+					content={pinned ? t("Unpin (follow selected tags)") : t("Pin current section")}
 					side="bottom"
 				>
 					<button
@@ -213,7 +213,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 						<Icon path={pinned ? mdiPin : mdiPinOutline} />
 					</button>
 				</Tooltip>
-				<Tooltip content="Open in browser" side="bottom">
+				<Tooltip content={t("Open in browser")} side="bottom">
 					<button
 						className="icon-button"
 						type="button"
@@ -224,7 +224,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 						<Icon path={mdiOpenInNew} />
 					</button>
 				</Tooltip>
-				<Tooltip content="Close" side="bottom">
+				<Tooltip content={t("Close")} side="bottom">
 					<button
 						className="icon-button"
 						type="button"

@@ -9,7 +9,7 @@ import { t } from "@/lib/i18n";
 
 function getPolygonName(sel: Selection): string {
 	if (sel.props.type !== "Polygon") return sel.key;
-	return sel.props.polygon.properties?.name || "Unnamed polygon";
+	return sel.props.polygon.properties?.name || t("Unnamed polygon");
 }
 
 function getPolygonCode(sel: Selection): string | undefined {

@@ -15,6 +15,7 @@ import { PANO_ZOOM, zoomInStep, zoomOutStep } from "@/lib/sv/constants";
 import { tweenPov } from "@/lib/sv/tweenPov";
 import { type PanoReference, nearestLinkHeading, followLinkedPanos } from "@/lib/sv/lookup";
 import { toast } from "@/lib/util/toast";
+import { t } from "@/lib/i18n";
 import { downloadPano } from "@/lib/sv/panoDownload";
 import { isVirtualLocation } from "@/types";
 import { cycle } from "@/types/util";
@@ -156,7 +157,7 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 		const mode = cycle(MOVEMENT_CYCLE, getSettings().defaultMovementMode);
 		setSetting("defaultMovementMode", mode);
 		const container = fullscreenContainerRef.current ?? panoContainerRef.current?.parentElement;
-		if (container) toast(MOVEMENT_MODES[mode], 1200, container);
+		if (container) toast(t(MOVEMENT_MODES[mode]), 1200, container);
 	});
 	useHotkey(useBinding("duplicateLocation"), () => {
 		if (location) duplicateLocation(location.id);
@@ -185,14 +186,19 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 		const heading = singletonPano.getPov().heading;
 		if (!panoId) return;
 		const container = fullscreenContainerRef.current ?? panoContainerRef.current?.parentElement;
-		if (container) toast("Following road...", 1500, container);
+		if (container) toast(t("Following road..."), 1500, container);
 		followLinkedPanos(panoId, heading)
 			.then((locs) => {
 				if (locs.length > 0) addLocations(locs);
-				if (container) toast(`Added ${locs.length} locations`, 1500, container);
+				if (container)
+					toast(
+						t({ one: "Added {n} location", other: "Added {n} locations" }, { n: locs.length }),
+						1500,
+						container,
+					);
 			})
 			.catch(() => {
-				if (container) toast("Follow road failed", 1500, container);
+				if (container) toast(t("Follow road failed"), 1500, container);
 			});
 	});
 
@@ -255,14 +261,16 @@ export function useLocationHotkeys(deps: LocationHotkeyDeps) {
 					log.debug(`[copyToMap] ipc=${Math.round(performance.now() - t0)}ms`);
 					if (!container) return;
 					toast(
-						res.copied > 0 ? `Copied to "${res.targetName}"` : `Already in "${res.targetName}"`,
+						res.copied > 0
+							? t('Copied to "{name}"', { name: res.targetName })
+							: t('Already in "{name}"', { name: res.targetName }),
 						1500,
 						container,
 					);
 				})
 				.catch((e) => {
 					log.error("[copyToMap] failed:", e);
-					if (container) toast("Copy failed", 1500, container);
+					if (container) toast(t("Copy failed"), 1500, container);
 				});
 		});
 		return () => {

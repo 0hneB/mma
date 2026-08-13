@@ -196,7 +196,11 @@ function PluginCard({
 							className="plugin-card__action-btn plugin-card__action-btn--install"
 							onClick={run(onInstall)}
 							disabled={busy || !!requiresApp}
-							title={requiresApp ? `Requires app v${requiresApp} or newer` : "Install"}
+							title={
+								requiresApp
+									? t("Requires app v{version} or newer", { version: requiresApp })
+									: t("Install")
+							}
 							aria-label={t("Install")}
 						>
 							<Icon path={mdiDownload} size={16} />
@@ -206,7 +210,7 @@ function PluginCard({
 							checked={enabled}
 							onChange={(next) => (next ? onEnable(id) : onDisable(id))}
 							disabled={busy}
-							label={enabled ? "Disable" : "Enable"}
+							label={enabled ? t("Disable") : t("Enable")}
 						/>
 					)}
 					{installed && !core && entry.updatable && (
@@ -216,10 +220,10 @@ function PluginCard({
 							disabled={busy || !!requiresApp}
 							title={
 								requiresApp
-									? `Update requires app v${requiresApp} or newer`
+									? t("Update requires app v{version} or newer", { version: requiresApp })
 									: entry.latestVersion
-										? `Update to v${entry.latestVersion}`
-										: "Update"
+										? t("Update to v{version}", { version: entry.latestVersion })
+										: t("Update")
 							}
 							aria-label={t("Update")}
 						>

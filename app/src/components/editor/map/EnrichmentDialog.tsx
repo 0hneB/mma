@@ -28,12 +28,12 @@ import { Trans } from "@/components/primitives/Trans";
 type Comparison = NonNullable<ExtraFieldDef["comparison"]>;
 const FIELD_TYPES: ExtraFieldDef["type"][] = ["string", "number", "date", "month", "enum", "array"];
 const TYPE_LABELS: Record<ExtraFieldDef["type"], string> = {
-	string: "Text",
-	number: "Number",
-	date: "Date/time",
-	month: "Month (YYYY-MM)",
-	enum: "Enum",
-	array: "Array",
+	string: msg("Text"),
+	number: msg("Number"),
+	date: msg("Date/time"),
+	month: msg("Month (YYYY-MM)"),
+	enum: msg("Enum"),
+	array: msg("Array"),
 };
 
 // How a field is compared during disambiguation. "auto" = inferred from type.
@@ -139,7 +139,7 @@ export function EnrichmentButton() {
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<Tooltip content="Enrichment" side="bottom">
+			<Tooltip content={t("Enrichment")} side="bottom">
 				<DialogTrigger asChild>
 					<button className="icon-button" type="button" aria-label={t("Enrichment")}>
 						<Icon path={mdiDatabasePlusOutline} />
@@ -391,7 +391,7 @@ function FieldsTable({
 								<Checkbox
 									checked={row.enrichable && isEnrichOn(row.key)}
 									disabled={!row.enrichable}
-									title={row.enrichable ? undefined : "Not an enrichment field"}
+									title={row.enrichable ? undefined : t("Not an enrichment field")}
 									onChange={(e) => toggleEnrich(row.key, e.target.checked)}
 								/>
 							</td>
@@ -447,9 +447,9 @@ function FieldsTable({
 											updateRow(row.key, { type: e.target.value as ExtraFieldDef["type"] }, true)
 										}
 									>
-										{FIELD_TYPES.map((t) => (
-											<option key={t} value={t}>
-												{TYPE_LABELS[t]}
+										{FIELD_TYPES.map((fieldType) => (
+											<option key={fieldType} value={fieldType}>
+												{t(TYPE_LABELS[fieldType])}
 											</option>
 										))}
 									</NSelect>
@@ -460,7 +460,9 @@ function FieldsTable({
 											title={t("Edit allowed values")}
 											onClick={() => openEnumValues(row)}
 										>
-											{row.values?.length ? `Values (${row.values.length})` : "Values..."}
+											{row.values?.length
+												? t("Values ({n})", { n: row.values.length })
+												: t("Values...")}
 										</button>
 									)}
 								</div>
@@ -491,7 +493,7 @@ function FieldsTable({
 									{COMP_OPTIONS.map((o) => (
 										<option key={o.token} value={o.token}>
 											{o.token === "circular" && row.comparison?.type === "circular"
-												? `Circular · ${row.comparison.period}`
+												? t("Circular · {period}", { period: row.comparison.period })
 												: o.label}
 										</option>
 									))}
@@ -501,7 +503,7 @@ function FieldsTable({
 								<button
 									className="manage-fields-table__delete"
 									type="button"
-									title={row.present ? "Delete field" : undefined}
+									title={row.present ? t("Delete field") : undefined}
 									disabled={busy || !row.present}
 									onClick={() => setDeleteKey(row.key)}
 								>
@@ -515,7 +517,7 @@ function FieldsTable({
 
 			<Dialog open={renamePrompt !== null} onOpenChange={(open) => !open && cancelRename()}>
 				<DialogContent
-					title={renamePrompt?.merge ? "Merge field" : "Rename field"}
+					title={renamePrompt?.merge ? t("Merge field") : t("Rename field")}
 					className="period-prompt"
 				>
 					{renamePrompt && (
@@ -572,7 +574,7 @@ function FieldsTable({
 							)}
 							<div className="period-prompt__actions">
 								<Button variant="primary" disabled={busy} onClick={confirmRename}>
-									{renamePrompt.merge ? "Merge" : "Rename"}
+									{renamePrompt.merge ? t("Merge") : t("Rename")}
 								</Button>
 								<Button disabled={busy} onClick={cancelRename}>
 									{t("Cancel")}

@@ -6,6 +6,7 @@ import type { Location, ExtraFieldDef, ComparisonType } from "@/bindings.gen";
 import { getFieldDef, isWritableField, getBuiltinKeys } from "@/lib/data/fieldDefRegistry";
 import { fieldValue, extraKeysOf } from "@/lib/data/fieldOps";
 import { ymOrdinal } from "@/lib/util/date";
+import { t } from "@/lib/i18n";
 import {
 	kruskalEps2,
 	circularEta2,
@@ -152,9 +153,9 @@ function categoryValue(loc: Location, key: string): string | null {
 
 function fieldLabel(key: string, def: ExtraFieldDef | undefined): string {
 	if (def?.label) return def.label;
-	if (key === "heading") return "Heading";
-	if (key === "pitch") return "Pitch";
-	if (key === "zoom") return "Zoom";
+	if (key === "heading") return t("Heading");
+	if (key === "pitch") return t("Pitch");
+	if (key === "zoom") return t("Zoom");
 	return key;
 }
 
@@ -279,7 +280,7 @@ function tagField(
 		const k = loc.tags.includes(tid) ? "yes" : "no";
 		perGroup[group].set(k, (perGroup[group].get(k) ?? 0) + 1);
 	}
-	const label = tagNames[tid] ?? `Tag ${tid}`;
+	const label = tagNames[tid] ?? t("Tag {id}", { id: tid });
 	return finishCategorical(`tag:${tid}`, label, perGroup, groupSizes, null);
 }
 

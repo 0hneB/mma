@@ -108,7 +108,9 @@ export function TagFindReplaceDialog({ open, onOpenChange }: DialogProps) {
 						{t("Tag renames cannot be undone.")}
 					</p>
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-						<Button onClick={() => handleOpenChange(false)}>{applied ? "Close" : "Cancel"}</Button>
+						<Button onClick={() => handleOpenChange(false)}>
+							{applied ? t("Close") : t("Cancel")}
+						</Button>
 						{!applied && (
 							<Button
 								variant="primary"

@@ -149,8 +149,8 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 						</div>
 						<div className="doclink-assign__outline">
 							<div className="doclink-assign__pane-title">
-								{outline?.title ?? "Document"}
-								{armed ? ` — click a heading to assign "${armed.name}"` : ""}
+								{outline?.title ?? t("Document")}
+								{armed ? t(' — click a heading to assign "{name}"', { name: armed.name }) : ""}
 							</div>
 							{loading && <p className="doclink-assign__hint">{t("Loading document...")}</p>}
 							{error && (
@@ -169,14 +169,17 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 										onClick={() => armed && void toggle(armed, h.anchor)}
 									>
 										<span className="doclink-assign__heading-text">{h.text}</span>
-										{assigned.map((t) => (
+										{assigned.map((tag) => (
 											<span
-												key={t.id}
+												key={tag.id}
 												className="doclink-assign__chip"
-												style={{ background: t.color, color: textColorFor(t.color) }}
-												title={`Assigned to ${t.name} (click heading with this tag armed to remove)`}
+												style={{ background: tag.color, color: textColorFor(tag.color) }}
+												title={t(
+													"Assigned to {name} (click heading with this tag armed to remove)",
+													{ name: tag.name },
+												)}
 											>
-												{t.name}
+												{tag.name}
 											</span>
 										))}
 									</div>

@@ -161,7 +161,7 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 								gap: "0.5rem",
 								opacity: hasTzData ? 1 : 0.5,
 							}}
-							title={hasTzData ? undefined : "No locations have timezone data"}
+							title={hasTzData ? undefined : t("No locations have timezone data")}
 						>
 							<Checkbox
 								checked={tzLocal && hasTzData}

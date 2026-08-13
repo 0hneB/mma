@@ -112,7 +112,7 @@ export function DistributionSidebar({ onClose }: { onClose: () => void }) {
 						value: "metadata",
 						label: t("Metadata"),
 						disabled: !metaAvailable,
-						title: metaAvailable ? undefined : "Enrich metadata fields to enable",
+						title: metaAvailable ? undefined : t("Enrich metadata fields to enable"),
 					},
 				]}
 			/>

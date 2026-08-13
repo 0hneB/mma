@@ -55,7 +55,6 @@ function PerSelectionToggle({
 	);
 }
 
-const eachSuffix = (perSelection: boolean) => (perSelection ? " from each selection" : "");
 
 function RandomPickPanel() {
 	const [value, setValue] = useState("");
@@ -73,8 +72,23 @@ function RandomPickPanel() {
 				selectRandomFromSelection(count, perSelection)
 					.then((picked) => {
 						if (picked === 0) return;
-						const s = picked !== 1 ? "s" : "";
-						toast(`Selected ${fmt.format(picked)} random location${s}${eachSuffix(perSelection)}`);
+						toast(
+							perSelection
+								? t(
+										{
+											one: "Selected {n} random location from each selection",
+											other: "Selected {n} random locations from each selection",
+										},
+										{ n: picked },
+									)
+								: t(
+										{
+											one: "Selected {n} random location",
+											other: "Selected {n} random locations",
+										},
+										{ n: picked },
+									),
+						);
 					})
 					.catch((err) => toast(String(err)));
 			}}
@@ -112,9 +126,18 @@ function SpacedPickPanel() {
 		selectSpacedFromSelection(opts, perSelection)
 			.then(({ picked, distanceM }) => {
 				if (picked === 0) return;
-				const spacing = distanceM > 0 ? `, at least ${fmt.format(distanceM)}m apart` : "";
-				const s = picked !== 1 ? "s" : "";
-				toast(`Selected ${fmt.format(picked)} location${s}${eachSuffix(perSelection)}${spacing}`);
+				const base = perSelection
+					? t(
+							{
+								one: "Selected {n} location from each selection",
+								other: "Selected {n} locations from each selection",
+							},
+							{ n: picked },
+						)
+					: t({ one: "Selected {n} location", other: "Selected {n} locations" }, { n: picked });
+				const spacing =
+					distanceM > 0 ? t(", at least {distance}m apart", { distance: fmt.format(distanceM) }) : "";
+				toast(base + spacing);
 			})
 			.catch((err) => toast(String(err)));
 	};
@@ -129,7 +152,7 @@ function SpacedPickPanel() {
 				type="number"
 				min={1}
 				style={{ width: "7rem" }}
-				placeholder={mode === "count" ? "Count" : "Meters"}
+				placeholder={mode === "count" ? t("Count") : t("Meters")}
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 			/>
@@ -353,7 +376,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 							render: () => (
 								<FilterForm
 									persistKey={map.meta.id}
-									submitLabel="Add filter"
+									submitLabel={t("Add filter")}
 									onSubmit={(field, op, value, value2, tzLocal) => {
 										addSelections([{ type: "Filter", field, op, value, value2, tzLocal }]);
 									}}

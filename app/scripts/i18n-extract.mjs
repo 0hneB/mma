@@ -178,6 +178,7 @@ function build(messages) {
 const DISPLAY_PROPS = new Set([
 	"title", "placeholder", "aria-label", "ariaLabel", "label", "description", "confirmLabel",
 	"cancelLabel", "emptyText", "hint", "summary", "alt", "tooltip", "heading", "subtitle", "caption",
+	"content",
 ]);
 
 /** Rough "is this English copy" test, matching the one used to size the migration. */

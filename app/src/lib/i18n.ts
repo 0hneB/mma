@@ -24,6 +24,8 @@ export async function initLocale(code: string): Promise<void> {
 	locale = code;
 	pluralRules = new Intl.PluralRules(code);
 	countFormat = new Intl.NumberFormat(code);
+	// Drives font selection for CJK and the language reported to screen readers.
+	document.documentElement.lang = code;
 }
 
 export function getLocale(): string {

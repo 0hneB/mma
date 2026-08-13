@@ -48,16 +48,16 @@ import { useAsync } from "@/lib/hooks/useAsync";
 import { saveExportTempFile } from "@/lib/util/util";
 import { fmt } from "@/lib/util/format";
 import { toast } from "@/lib/util/toast";
-import { t } from "@/lib/i18n";
+import { t, msg } from "@/lib/i18n";
 
 const TITLES = {
-	validate: "Validate locations",
-	enrich: "Enrich metadata",
-	pinPano: "Pin to Pano ID",
-	clearFields: "Clear metadata fields",
-	setField: "Set metadata field",
-	headingRoad: "Pan headings along road",
-	downloadPanoramas: "Download panoramas",
+	validate: msg("Validate locations"),
+	enrich: msg("Enrich metadata"),
+	pinPano: msg("Pin to Pano ID"),
+	clearFields: msg("Clear metadata fields"),
+	setField: msg("Set metadata field"),
+	headingRoad: msg("Pan headings along road"),
+	downloadPanoramas: msg("Download panoramas"),
 } as const;
 export type BulkOperation = keyof typeof TITLES;
 
@@ -126,7 +126,13 @@ function ValidateSetup({ scopeCtl, onReady }: SetupProps) {
 								}));
 							if (batch.length > 0) addSelections(batch);
 							return {
-								doneMessage: `Done -- ${fmt.format(locations.length)} locations validated.`,
+								doneMessage: t(
+									{
+										one: "Done -- {n} location validated.",
+										other: "Done -- {n} locations validated.",
+									},
+									{ n: locations.length },
+								),
 							};
 						})
 					}
@@ -269,7 +275,12 @@ function PinPanoSetup({ scopeCtl, locs, onReady }: SetupProps) {
 								useLatest,
 								onProgress,
 							});
-							return { doneMessage: `Done -- ${fmt.format(count)} locations pinned.` };
+							return {
+								doneMessage: t(
+									{ one: "Done -- {n} location pinned.", other: "Done -- {n} locations pinned." },
+									{ n: count },
+								),
+							};
 						})
 					}
 					disabled={!force && !useLatest && unpinned === 0}
@@ -339,7 +350,13 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 							}
 							if (updates.length > 0) await updateLocations(updates);
 							return {
-								doneMessage: `Cleared fields from ${fmt.format(updates.length)} locations.`,
+								doneMessage: t(
+									{
+										one: "Cleared fields from {n} location.",
+										other: "Cleared fields from {n} locations.",
+									},
+									{ n: updates.length },
+								),
 							};
 						});
 					}}
@@ -375,7 +392,7 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 			parseFieldExpr(raw);
 			return null;
 		} catch (e) {
-			return e instanceof Error ? e.message : "Invalid expression";
+			return e instanceof Error ? e.message : t("Invalid expression");
 		}
 	}, [isNumber, raw]);
 	const invalid = !effectiveKey || (isNumber && (raw.trim() === "" || exprError != null));
@@ -441,8 +458,8 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 			{isNumber && (
 				<div className="bulk-operation__status">
 					{exprError
-						? `Invalid expression: ${exprError}`
-						: "Constant or expression over fields (e.g. sunAzimuth, drivingDirection, lat)."}
+						? t("Invalid expression: {error}", { error: exprError })
+						: t("Constant or expression over fields (e.g. sunAzimuth, drivingDirection, lat).")}
 				</div>
 			)}
 			<div className="bulk-operation__actions">
@@ -457,14 +474,24 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 							if (useExpr) {
 								const { updates, skipped } = planFieldExpr(locations, ek, parseFieldExpr(rv));
 								if (updates.length > 0) await updateLocations(updates);
-								const msg =
-									`Set field on ${fmt.format(updates.length)} locations.` +
-									(skipped > 0 ? ` ${fmt.format(skipped)} skipped (missing source fields).` : "");
-								return { doneMessage: msg };
+								const message =
+									t(
+										{ one: "Set field on {n} location.", other: "Set field on {n} locations." },
+										{ n: updates.length },
+									) +
+									(skipped > 0
+										? " " + t("{n} skipped (missing source fields).", { n: skipped })
+										: "");
+								return { doneMessage: message };
 							}
 							const updates = planFieldSet(locations, fieldPatch(ek, rv));
 							if (updates.length > 0) await updateLocations(updates);
-							return { doneMessage: `Set field on ${fmt.format(updates.length)} locations.` };
+							return {
+								doneMessage: t(
+									{ one: "Set field on {n} location.", other: "Set field on {n} locations." },
+									{ n: updates.length },
+								),
+							};
 						});
 					}}
 				>
@@ -507,7 +534,12 @@ function HeadingRoadSetup({ scopeCtl, onReady }: SetupProps) {
 					onClick={() =>
 						onReady(async ({ locations, signal, onProgress }) => {
 							const count = await bulkPanHeading(locations, direction, { signal, onProgress });
-							return { doneMessage: `Panned ${fmt.format(count)} headings.` };
+							return {
+								doneMessage: t(
+									{ one: "Panned {n} heading.", other: "Panned {n} headings." },
+									{ n: count },
+								),
+							};
 						})
 					}
 				>
@@ -606,13 +638,13 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 							try {
 								saved = await saveDownloadResult(result);
 							} catch {
-								toast("Save failed");
+								toast(t("Save failed"));
 							}
 							return {
 								doneMessage:
-									`Done -- ${fmt.format(result.succeeded.length)} downloaded` +
+									t("Done -- {n} downloaded", { n: result.succeeded.length }) +
 									(result.failed.length > 0
-										? `, ${fmt.format(result.failed.length)} failed.`
+										? t(", {n} failed.", { n: result.failed.length })
 										: "."),
 								doneActions: <DownloadDoneActions result={result} initiallySaved={saved} />,
 							};
@@ -637,8 +669,8 @@ async function saveDownloadResult(result: BulkDownloadResult): Promise<boolean> 
 	if (ok) {
 		toast(
 			result.fileCount === 1
-				? "Panorama saved"
-				: `Saved ${fmt.format(result.fileCount)} panoramas as ZIP`,
+				? t("Panorama saved")
+				: t("Saved {n} panoramas as ZIP", { n: result.fileCount }),
 		);
 	}
 	return ok;
@@ -658,7 +690,7 @@ function DownloadDoneActions({
 		try {
 			if (await saveDownloadResult(result)) setSaved(true);
 		} catch {
-			toast("Save failed");
+			toast(t("Save failed"));
 		}
 	};
 
@@ -666,14 +698,22 @@ function DownloadDoneActions({
 		<>
 			{result.outputPath != null && !saved && (
 				<Button variant="primary" onClick={() => void save()}>
-					{result.fileCount === 1 ? "Save image" : "Save ZIP"}
+					{result.fileCount === 1 ? t("Save image") : t("Save ZIP")}
 				</Button>
 			)}
 			{result.failed.length > 0 && (
 				<Button
 					onClick={() => {
 						addSelections([{ type: "Manual", locations: result.failed }]);
-						toast(`Selected ${fmt.format(result.failed.length)} failed locations`);
+						toast(
+							t(
+								{
+									one: "Selected {n} failed location",
+									other: "Selected {n} failed locations",
+								},
+								{ n: result.failed.length },
+							),
+						);
 					}}
 				>
 					{t("Select failed")}
@@ -789,7 +829,7 @@ function BulkProgress({
 			if (e instanceof Error && e.name === "AbortError") {
 				if (controllerRef.current === controller) setStatus("cancelled");
 			} else {
-				setError(e instanceof Error ? e.message : "Operation failed");
+				setError(e instanceof Error ? e.message : t("Operation failed"));
 				setStatus("error");
 			}
 		}
@@ -814,13 +854,26 @@ function BulkProgress({
 				{status === "done" &&
 					(result.doneContent ??
 						result.doneMessage ??
-						`Done -- ${fmt.format(total)} locations processed${
-							elapsed != null && elapsed > 0
-								? ` in ${elapsed.toFixed(1)}s (${fmt.format(Math.round(total / elapsed))}/s)`
-								: ""
-						}.`)}
-				{status === "cancelled" && `Cancelled at ${fmt.format(done)} / ${fmt.format(total)}.`}
-				{status === "error" && `Error: ${error}`}
+						t(
+							{
+								one: "Done -- {n} location processed",
+								other: "Done -- {n} locations processed",
+							},
+							{ n: total },
+						) +
+							(elapsed != null && elapsed > 0
+								? t(" in {seconds}s ({rate}/s)", {
+										seconds: elapsed.toFixed(1),
+										rate: fmt.format(Math.round(total / elapsed)),
+									})
+								: "") +
+							".")}
+				{status === "cancelled" &&
+					t("Cancelled at {done} / {total}.", {
+						done: fmt.format(done),
+						total: fmt.format(total),
+					})}
+				{status === "error" && t("Error: {error}", { error: error ?? "" })}
 			</div>
 			<progress className="bulk-operation__bar" value={progress} max={1} />
 			<div className="bulk-operation__actions">
@@ -873,7 +926,7 @@ export function BulkOperationModal({ operation, onClose }: Props) {
 				if (!open) onClose();
 			}}
 		>
-			<DialogContent title={TITLES[operation]} className="bulk-operation-modal">
+			<DialogContent title={t(TITLES[operation])} className="bulk-operation-modal">
 				{runner ? (
 					<BulkProgress runner={runner} scope={scopeCtl.scope} onClose={onClose} />
 				) : (

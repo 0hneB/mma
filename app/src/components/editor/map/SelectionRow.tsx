@@ -190,7 +190,7 @@ export const SelectionRow = memo(function SelectionRow({
 	const handleRename = () => {
 		if (selection.props.type !== "Polygon") return;
 		const current = selection.props.polygon.properties?.name ?? "";
-		const next = window.prompt("Polygon name", current);
+		const next = window.prompt(t("Polygon name"), current);
 		if (next != null) setPolygonName(selection.key, next);
 	};
 
@@ -423,7 +423,15 @@ export const SelectionRow = memo(function SelectionRow({
 															selection.props,
 															pruneDistance(selection)!,
 														);
-														toast(`Pruned ${fmt.format(n)} duplicate${n === 1 ? "" : "s"}`);
+														toast(
+															t(
+																{
+																	one: "Pruned {n} duplicate",
+																	other: "Pruned {n} duplicates",
+																},
+																{ n },
+															),
+														);
 													}}
 												>
 													{t("Prune duplicates")}
@@ -463,7 +471,7 @@ export const SelectionRow = memo(function SelectionRow({
 						<button
 							className="icon-button"
 							type="button"
-							aria-label={ghosted ? "Un-ghost selection" : "Ghost selection"}
+							aria-label={ghosted ? t("Un-ghost selection") : t("Ghost selection")}
 							title={t("Ghost selection (Alt-click to isolate)")}
 							onClick={(e) =>
 								e.altKey ? isolateSelection(selection.key) : toggleGhostSelection(selection.key)
@@ -485,7 +493,7 @@ export const SelectionRow = memo(function SelectionRow({
 			{editingFilter && selection.props.type === "Filter" && (
 				<FilterForm
 					initial={filterPropsToSeed(selection.props)}
-					submitLabel="Update filter"
+					submitLabel={t("Update filter")}
 					onSubmit={(field, op, value, value2, tzLocal) =>
 						updateFilterSelection(selection.key, {
 							type: "Filter",

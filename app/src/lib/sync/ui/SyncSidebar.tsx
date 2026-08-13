@@ -11,7 +11,7 @@ import type { SyncOutcome } from "../engine";
 import type { RemoteMapSummary } from "../provider";
 import type { SyncStatus } from "../scheduler";
 import { errText } from "@/lib/util/util";
-import { t } from "@/lib/i18n";
+import { t, msg, getLocale } from "@/lib/i18n";
 
 type Side = "local" | "remote";
 
@@ -88,9 +88,9 @@ export function ConnectionUser({
 }
 
 const CONFLICT_LABEL: Record<Conflict["kind"], string> = {
-	"update-update": "Both sides edited",
-	"delete-update": "Deleted on one side, edited on the other",
-	"add-add": "Both sides added",
+	"update-update": msg("Both sides edited"),
+	"delete-update": msg("Deleted on one side, edited on the other"),
+	"add-add": msg("Both sides added"),
 };
 
 const coord = (n: NormalizedSyncLocation): string => `${n.lat.toFixed(5)}, ${n.lng.toFixed(5)}`;
@@ -141,7 +141,7 @@ function ConflictItem({
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
 			<span className="mma-input__help">
-				{CONFLICT_LABEL[conflict.kind]}
+				{t(CONFLICT_LABEL[conflict.kind])}
 				{known ? ` · ${coord(known)}` : ""}
 			</span>
 			{!local && <span className="mma-input__help">{t("Deleted here")}</span>}
@@ -328,11 +328,11 @@ export function SyncSidebar({
 			onBack={onClose}
 			actions={
 				brand && remoteUrl ? (
-					<Tooltip content={`Open in ${controller.provider.label}`}>
+					<Tooltip content={t("Open in {provider}", { provider: controller.provider.label })}>
 						<button
 							className="icon-button"
 							type="button"
-							aria-label={`Open in ${controller.provider.label}`}
+							aria-label={t("Open in {provider}", { provider: controller.provider.label })}
 							onClick={() => void openExternal(remoteUrl)}
 						>
 							<Icon path={brand.path} size={18} style={{ fill: brand.color }} />
@@ -372,14 +372,16 @@ export function SyncSidebar({
 					</Field>
 					<Field label={t("Last synced")} row>
 						<span>
-							{link.lastSyncedAt ? new Date(link.lastSyncedAt).toLocaleString() : "never"}
+							{link.lastSyncedAt
+								? new Date(link.lastSyncedAt).toLocaleString(getLocale())
+								: t("never")}
 						</span>
 					</Field>
 					<Field
 						label={
 							<span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
 								{t("Live")}
-								<Tooltip content="Sync continuously while this map is open">
+								<Tooltip content={t("Sync continuously while this map is open")}>
 									<span
 										style={{ display: "inline-flex", cursor: "help", opacity: 0.6 }}
 										aria-label="info"
@@ -419,7 +421,7 @@ export function SyncSidebar({
 					<div style={{ display: "flex", gap: 8 }}>
 						{/* Driven by `busy` alone; the background poll must not drive this label. */}
 						<button className="button button--primary" disabled={busy} onClick={doSync}>
-							{busy ? "Syncing..." : "Sync now"}
+							{busy ? t("Syncing...") : t("Sync now")}
 						</button>
 						<button className="button" disabled={busy} onClick={doUnlink}>
 							{t("Unlink")}
@@ -440,9 +442,16 @@ export function SyncSidebar({
 								lu: outcome.pulled.update,
 								ld: outcome.pulled.delete,
 							})}
-							{outcome.adopted ? ` · Adopted ${outcome.adopted}` : ""}
+							{outcome.adopted ? " · " + t("Adopted {n}", { n: outcome.adopted }) : ""}
 							{outcome.conflicts.length
-								? ` · ${outcome.conflicts.length} conflict(s) held for review`
+								? " · " +
+									t(
+										{
+											one: "{n} conflict held for review",
+											other: "{n} conflicts held for review",
+										},
+										{ n: outcome.conflicts.length },
+									)
 								: ""}
 						</p>
 					)}
@@ -492,7 +501,10 @@ export function SyncSidebar({
 								getKey={(m) => m.id}
 								onPick={(m) => !m.unsupported && doLink(m)}
 								disabled={busy}
-								placeholder={`Search ${maps.length} map${maps.length === 1 ? "" : "s"}`}
+								placeholder={t(
+									{ one: "Search {n} map", other: "Search {n} maps" },
+									{ n: maps.length },
+								)}
 								renderItem={(m) => (
 									<span
 										style={{

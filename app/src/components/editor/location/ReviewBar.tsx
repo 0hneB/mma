@@ -32,7 +32,7 @@ export const ReviewBar = memo(function ReviewBar() {
 				&middot; <span className="mono">{s.reviewed.length}</span> reviewed
 			</span>
 			<span style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-				<Tooltip content="Exit review" side="bottom">
+				<Tooltip content={t("Exit review")} side="bottom">
 					<button
 						className="icon-button"
 						aria-label={t("Exit review")}

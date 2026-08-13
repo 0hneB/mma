@@ -65,12 +65,12 @@ function formatDisplay(
 	anyTime?: boolean,
 	wallClock?: boolean,
 ): string {
-	if (!value) return "Select...";
+	if (!value) return t("Select...");
 	if (anyTime) {
-		return /^\d{2}:\d{2}$/.test(value) ? value : "Select...";
+		return /^\d{2}:\d{2}$/.test(value) ? value : t("Select...");
 	}
 	const d = parseToDate(value, wallClock);
-	if (!d) return "Select...";
+	if (!d) return t("Select...");
 	if (anyYear) {
 		if (mode === "month") {
 			return monthShort(d.getMonth());
@@ -316,7 +316,7 @@ export function DatePicker({
 					className="date-picker__trigger"
 					size={inputSize}
 					value={draft ?? (value ? formatDisplay(value, mode, anyYear, anyTime, wallClock) : "")}
-					placeholder={draft != null ? formatHint(mode, anyYear, anyTime) : "Select..."}
+					placeholder={draft != null ? formatHint(mode, anyYear, anyTime) : t("Select...")}
 					onFocus={startEditing}
 					onClick={startEditing}
 					onChange={(e) => setDraft(e.target.value)}

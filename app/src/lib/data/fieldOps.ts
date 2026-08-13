@@ -127,7 +127,7 @@ function tokenize(src: string): Token[] {
 		}
 		if (/[0-9.]/.test(c)) {
 			const m = /^[0-9]*\.?[0-9]+/.exec(src.slice(i));
-			if (!m) throw new Error(`Invalid number at position ${i}`);
+			if (!m) throw new Error(t("Invalid number at position {position}", { position: i }));
 			tokens.push({ t: "num", v: Number(m[0]) });
 			i += m[0].length;
 			continue;
@@ -143,7 +143,7 @@ function tokenize(src: string): Token[] {
 			i++;
 			continue;
 		}
-		throw new Error(`Unexpected character "${c}" at position ${i}`);
+		throw new Error(t('Unexpected character "{char}" at position {position}', { char: c, position: i }));
 	}
 	return tokens;
 }
@@ -155,7 +155,7 @@ export function parseFieldExpr(src: string): FieldExpr {
 	const peek = () => tokens[pos];
 	const isOp = (v: string) => peek()?.t === "op" && (peek() as { v: string }).v === v;
 	const expectOp = (v: string) => {
-		if (!isOp(v)) throw new Error(`Expected "${v}"`);
+		if (!isOp(v)) throw new Error(t('Expected "{token}"', { token: v }));
 		pos++;
 	};
 
@@ -184,7 +184,7 @@ export function parseFieldExpr(src: string): FieldExpr {
 	}
 	function parsePrimary(): FieldExpr {
 		const tok = peek();
-		if (!tok) throw new Error("Unexpected end of expression");
+		if (!tok) throw new Error(t("Unexpected end of expression"));
 		if (tok.t === "num") {
 			pos++;
 			return { kind: "num", value: tok.v };
@@ -193,7 +193,7 @@ export function parseFieldExpr(src: string): FieldExpr {
 			pos++;
 			if (isOp("(")) {
 				const fn = EXPR_FNS[tok.v];
-				if (!fn) throw new Error(`Unknown function "${tok.v}"`);
+				if (!fn) throw new Error(t('Unknown function "{name}"', { name: tok.v }));
 				pos++;
 				const args: FieldExpr[] = [];
 				if (!isOp(")")) {
@@ -216,13 +216,13 @@ export function parseFieldExpr(src: string): FieldExpr {
 			expectOp(")");
 			return inner;
 		}
-		throw new Error(`Unexpected "${(tok as { v: string }).v}"`);
+		throw new Error(t('Unexpected "{token}"', { token: (tok as { v: string }).v }));
 	}
 
 	const expr = parseAdditive();
 	if (pos < tokens.length) {
 		const tok = tokens[pos] as { v?: string };
-		throw new Error(`Unexpected "${tok.v ?? "token"}" after expression`);
+		throw new Error(t('Unexpected "{token}" after expression', { token: tok.v ?? "token" }));
 	}
 	return expr;
 }

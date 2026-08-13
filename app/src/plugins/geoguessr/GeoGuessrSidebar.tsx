@@ -85,7 +85,7 @@ export function GeoGuessrSidebar({ onClose }: { onClose: () => void }) {
 	) : (
 		<>
 			<button className="button button--primary" disabled={busy} onClick={() => void signIn()}>
-				{busy ? "Waiting for sign-in..." : "Sign in to GeoGuessr"}
+				{busy ? t("Waiting for sign-in...") : t("Sign in to GeoGuessr")}
 			</button>
 			{error && (
 				<p className="mma-input__help" style={{ color: "var(--red-9, #e5484d)" }}>

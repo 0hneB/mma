@@ -153,7 +153,7 @@ export function ImportSidebar() {
 
 			<div className="import-sidebar__actions">
 				<Button variant="primary" onClick={requestImport} disabled={importing}>
-					{importing ? "Importing…" : "Import"}
+					{importing ? t("Importing…") : t("Import")}
 				</Button>
 				<Button onClick={cancelImport} disabled={importing}>
 					{t("Discard")}

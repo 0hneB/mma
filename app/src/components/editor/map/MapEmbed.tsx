@@ -389,8 +389,8 @@ export function MapEmbed({
 						<Tooltip
 							content={
 								opacityTarget === "sv"
-									? "Adjusting Street View opacity"
-									: "Adjusting marker opacity"
+									? t("Adjusting Street View opacity")
+									: t("Adjusting marker opacity")
 							}
 							side="left"
 						>
@@ -413,7 +413,11 @@ export function MapEmbed({
 							onChange={(e) =>
 								pref(opacityTarget === "sv" ? "svOpacity" : "markerOpacity")(Number(e.target.value))
 							}
-							title={opacityTarget === "sv" ? "Street View layer opacity" : "Marker layer opacity"}
+							title={
+								opacityTarget === "sv"
+									? t("Street View layer opacity")
+									: t("Marker layer opacity")
+							}
 						/>
 					</div>
 				</div>
@@ -422,12 +426,12 @@ export function MapEmbed({
 					style={fullscreenMap ? { left: 0, bottom: 10 } : { right: 0, bottom: 10 }}
 				>
 					<div className="map-control map-control--button white">
-						<Tooltip content="Zoom in" side="left">
+						<Tooltip content={t("Zoom in")} side="left">
 							<button onClick={zoomIn} aria-label={t("Zoom in")}>
 								<Icon path={mdiPlus} size={18} />
 							</button>
 						</Tooltip>
-						<Tooltip content="Zoom out" side="left">
+						<Tooltip content={t("Zoom out")} side="left">
 							<button onClick={zoomOut} aria-label={t("Zoom out")}>
 								<Icon path={mdiMinus} size={18} />
 							</button>

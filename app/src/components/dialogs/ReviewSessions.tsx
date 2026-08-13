@@ -104,7 +104,7 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 					<p className="review-sessions__empty">{t("Loading...")}</p>
 				) : sessions.length === 0 ? (
 					<p className="review-sessions__empty">
-						{filter === "active" ? "No reviews in progress." : "No completed reviews."}
+						{filter === "active" ? t("No reviews in progress.") : t("No completed reviews.")}
 					</p>
 				) : (
 					<ul className="review-sessions__list">
@@ -147,7 +147,7 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 												title={t("Click to rename")}
 												onClick={() => startEdit(s)}
 											>
-												{s.name || "Review"}
+												{s.name || t("Review")}
 											</div>
 										)}
 										<div className="review-sessions__meta">

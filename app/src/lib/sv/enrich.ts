@@ -20,7 +20,7 @@ import { log } from "@/lib/util/log";
 import { cmd } from "@/lib/commands";
 import { toast } from "@/lib/util/toast";
 import type { Location } from "@/bindings.gen";
-import { msg } from "@/lib/i18n";
+import { msg, t } from "@/lib/i18n";
 
 /** True when the location is missing any of the given enrich fields (default: the enabled set). */
 export function needsEnrichment(loc: Location, enrichFields?: string[]): boolean {
@@ -166,12 +166,12 @@ let adm1Ready: Promise<boolean> | null = null;
 function ensureAdm1(): Promise<boolean> {
 	adm1Ready ??= (async () => {
 		if (await cmd.checkBorderFile("adm1")) return true;
-		toast("Subdivision borders missing - downloading...");
+		toast(t("Subdivision borders missing - downloading..."));
 		try {
 			await cmd.downloadBorderFile("adm1");
 			return true;
 		} catch {
-			toast("Couldn't download subdivision borders - check your connection");
+			toast(t("Couldn't download subdivision borders - check your connection"));
 			adm1Ready = null;
 			return false;
 		}
@@ -233,7 +233,7 @@ export async function enrichAll(
 	const run = await runResolvers(locations, [{ id: "enrichMeta", config: enrichFields }], opts);
 	const labelOf = (id: string) =>
 		id === "enrichMeta"
-			? "Metadata"
+			? t("Metadata")
 			: (getEnrichmentProviders().find((p) => p.id === id)?.label ?? id);
 	return Object.entries(run)
 		.filter(([, o]) => o.success.length > 0 || o.failed.length > 0)

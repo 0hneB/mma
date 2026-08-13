@@ -290,7 +290,7 @@ function CompassControl({ panorama }: { panorama: google.maps.StreetViewPanorama
 			<div className="map-control map-control--transparent">
 				<div className="compass-control" ref={controlRef}>
 					<Tooltip
-						content="Click to point north (N). Ctrl+click to cycle through linked panoramas."
+						content={t("Click to point north (N). Ctrl+click to cycle through linked panoramas.")}
 						side="right"
 					>
 						<button
@@ -343,17 +343,17 @@ function ZoomControl({ panorama }: { panorama: google.maps.StreetViewPanorama })
 			style={{ inset: "auto auto 112px 0px" }}
 		>
 			<div className="map-control map-control--button">
-				<Tooltip content="Zoom in" side="right">
+				<Tooltip content={t("Zoom in")} side="right">
 					<button onClick={zoomIn} aria-label={t("Zoom in")}>
 						<Icon path={mdiPlus} />
 					</button>
 				</Tooltip>
-				<Tooltip content="Reset zoom" side="right">
+				<Tooltip content={t("Reset zoom")} side="right">
 					<button disabled={atMin} onClick={resetZoom} aria-label={t("Reset zoom")}>
 						<Icon path={mdiImageFilterCenterFocus} />
 					</button>
 				</Tooltip>
-				<Tooltip content="Zoom out" side="right">
+				<Tooltip content={t("Zoom out")} side="right">
 					<button disabled={atMin} onClick={zoomOut} aria-label={t("Zoom out")}>
 						<Icon path={mdiMinus} />
 					</button>
@@ -391,7 +391,7 @@ function ReturnToSpawnControl({
 			style={{ inset: "auto auto 56px 0px" }}
 		>
 			<div className="map-control map-control--button">
-				<Tooltip content="Return to spawn (R)" side="right">
+				<Tooltip content={t("Return to spawn (R)")} side="right">
 					<button
 						disabled={!hasChanged}
 						onClick={onReturnToSpawn}
@@ -412,7 +412,9 @@ function CoordinateControl({ panorama }: { panorama: google.maps.StreetViewPanor
 		const altitude = getPanoAltitude();
 		if (textRef.current)
 			textRef.current.textContent =
-				altitude === 0 ? ` zoom ${zoom}` : ` ${altitude.toFixed(2)}m · zoom ${zoom}`;
+				altitude === 0
+					? " " + t("zoom {zoom}", { zoom })
+					: ` ${altitude.toFixed(2)}m · ` + t("zoom {zoom}", { zoom });
 	}, [panorama]);
 	usePanoEvent(panorama, "zoom_changed", updateDisplay);
 	useEffect(() => subscribeEvent("altitude:changed", updateDisplay), [updateDisplay]);
@@ -579,18 +581,22 @@ export const PanoControls = memo(function PanoControls({
 				const blob = await canvasToBlob(await renderPanoView(view, 1920, 1080));
 				const copied = download ? false : await copyImageToClipboard(blob);
 				if (copied) {
-					toast("Screenshot copied");
+					toast(t("Screenshot copied"));
 				} else {
 					const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
 					downloadBlob(blob, `${view.panoId}_${stamp}.png`);
-					toast(download ? "Screenshot downloaded" : "Clipboard unavailable, downloaded instead");
+					toast(
+						download
+							? t("Screenshot downloaded")
+							: t("Clipboard unavailable, downloaded instead"),
+					);
 				}
 				setScreenshotState("done");
 				setTimeout(() => setScreenshotState("idle"), 500);
 			} catch (error) {
 				log.warn("[pano-screenshot] capture failed", error);
 				setScreenshotState("idle");
-				toast("Screenshot failed");
+				toast(t("Screenshot failed"));
 			}
 		},
 		[panorama],
@@ -606,7 +612,11 @@ export const PanoControls = memo(function PanoControls({
 				>
 					{vis.showScreenshotButton && (
 						<div className="map-control map-control--button">
-							<Tooltip content="Copy screenshot (Shift: download)" side="bottom" align="end">
+							<Tooltip
+								content={t("Copy screenshot (Shift: download)")}
+								side="bottom"
+								align="end"
+							>
 								<button
 									onClick={(e) => takeScreenshot(e.shiftKey)}
 									disabled={screenshotState !== "idle"}
@@ -627,13 +637,15 @@ export const PanoControls = memo(function PanoControls({
 					{vis.showFullscreenButton && (
 						<div className="map-control map-control--button">
 							<Tooltip
-								content={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
+								content={t("Toggle fullscreen ({key})", { key: fullscreenKey.toUpperCase() })}
 								side="bottom"
 								align="end"
 							>
 								<button
 									onClick={onFullscreen}
-									aria-label={`Toggle fullscreen (${fullscreenKey.toUpperCase()})`}
+									aria-label={t("Toggle fullscreen ({key})", {
+										key: fullscreenKey.toUpperCase(),
+									})}
 								>
 									{isFullscreen ? <Icon path={mdiFullscreenExit} /> : <Icon path={mdiFullscreen} />}
 								</button>
@@ -650,22 +662,28 @@ export const PanoControls = memo(function PanoControls({
 					style={{ inset: "56px 0px auto auto" }}
 				>
 					<div className="map-control map-control--button">
-						<Tooltip content={`Jump forward 100 metres (${jumpForwardKey})`} side="left">
+						<Tooltip
+							content={t("Jump forward 100 metres ({key})", { key: jumpForwardKey })}
+							side="left"
+						>
 							<button
 								ref={jumpForwardRef}
 								disabled={vis.defaultMovementMode !== "moving"}
 								onClick={jumpForward}
-								aria-label={`Jump forward 100 metres (${jumpForwardKey})`}
+								aria-label={t("Jump forward 100 metres ({key})", { key: jumpForwardKey })}
 							>
 								100m
 							</button>
 						</Tooltip>
-						<Tooltip content={`Jump backward 100 metres (${jumpBackwardKey})`} side="left">
+						<Tooltip
+							content={t("Jump backward 100 metres ({key})", { key: jumpBackwardKey })}
+							side="left"
+						>
 							<button
 								ref={jumpBackwardRef}
 								disabled={vis.defaultMovementMode !== "moving"}
 								onClick={jumpBackward}
-								aria-label={`Jump backward 100 metres (${jumpBackwardKey})`}
+								aria-label={t("Jump backward 100 metres ({key})", { key: jumpBackwardKey })}
 							>
 								-100m
 							</button>
@@ -691,12 +709,12 @@ export const PanoControls = memo(function PanoControls({
 			>
 				{vis.showMapLinks && (
 					<div className="map-control map-control--button map-links-control">
-						<Tooltip content="Open in maps" side="top" align="start">
+						<Tooltip content={t("Open in maps")} side="top" align="start">
 							<button onClick={openInMaps} aria-label={t("Open in maps")}>
 								<Icon path={mdiOpenInNew} />
 							</button>
 						</Tooltip>
-						<Tooltip content="Copy link - Shift: without tags, Alt: long URL" side="right">
+						<Tooltip content={t("Copy link - Shift: without tags, Alt: long URL")} side="right">
 							<button
 								onClick={(e) => doCopy({ long: e.altKey, noTags: e.shiftKey })}
 								aria-label={t("Copy link")}

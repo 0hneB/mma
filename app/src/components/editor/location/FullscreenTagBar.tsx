@@ -97,7 +97,7 @@ export function FullscreenTagBar({
 			<button
 				type="button"
 				className="fullscreen-tagbar__collapse"
-				aria-label={collapsed ? "Expand tag bar" : "Collapse tag bar"}
+				aria-label={collapsed ? t("Expand tag bar") : t("Collapse tag bar")}
 				onClick={() => setSetting("fullscreenTagbarCollapsed", !collapsed)}
 			>
 				<Icon path={collapsed ? mdiChevronUp : mdiChevronDown} size={16} />

@@ -50,7 +50,9 @@ export function QuickCopyToMapDialog({
 				const container = contentRef.current;
 				if (container)
 					toast(
-						res.copied > 0 ? `Copied to "${res.targetName}"` : `Already in "${res.targetName}"`,
+						res.copied > 0
+							? t('Copied to "{name}"', { name: res.targetName })
+							: t('Already in "{name}"', { name: res.targetName }),
 						1500,
 						container,
 					);
@@ -59,7 +61,7 @@ export function QuickCopyToMapDialog({
 			.catch((e) => {
 				log.error("[quickCopy] failed:", e);
 				const container = contentRef.current;
-				if (container) toast("Copy failed", 1500, container);
+				if (container) toast(t("Copy failed"), 1500, container);
 				setTimeout(onClose, 600);
 			});
 	};

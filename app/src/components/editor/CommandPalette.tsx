@@ -73,7 +73,7 @@ function PaletteItem({
 			{commandId && (
 				<button
 					className="command-palette__pin"
-					title={pinned ? "Unpin from toolbar" : "Pin to toolbar"}
+					title={pinned ? t("Unpin from toolbar") : t("Pin to toolbar")}
 					onPointerDown={(e) => {
 						e.preventDefault();
 						e.stopPropagation();

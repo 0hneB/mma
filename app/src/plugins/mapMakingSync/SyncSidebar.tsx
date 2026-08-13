@@ -85,7 +85,7 @@ export function SyncSidebar({ onClose }: { onClose: () => void }) {
 				/>
 			</Field>
 			<button className="button button--primary" type="submit" disabled={busy || !keyDraft}>
-				{busy ? "Validating..." : "Validate"}
+				{busy ? t("Validating...") : t("Validate")}
 			</button>
 			{error && (
 				<p className="mma-input__help" style={{ color: "var(--red-9, #e5484d)" }}>

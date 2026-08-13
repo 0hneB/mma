@@ -138,12 +138,15 @@ export default function SameLocation() {
 				))}
 			</ul>
 			<div className="duplicates__actions">
-				<Tooltip content="Delete all duplicate locations, except the selected ones" side="bottom">
+				<Tooltip
+					content={t("Delete all duplicate locations, except the selected ones")}
+					side="bottom"
+				>
 					<Button variant="destructive" disabled={selected.size === 0} onClick={keepSelected}>
 						{t("Keep selected")}
 					</Button>
 				</Tooltip>
-				<Tooltip content="Delete selected locations" side="bottom">
+				<Tooltip content={t("Delete selected locations")} side="bottom">
 					<Button variant="destructive" disabled={selected.size === 0} onClick={deleteSelected}>
 						{t("Delete selected")}
 					</Button>

@@ -54,7 +54,7 @@ function UndoRedoControls() {
 	const canRedo = useMapState((s) => s.canRedo);
 	return (
 		<>
-			<Tooltip content="Undo">
+			<Tooltip content={t("Undo")}>
 				<button
 					type="button"
 					className="icon-button"
@@ -66,7 +66,7 @@ function UndoRedoControls() {
 					<Icon path={mdiUndo} />
 				</button>
 			</Tooltip>
-			<Tooltip content="Redo">
+			<Tooltip content={t("Redo")}>
 				<button
 					type="button"
 					className="icon-button"
@@ -93,7 +93,7 @@ export function MapMetaBar() {
 	const importFile = useCallback(async () => {
 		const path = await openFileDialog({
 			multiple: false,
-			filters: [{ name: "Map data", extensions: ["json", "csv"] }],
+			filters: [{ name: t("Map data"), extensions: ["json", "csv"] }],
 		});
 		if (!path || typeof path !== "string") return;
 		await beginImportFromPath(path);
