@@ -2094,7 +2094,7 @@ declare const hasAnySelections: () => boolean;
 /** Every editor command (palette entries; all are hotkey-bindable in Settings). */
 declare const COMMANDS: {
     save: {
-        label: string;
+        label: "Commit map";
         icon: string;
         group: "Map";
         defaultBinding: string;
@@ -2103,28 +2103,28 @@ declare const COMMANDS: {
         enabled: () => boolean;
     };
     import: {
-        label: string;
+        label: "Import file";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     copyToMap: {
-        label: string;
+        label: "Copy location to map via hotkeys...";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     quickCopyToMap: {
-        label: string;
+        label: "Copy location to map...";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof hasActiveLocation;
     };
     undo: {
-        label: string;
+        label: "Undo";
         icon: string;
         group: "Map";
         defaultBinding: string;
@@ -2132,7 +2132,7 @@ declare const COMMANDS: {
         enabled: () => boolean;
     };
     redo: {
-        label: string;
+        label: "Redo";
         icon: string;
         group: "Map";
         defaultBinding: string;
@@ -2140,112 +2140,112 @@ declare const COMMANDS: {
         enabled: () => boolean;
     };
     export: {
-        label: string;
+        label: "Export";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     "open-history": {
-        label: string;
+        label: "Open version history";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     "open-seen": {
-        label: string;
+        label: "Open seen locations";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     "toggle-seen-overlay": {
-        label: string;
+        label: "Toggle seen locations overlay";
         icon: string;
         group: "Map";
         execute: () => void;
         enabled: typeof requiresMap;
     };
     selectAll: {
-        label: string;
+        label: "Select everything";
         icon: string;
         group: "Selections";
         defaultBinding: string;
         execute: () => Promise<void>;
     };
     "select-untagged": {
-        label: string;
+        label: "Select untagged locations";
         icon: string;
         group: "Selections";
         aliases: string[];
         execute: () => Promise<void>;
     };
     "select-unpanned": {
-        label: string;
+        label: "Select unpanned locations";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "select-panoid": {
-        label: string;
+        label: "Select Pano ID locations";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "select-no-panoid": {
-        label: string;
+        label: "Select non-Pano ID locations";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "select-uncommitted": {
-        label: string;
+        label: "Select uncommitted locations";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "select-reviewed": {
-        label: string;
+        label: "Select reviewed locations";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
         enabled: typeof requiresMap;
     };
     "invert-selection": {
-        label: string;
+        label: "Invert selection";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "intersect-selections": {
-        label: string;
+        label: "Intersect (AND) selections";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "union-selections": {
-        label: string;
+        label: "Union (OR) selections";
         icon: string;
         group: "Selections";
         execute: () => Promise<void>;
     };
     "load-geojson": {
-        label: string;
+        label: "Load shapes from GeoJSON as selection";
         icon: string;
         group: "Selections";
         aliases: string[];
         execute: typeof loadGeoJSON;
     };
     "download-polygon-geojson": {
-        label: string;
+        label: "Download polygon selections as GeoJSON";
         icon: string;
         group: "Selections";
         enabled: () => boolean;
         execute: () => void;
     };
     deselectAll: {
-        label: string;
+        label: "Deselect everything";
         icon: string;
         group: "Selections";
         defaultBinding: string;
@@ -2253,47 +2253,47 @@ declare const COMMANDS: {
         enabled: typeof hasAnySelections;
     };
     "find-duplicates": {
-        label: string;
+        label: "Find duplicates...";
         icon: string;
         group: "Selections";
         aliases: string[];
         execute: () => void;
     };
     "merge-duplicates": {
-        label: string;
+        label: "Merge duplicates...";
         icon: string;
         group: "Selections";
         aliases: string[];
         execute: () => void;
     };
     "filter-by-metadata": {
-        label: string;
+        label: "Filter by metadata...";
         icon: string;
         group: "Selections";
         aliases: string[];
         execute: () => void;
     };
     "top-k": {
-        label: string;
+        label: "Select top/bottom K...";
         icon: string;
         group: "Selections";
         execute: () => void;
     };
     "review-selected": {
-        label: string;
+        label: "Review selected locations";
         icon: string;
         group: "Selections";
         enabled: typeof hasSelection;
         execute: () => void;
     };
     "review-sessions": {
-        label: string;
+        label: "Review sessions";
         icon: string;
         group: "Selections";
         execute: () => void;
     };
     "select-random": {
-        label: string;
+        label: "Pick random locations from selection";
         icon: string;
         group: "Selections";
         aliases: string[];
@@ -2301,7 +2301,7 @@ declare const COMMANDS: {
         enabled: typeof hasSelection;
     };
     "select-spaced": {
-        label: string;
+        label: "Pick evenly spaced locations from selection";
         icon: string;
         group: "Selections";
         aliases: string[];
@@ -2309,7 +2309,7 @@ declare const COMMANDS: {
         enabled: typeof hasSelection;
     };
     "ghost-selections": {
-        label: string;
+        label: "Ghost selections";
         icon: string;
         group: "Selections";
         aliases: string[];
@@ -2317,89 +2317,89 @@ declare const COMMANDS: {
         enabled: typeof hasAnySelections;
     };
     "save-selections": {
-        label: string;
+        label: "Save current selections...";
         icon: string;
         group: "Selections";
         execute: () => void;
         enabled: typeof hasAnySelections;
     };
     "apply-saved-selection": {
-        label: string;
+        label: "Apply saved selection...";
         icon: string;
         group: "Selections";
         execute: () => void;
     };
     "selection-delete-locations": {
-        label: string;
+        label: "Delete selected locations";
         icon: string;
         group: "Selections";
         enabled: typeof hasSelection;
         execute: () => void;
     };
     "bulk-validate": {
-        label: string;
+        label: "Validate locations";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-enrich": {
-        label: string;
+        label: "Enrich metadata fields";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-set-field": {
-        label: string;
+        label: "Set metadata field value";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-clear-fields": {
-        label: string;
+        label: "Clear metadata fields";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-pin-pano": {
-        label: string;
+        label: "Pin locations to pano ID";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-heading-road": {
-        label: string;
+        label: "Pan headings along road";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "bulk-download-panoramas": {
-        label: string;
+        label: "Download panoramas";
         icon: string;
         group: "Bulk Operations";
         aliases: string[];
         execute: () => void;
     };
     "delete-selected-tags": {
-        label: string;
+        label: "Delete selected tags";
         icon: string;
         group: "Tags";
         execute: () => Promise<void>;
         enabled: () => boolean;
     };
     "tag-download-csv": {
-        label: string;
+        label: "Download tag counts as CSV";
         icon: string;
         group: "Tags";
         execute: () => void;
     };
     "tag-find-replace": {
-        label: string;
+        label: "Find and replace in tag names";
         icon: string;
         group: "Tags";
         aliases: string[];
@@ -2407,7 +2407,7 @@ declare const COMMANDS: {
         enabled: typeof requiresMap;
     };
     "apply-field-as-tags": {
-        label: string;
+        label: "Apply metadata as tags";
         icon: string;
         group: "Tags";
         aliases: string[];
@@ -2415,7 +2415,7 @@ declare const COMMANDS: {
         enabled: typeof requiresMap;
     };
     "assign-doclinks": {
-        label: string;
+        label: "Assign document links...";
         icon: string;
         group: "Tags";
         aliases: string[];
@@ -2474,6 +2474,21 @@ export type RGB = {
     b: number;
 };
 
+/** Language names stay in their own language, the way every language picker does it -- a reader
+ *  looking for their own has to recognise it without already reading English.
+ *  `en-XA` is the generated pseudolocale: accented and ~40% longer, so unextracted strings and
+ *  layout overflow are visible without a translator. Offered in dev builds only. */
+declare const LANGUAGES: {
+    readonly en: "English";
+    readonly de: "Deutsch";
+    readonly es: "Español";
+    readonly fr: "Français";
+    readonly ja: "日本語";
+    readonly pl: "Polski";
+    readonly ru: "Русский";
+    readonly "zh-Hans": "简体中文";
+    readonly "en-XA": "Pseudolocale";
+};
 declare const MOVEMENT_MODES: {
     readonly moving: "Moving";
     readonly "no-move": "No Move";
@@ -2540,6 +2555,7 @@ declare const PREVIEW_ASPECT_RATIOS: {
     readonly "32 / 9": "32:9";
     readonly free: "Free";
 };
+export type Language = keyof typeof LANGUAGES;
 export type MovementMode = keyof typeof MOVEMENT_MODES;
 export type ExactDateFormat = keyof typeof EXACT_DATE_FORMATS;
 export type DateTimezone = keyof typeof DATE_TIMEZONES;
@@ -2602,6 +2618,8 @@ declare const DEFAULTS: {
     slowModifier: number;
     showFps: boolean;
     mapListFields: MapListField[];
+    /** Read once at boot; changing it relaunches the app rather than re-rendering. */
+    language: Language;
     /** Reopen the maps that were open when the session last ended (main window closed). */
     restoreSession: boolean;
     /** Discord Rich Presence: off, generic (no map name), or full (map name + count). */
@@ -3460,6 +3478,7 @@ declare const surface: {
         slowModifier: number;
         showFps: boolean;
         mapListFields: MapListField[];
+        language: Language;
         restoreSession: boolean;
         discordPresence: DiscordPresenceMode;
         labelColors: Record<string, string>;
