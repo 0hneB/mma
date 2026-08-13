@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { getVisibleTags, updateTags } from "@/store/useMapStore";
 import { TagPill } from "@/components/primitives/TagPill";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 
-export function TagFindReplaceDialog({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-}) {
+export function TagFindReplaceDialog({ open, onOpenChange }: DialogProps) {
 	const [find, setFind] = useState("");
 	const [replace, setReplace] = useState("");
 	const [applied, setApplied] = useState(false);

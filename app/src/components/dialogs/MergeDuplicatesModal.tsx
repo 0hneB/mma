@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { previewDuplicateGroups, mergeDuplicates } from "@/store/useMapStore";
 import { toast } from "@/lib/util/toast";
@@ -7,9 +7,7 @@ import { fmt } from "@/lib/util/format";
 import { log } from "@/lib/util/log";
 import { useAsync } from "@/lib/hooks/useAsync";
 
-interface Props {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
+interface Props extends DialogProps {
 	distance: number;
 }
 

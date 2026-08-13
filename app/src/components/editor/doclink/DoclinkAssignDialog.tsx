@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { TagPill } from "@/components/primitives/TagPill";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { useMapState, updateTags } from "@/store/useMapStore";
 import { parseDoclink, loadOutline, type DocRef } from "@/lib/doclink";
 import { useAsync } from "@/lib/hooks/useAsync";
@@ -22,13 +22,7 @@ function anchorsInDoc(tag: Tag, docId: string): Set<string> {
 	return out;
 }
 
-export function DoclinkAssignDialog({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-}) {
+export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 	const tagMap = useMapState((s) => s.tags);
 	const tags: Tag[] = useMemo(
 		() =>

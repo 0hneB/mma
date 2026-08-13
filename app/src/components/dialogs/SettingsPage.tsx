@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { NSelect } from "@/components/primitives/NSelect";
 import { Slider } from "@/components/primitives/Slider";
 import { Checkbox } from "@/components/primitives/Checkbox";
@@ -1196,13 +1196,7 @@ function SectionShell({
 	);
 }
 
-export function SettingsPage({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-}) {
+export function SettingsPage({ open, onOpenChange }: DialogProps) {
 	const [selected, setSelected] = useState<string>(SECTIONS[0].id);
 	const [query, setQuery] = useState("");
 	const q = query.trim().toLowerCase();

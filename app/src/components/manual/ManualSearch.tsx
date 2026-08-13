@@ -2,16 +2,11 @@ import { useState, useMemo, useRef } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { searchManual } from "@/components/manual/search";
+import type { DialogProps } from "@/components/primitives/Dialog";
 import { openManual } from "@/store/router";
 import "@/components/manual/manual.css";
 
-export function ManualSearch({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-}) {
+export function ManualSearch({ open, onOpenChange }: DialogProps) {
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
 	const inputRef = useRef<HTMLInputElement>(null);

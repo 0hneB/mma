@@ -8,7 +8,7 @@ import {
 	describeRule,
 	type SavedSelectionItem,
 } from "@/store/savedSelections";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
@@ -19,12 +19,7 @@ export function SaveSelectionsDialog({
 	onOpenChange,
 	name,
 	onNameChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-	name: string;
-	onNameChange: (v: string) => void;
-}) {
+}: DialogProps & { name: string; onNameChange: (v: string) => void }) {
 	const map = useMapState((s) => s.map);
 	const selections = useMapState((s) => s.selections);
 	const saveableItems: SavedSelectionItem[] = (() => {
@@ -92,13 +87,7 @@ export function SaveSelectionsDialog({
 	);
 }
 
-export function ApplySavedSelectionDialog({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-}) {
+export function ApplySavedSelectionDialog({ open, onOpenChange }: DialogProps) {
 	const map = useMapState((s) => s.map);
 	const saved = useSetting("savedSelections");
 

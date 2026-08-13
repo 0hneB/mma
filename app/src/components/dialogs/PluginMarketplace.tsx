@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
@@ -247,13 +247,7 @@ function PluginCard({
 	);
 }
 
-export function PluginMarketplace({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-}) {
+export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 	const [tab, setTab] = useState<Tab>("core");
 	const [registry, setRegistry] = useState<PluginManifest[] | null>(registryCache);
 	const [fetchError, setFetchError] = useState<string | null>(null);

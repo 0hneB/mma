@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { mdiCheckCircleOutline, mdiCircleOutline, mdiPlay, mdiDelete } from "@mdi/js";
@@ -29,13 +29,7 @@ function formatRelative(iso: string): string {
 	return formatDate(iso);
 }
 
-export function ReviewSessionsModal({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-}) {
+export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 	const [filter, setFilter] = useState<"active" | "done">("active");
 	const [sessions, setSessions] = useState<ReviewSession[]>([]);
 	const [loading, setLoading] = useState(false);

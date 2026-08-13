@@ -13,18 +13,12 @@ import { fetchLocationsByIds, createTags, updateLocations } from "@/store/useMap
 import { partition, useScope } from "@/store/scope";
 import { ScopeSelector } from "@/components/primitives/ScopeSelector";
 import { useSetting } from "@/store/settings";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Checkbox } from "@/components/primitives/Checkbox";
 
-export function ApplyFieldAsTagsDialog({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (v: boolean) => void;
-}) {
+export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 	const tzDefault = useSetting("dateTimezone") === "location";
 	const [field, setField] = useState("");
 	const [projectionId, setProjectionId] = useState("");

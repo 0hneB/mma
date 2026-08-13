@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
-import { Dialog, DialogContent } from "@/components/primitives/Dialog";
+import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { NSelect } from "@/components/primitives/NSelect";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
@@ -61,11 +61,7 @@ export function SeenDialog({
 	open,
 	onOpenChange,
 	onLoadPano,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	onLoadPano: (entry: SeenEntry) => void;
-}) {
+}: DialogProps & { onLoadPano: (entry: SeenEntry) => void }) {
 	const [entries, setEntries] = useState<SeenEntry[]>([]);
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(0);
