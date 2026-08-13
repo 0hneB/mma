@@ -13,7 +13,7 @@ import {
 import { blueLineSample } from "./blueLineSampler";
 import { ymFromDate } from "@/lib/util/date";
 import { passesInitialFilters, passesDateFilters, isPanoGood, computeHeading } from "./filters";
-import { fetchSvMetadata } from "@/lib/sv/svMeta";
+import { fetchSvMetadataBatched } from "@/lib/sv/svMeta";
 import { distMeters, lerpLng, unionBounds } from "@/lib/geo/geo";
 import { searchCoverage } from "../searchCoverage";
 import { cmd } from "@/lib/commands";
@@ -380,7 +380,7 @@ export class GenerationEngine {
 
 			region.isProcessing = true;
 			const frontier = queue.splice(0, Math.max(s.speed, 50));
-			const results = await fetchSvMetadata(frontier);
+			const results = await fetchSvMetadataBatched(frontier);
 
 			for (let i = 0; i < results.length; i++) {
 				if (region.found.length >= region.target) break;

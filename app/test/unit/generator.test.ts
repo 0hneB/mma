@@ -19,12 +19,13 @@ vi.mock("@/lib/commands", () => ({
 	},
 }));
 
-vi.mock("@/lib/sv/svMeta", () => ({
-	fetchSvMetadata: (ids: string[]) => {
+vi.mock("@/lib/sv/svMeta", () => {
+	const fetchSvMetadata = (ids: string[]) => {
 		h.fetched.push(...ids);
 		return Promise.resolve(ids.map((id) => h.panos.get(id) ?? null));
-	},
-}));
+	};
+	return { fetchSvMetadata, fetchSvMetadataBatched: fetchSvMetadata };
+});
 
 import { passesDescriptionSearch, isPanoGood } from "@/plugins/generator/engine/filters";
 import { GenerationEngine } from "@/plugins/generator/engine/GenerationEngine";

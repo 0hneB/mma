@@ -1,7 +1,7 @@
 import type { Location } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { resolvePanoIds, svThumbnailUrl } from "@/lib/sv/lookup";
-import { fetchSvMetadata } from "@/lib/sv/svMeta";
+import { fetchSvMetadata, fetchSvMetadataBatched } from "@/lib/sv/svMeta";
 import type { PanoData } from "@/lib/sv/svRunner";
 import { runConcurrent } from "@/lib/util/concurrent";
 import { toast } from "@/lib/util/toast";
@@ -306,15 +306,11 @@ async function fetchMetadataMap(
 	signal?: AbortSignal,
 ): Promise<Map<string, PanoData>> {
 	const unique = [...new Set(panoIds)];
+	const datas = await fetchSvMetadataBatched(unique, { batchSize: META_BATCH, signal });
 	const out = new Map<string, PanoData>();
-	for (let i = 0; i < unique.length; i += META_BATCH) {
-		signal?.throwIfAborted();
-		const batch = unique.slice(i, i + META_BATCH);
-		const datas = await fetchSvMetadata(batch);
-		for (let j = 0; j < batch.length; j++) {
-			if (datas[j]) out.set(batch[j], datas[j]!);
-		}
-	}
+	datas.forEach((d, i) => {
+		if (d) out.set(unique[i], d);
+	});
 	return out;
 }
 

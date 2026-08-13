@@ -4,6 +4,7 @@ import { ymFormat, ymParse } from "@/lib/util/date";
 import { PanoType } from "@/types";
 import type { CameraType } from "@/bindings.gen";
 import { PbfReader, PbfWriter } from "pbf";
+import { runConcurrent } from "@/lib/util/concurrent";
 import {
 	readGetMetadataResponse,
 	writeGetMetadataRequest,
@@ -252,4 +253,59 @@ export async function fetchSvMetadata(
 	const statusCode = resp.status?.code;
 	if (statusCode === 3 || statusCode === 5) return panoIds.map(() => null);
 	return resp.metadata.map(parseResult);
+}
+
+// 200 is GetMetadata's hard per-request cap; concurrency saturates the endpoint ~48.
+export const META_BATCH_SIZE = 200;
+export const META_CONCURRENCY = 48;
+
+type MetaResult = google.maps.StreetViewResolvedPanoramaData | null;
+
+/** An all-null response is usually one poisoned pano poisoning its whole request,
+ *  so split and retry rather than writing off the batch. */
+async function fetchInto(
+	panoIds: string[],
+	start: number,
+	len: number,
+	out: MetaResult[],
+	signal?: AbortSignal,
+): Promise<void> {
+	signal?.throwIfAborted();
+	const datas = await fetchSvMetadata(panoIds.slice(start, start + len));
+	signal?.throwIfAborted();
+	if (len > 1 && datas.every((d) => d == null)) {
+		const mid = Math.ceil(len / 2);
+		await fetchInto(panoIds, start, mid, out, signal);
+		await fetchInto(panoIds, start + mid, len - mid, out, signal);
+		return;
+	}
+	for (let j = 0; j < len; j++) out[start + j] = datas[j] ?? null;
+}
+
+/** Metadata for arbitrarily many panos: chunked to the per-request cap, fetched
+ *  concurrently, bisected on all-null. Results stay aligned to `panoIds`. */
+export async function fetchSvMetadataBatched(
+	panoIds: string[],
+	opts: {
+		batchSize?: number;
+		concurrency?: number;
+		signal?: AbortSignal;
+		/** One resolved chunk, aligned to `panoIds[start .. start + datas.length)`. */
+		onBatch?: (datas: MetaResult[], start: number) => void | Promise<void>;
+	} = {},
+): Promise<MetaResult[]> {
+	const { batchSize = META_BATCH_SIZE, concurrency = META_CONCURRENCY, signal, onBatch } = opts;
+	const out: MetaResult[] = new Array(panoIds.length).fill(null);
+	const starts: number[] = [];
+	for (let i = 0; i < panoIds.length; i += batchSize) starts.push(i);
+	await runConcurrent(
+		starts,
+		async (start) => {
+			const len = Math.min(batchSize, panoIds.length - start);
+			await fetchInto(panoIds, start, len, out, signal);
+			await onBatch?.(out.slice(start, start + len), start);
+		},
+		{ concurrency, signal },
+	);
+	return out;
 }
