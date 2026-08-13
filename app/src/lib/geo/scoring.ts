@@ -6,19 +6,16 @@ import { cmd } from "@/lib/commands";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { distMeters } from "@/lib/geo/geo";
 import { boundsOfCoords } from "@/lib/map/host";
+import { localeFormat } from "@/lib/util/format";
 
 // --- Formatting utilities ---
 
-const kmFmt = new Intl.NumberFormat(["en"], {
-	style: "unit",
-	unit: "kilometer",
-	maximumFractionDigits: 2,
-});
-const mFmt = new Intl.NumberFormat(["en"], {
-	style: "unit",
-	unit: "meter",
-	maximumFractionDigits: 0,
-});
+const kmFmt = localeFormat<number>(
+	(l) => new Intl.NumberFormat(l, { style: "unit", unit: "kilometer", maximumFractionDigits: 2 }),
+);
+const mFmt = localeFormat<number>(
+	(l) => new Intl.NumberFormat(l, { style: "unit", unit: "meter", maximumFractionDigits: 0 }),
+);
 
 export function formatDistance(meters: number): string {
 	return meters > 1000 ? kmFmt.format(meters / 1000) : mFmt.format(meters);

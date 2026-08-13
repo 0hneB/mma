@@ -5,7 +5,7 @@ export const APP_NAME = "Map Making App";
 
 /** Resolves against the active locale on first use rather than at import time, so these are
  *  correct however early a module reaches for them. */
-function localeFormat<V>(build: (locale: string) => { format: (value: V) => string }) {
+export function localeFormat<V>(build: (locale: string) => { format: (value: V) => string }) {
 	let cached: { locale: string; formatter: { format: (value: V) => string } } | null = null;
 	return {
 		format(value: V): string {
