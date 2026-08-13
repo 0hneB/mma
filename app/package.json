@@ -8,6 +8,7 @@
 		"gen:plugin-registry": "node ../plugins/generate-registry.js",
 		"gen:image-dims": "node scripts/gen-image-dims.mjs",
 		"gen:i18n": "node scripts/i18n-extract.mjs",
+		"i18n:missing": "node scripts/i18n-extract.mjs --missing",
 		"gen:bindings": "cargo run --manifest-path src-tauri/Cargo.toml -- --export-bindings",
 		"proto:gen": "pbf src/lib/sv/proto/getmetadata.proto > src/lib/sv/proto/getmetadata.gen.js",
 		"dev": "vite",

@@ -1,9 +1,10 @@
 // Extracts every translatable message into src/locales/en.json and derives the en-XA
 // pseudolocale from it. en.json is generated -- edit the source strings, not the catalog.
 //
-//   node scripts/i18n-extract.mjs           rewrite en.json + en-XA.json
-//   node scripts/i18n-extract.mjs --check   exit 1 if either is stale (CI gate)
-//   node scripts/i18n-extract.mjs --audit   list user-visible strings still not wrapped
+//   node scripts/i18n-extract.mjs             rewrite en.json + en-XA.json
+//   node scripts/i18n-extract.mjs --check     exit 1 if either is stale (CI gate)
+//   node scripts/i18n-extract.mjs --audit     list user-visible strings still not wrapped
+//   node scripts/i18n-extract.mjs --missing   per-locale untranslated keys; --write emits gap files
 //
 // Recognised call shapes:
 //   t("Street View")            msg("Moving")            <Trans msg="Open {name}" />
@@ -259,9 +260,47 @@ export function staleCatalogs() {
 	});
 }
 
+/** Keys present in en but absent (or stale) in each other locale, plus orphans it should drop. */
+export function localeGaps() {
+	const en = JSON.parse(fs.readFileSync(path.join(LOCALES, "en.json"), "utf8"));
+	return fs
+		.readdirSync(LOCALES)
+		.filter((f) => f.endsWith(".json") && f !== "en.json" && f !== "en-XA.json")
+		.map((f) => {
+			const code = f.replace(/\.json$/, "");
+			const catalog = JSON.parse(fs.readFileSync(path.join(LOCALES, f), "utf8"));
+			const missing = Object.fromEntries(
+				Object.entries(en).filter(([k]) => !(k in catalog)),
+			);
+			const orphans = Object.keys(catalog).filter((k) => !(k in en));
+			return { code, total: Object.keys(en).length, missing, orphans };
+		});
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const { files, count, targets } = catalogTargets();
-	if (process.argv.includes("--audit")) {
+	if (process.argv.includes("--missing")) {
+		const write = process.argv.includes("--write");
+		let clean = true;
+		for (const { code, total, missing, orphans } of localeGaps()) {
+			const n = Object.keys(missing).length;
+			if (!n && !orphans.length) {
+				console.log(`${code}: complete (${total})`);
+				continue;
+			}
+			clean = false;
+			console.log(`${code}: ${total - n}/${total} translated, ${n} missing, ${orphans.length} orphaned`);
+			for (const k of Object.keys(missing).slice(0, 10)) console.log(`    + ${JSON.stringify(k)}`);
+			if (n > 10) console.log(`    ... and ${n - 10} more`);
+			for (const k of orphans.slice(0, 5)) console.log(`    - ${JSON.stringify(k)} (no longer in en)`);
+			if (write && n) {
+				const out = path.join(LOCALES, `${code}.missing.json`);
+				fs.writeFileSync(out, JSON.stringify(missing, null, "\t") + "\n");
+				console.log(`    -> wrote ${path.basename(out)} for translation`);
+			}
+		}
+		if (clean) console.log("\nall locales in step with en");
+	} else if (process.argv.includes("--audit")) {
 		// `--audit <substring>` narrows to matching paths and lists the actual strings, so a
 		// single file can be driven to zero without reading anyone else's in-flight edits.
 		const filter = process.argv[process.argv.indexOf("--audit") + 1];
