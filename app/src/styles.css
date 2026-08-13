@@ -4808,6 +4808,17 @@ body {
 .setting-row__title {
 	color: var(--text-1);
 }
+/* Marker beside a setting's name, matching the plugin-card label treatment. */
+.setting-row__badge {
+	display: inline-flex;
+	vertical-align: -2px;
+	margin-left: 5px;
+	color: var(--text-2);
+	opacity: 0.7;
+}
+.setting-row__badge:hover {
+	opacity: 1;
+}
 .setting-row__desc {
 	font-size: 0.85em;
 	color: var(--text-2);

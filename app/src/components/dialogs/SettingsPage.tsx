@@ -26,7 +26,8 @@ import {
 	type HotkeyGroup,
 } from "@/lib/util/hotkeys";
 import { Icon } from "@/components/primitives/Icon";
-import { mdiAlertCircleOutline, mdiRefresh } from "@mdi/js";
+import { Tooltip } from "@/components/primitives/Tooltip";
+import { mdiAlertCircleOutline, mdiFlaskOutline, mdiRefresh } from "@mdi/js";
 import {
 	useSettings,
 	useSetting,
@@ -1014,6 +1015,22 @@ function LanguageRow() {
 	return (
 		<SettingRow
 			label={t("Language")}
+			badge={
+				<Tooltip
+					content={t(
+						"Translations are machine-generated and were not written by native speakers. Wording may be imperfect.",
+					)}
+				>
+					<span
+						className="setting-row__badge"
+						aria-label={t(
+							"Translations are machine-generated and were not written by native speakers. Wording may be imperfect.",
+						)}
+					>
+						<Icon path={mdiFlaskOutline} size={14} />
+					</span>
+				</Tooltip>
+			}
 			description={t("Restarts the app")}
 			control={
 				<NSelect
