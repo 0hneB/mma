@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_util::TempDir;
 use std::collections::BTreeMap;
 
 fn loc(id: u32, lat: f64, lng: f64) -> Location {
@@ -123,9 +124,7 @@ fn deltas_round_trip_through_disk_and_replay() {
         (vec![loc(4, 70.0, 80.0)], vec![]),
     ];
 
-    let dir = std::env::temp_dir().join("mma_test_vcs_delta_disk");
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
+    let dir = TempDir::new("mma_test_vcs_delta_disk");
 
     for (i, (created, removed)) in commits.iter().enumerate() {
         let batch = arrow_bridge::delta_to_batch(created, removed);
@@ -147,8 +146,6 @@ fn deltas_round_trip_through_disk_and_replay() {
     let locs: Vec<Location> = state.into_values().collect();
     let back = arrow_bridge::batch_to_locations(&arrow_bridge::locations_to_batch(&locs));
     assert_eq!(back.iter().map(|l| l.id).collect::<Vec<_>>(), vec![1, 3, 4]);
-
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 // -----------------------------------------------------------------------

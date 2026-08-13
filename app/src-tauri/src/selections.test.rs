@@ -1,33 +1,21 @@
 use super::*;
 use crate::arrow_bridge::locations_to_batch;
-use crate::test_util::loc;
+use crate::test_util::{loc, Fx};
 use crate::types::Location;
 use chrono::TimeZone;
-
-fn make_view<'a>(
-    batch: Option<&'a RecordBatch>,
-    dead: &'a HashSet<u32>,
-    patches: &'a HashMap<u32, Location>,
-    adds: &'a [Location],
-) -> LocView<'a> {
-    LocView::new(batch, dead, patches, adds, None)
-}
 
 // for_each must visit every alive location exactly once, overlay applied: dead rows
 // skipped, patched rows surfaced with the patch's coordinates, then the overlay adds.
 #[test]
 fn for_each_visits_alive_overlay_applied() {
     let base = vec![loc(1, 1.0, 1.0), loc(2, 2.0, 2.0), loc(3, 3.0, 3.0)];
-    let batch = locations_to_batch(&base);
-
-    let mut dead = HashSet::new();
-    dead.insert(2); // removed
-
-    let mut patches = HashMap::new();
-    patches.insert(3, loc(3, 30.0, 30.0)); // moved
 
     let adds = vec![loc(4, 4.0, 4.0)];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&base)
+        .with_adds(adds)
+        .with_dead([2])
+        .with_patch(3, loc(3, 30.0, 30.0));
+    let view = fx.view();
 
     let mut seen: Vec<(u32, f64, f64)> = Vec::new();
     view.for_each(|row| {
@@ -183,15 +171,14 @@ fn polygon_resolve_matches_full_test_with_bbox_reject() {
         properties: None,
     };
 
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 1.0, 1.0),   // inside L  -> selected
         loc(2, 8.0, 8.0),   // inside bbox, in the carved-out notch -> NOT selected
         loc(3, 50.0, 50.0), // outside bbox -> rejected by broad-phase
         loc(4, 1.0, 8.0),   // inside L (left column) -> selected
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Polygon {
@@ -205,7 +192,7 @@ fn polygon_resolve_matches_full_test_with_bbox_reject() {
     assert!(ids.contains(&4));
 
     // Cross-check: resolve agrees with point_in_geometry applied directly.
-    for l in &adds {
+    for l in &fx.adds {
         let want = point_in_geometry(l.lng, l.lat, &geom);
         assert_eq!(ids.contains(&l.id), want, "mismatch for loc {}", l.id);
     }
@@ -334,15 +321,14 @@ fn polygon_resolve_across_antimeridian() {
         extra_polygons: None,
         properties: None,
     };
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 5.0, 175.0),  // inside (east of dateline)
         loc(2, 5.0, -175.0), // inside (west of dateline)
         loc(3, 5.0, 0.0),    // outside (other side of world)
         loc(4, 5.0, 160.0),  // outside (west of polygon)
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Polygon {
@@ -387,14 +373,13 @@ fn polygon_resolve_unwrapped_antimeridian() {
         extra_polygons: None,
         properties: None,
     };
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 5.0, 175.0),  // inside
         loc(2, 5.0, -175.0), // inside (other side of IDL)
         loc(3, 5.0, 0.0),    // outside
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Polygon {
@@ -464,15 +449,14 @@ fn polygon_resolve_wide_box() {
         extra_polygons: None,
         properties: None,
     };
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 5.0, 0.0),    // inside
         loc(2, 5.0, -100.0), // inside
         loc(3, 5.0, 100.0),  // outside, the short way round
         loc(4, 5.0, -175.0), // outside, just past the western edge
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Polygon {
@@ -797,36 +781,33 @@ fn val_eq_cross_type() {
 
 #[test]
 fn resolve_everything() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 10.0, 20.0), loc(2, 30.0, 40.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Everything);
     assert_eq!(ids.len(), 2);
 }
 
 #[test]
 fn resolve_tag_on_adds() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10];
     let l2 = loc(2, 0.0, 0.0);
     let adds = vec![l1, l2];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Tag { tag_id: 10 });
     assert_eq!(ids, vec![1]);
 }
 
 #[test]
 fn resolve_untagged() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10];
     let l2 = loc(2, 0.0, 0.0);
     let adds = vec![l1, l2];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Untagged);
     assert_eq!(ids, vec![2]);
 }
@@ -897,14 +878,12 @@ fn resolve_filter_tag_count() {
     let b1 = loc(1, 0.0, 0.0); // base: 0 tags
     let mut b2 = loc(2, 0.0, 0.0);
     b2.tags = vec![10, 11]; // base: 2 tags
-    let batch = locations_to_batch(&[b1, b2]);
 
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut a3 = loc(3, 0.0, 0.0);
     a3.tags = vec![10, 11, 12]; // add: 3 tags
     let adds = vec![a3];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&[b1, b2]).with_adds(adds);
+    let view = fx.view();
 
     let eq2 = SelectionProps::Filter {
         field: "tagCount".into(),
@@ -942,14 +921,12 @@ fn resolve_uncommitted() {
     let b2 = loc(2, 0.0, 0.0); // committed, will be patched
     let batch = locations_to_batch(&[b1, b2]);
 
-    let dead = HashSet::new();
-    let mut patches = HashMap::new();
     let mut p2 = loc(2, 1.0, 1.0); // edited -> uncommitted
     p2.heading = 90.0;
-    patches.insert(2, p2);
     let a3 = loc(3, 0.0, 0.0); // new add -> uncommitted
     let adds = vec![a3];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::batch(batch).with_adds(adds).with_patch(2, p2);
+    let view = fx.view();
 
     assert_eq!(resolve(&view, &SelectionProps::Uncommitted), vec![2, 3]);
 }
@@ -962,11 +939,8 @@ fn resolve_reviewed_is_an_id_set_leaf_over_batch() {
         loc(3, 0.0, 0.0),
         loc(4, 0.0, 0.0),
     ];
-    let batch = locations_to_batch(&locs);
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Reviewed {
@@ -980,10 +954,9 @@ fn resolve_reviewed_is_an_id_set_leaf_over_batch() {
 
 #[test]
 fn resolve_reviewed_on_adds() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 0.0, 0.0), loc(2, 0.0, 0.0), loc(3, 0.0, 0.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Reviewed {
@@ -1022,12 +995,9 @@ fn tag_index_matches_scan_path() {
     c.tags = vec![10];
     let locs = vec![a, b, c];
     let (batch, sets) = tagged_batch_and_index(&locs);
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let adds: Vec<Location> = vec![];
-
-    let scan = LocView::new(Some(&batch), &dead, &patches, &adds, None);
-    let idx = LocView::new(Some(&batch), &dead, &patches, &adds, Some(&sets));
+    let fx = Fx::batch(batch);
+    let scan = fx.view();
+    let idx = fx.view_indexed(&sets);
 
     for tag_id in [10u32, 20, 99] {
         let s = resolve(&scan, &SelectionProps::Tag { tag_id });
@@ -1048,14 +1018,10 @@ fn tag_index_excludes_dead_includes_adds() {
     let mut b = loc(2, 0.0, 0.0);
     b.tags = vec![10];
     let (batch, sets) = tagged_batch_and_index(&[a, b]);
-    let mut dead = HashSet::new();
-    dead.insert(2u32); // kill row 2
-    let patches = HashMap::new();
     let mut add = loc(3, 0.0, 0.0);
     add.tags = vec![10]; // overlay add carries the tag
-    let adds = vec![add];
-
-    let idx = LocView::new(Some(&batch), &dead, &patches, &adds, Some(&sets));
+    let fx = Fx::batch(batch).with_adds(vec![add]).with_dead([2]);
+    let idx = fx.view_indexed(&sets);
     // 2 is dead -> excluded; 3 is an overlay add -> included; 1 stays.
     assert_eq!(
         resolve(&idx, &SelectionProps::Tag { tag_id: 10 }),
@@ -1070,18 +1036,13 @@ fn tag_index_honors_patches() {
     a.tags = vec![10];
     let b = loc(2, 0.0, 0.0);
     let (batch, sets) = tagged_batch_and_index(&[a, b]);
-    let dead = HashSet::new();
     // Patch: loc 1 LOSES tag 10, loc 2 GAINS tag 10 (uncommitted edits the index can't see).
     let mut p1 = loc(1, 0.0, 0.0);
     p1.tags = vec![];
     let mut p2 = loc(2, 0.0, 0.0);
     p2.tags = vec![10];
-    let mut patches = HashMap::new();
-    patches.insert(1u32, p1);
-    patches.insert(2u32, p2);
-    let adds: Vec<Location> = vec![];
-
-    let idx = LocView::new(Some(&batch), &dead, &patches, &adds, Some(&sets));
+    let fx = Fx::batch(batch).with_patch(1, p1).with_patch(2, p2);
+    let idx = fx.view_indexed(&sets);
     // Patches must override the stale index: 1 dropped, 2 added.
     assert_eq!(resolve(&idx, &SelectionProps::Tag { tag_id: 10 }), vec![2]);
 }
@@ -1095,10 +1056,8 @@ fn tag_index_in_composite() {
     let mut c = loc(3, 0.0, 0.0);
     c.tags = vec![20];
     let (batch, sets) = tagged_batch_and_index(&[a, b, c]);
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let adds: Vec<Location> = vec![];
-    let idx = LocView::new(Some(&batch), &dead, &patches, &adds, Some(&sets));
+    let fx = Fx::batch(batch);
+    let idx = fx.view_indexed(&sets);
 
     let t10 = Selection {
         key: "t10".into(),
@@ -1130,26 +1089,24 @@ fn tag_index_in_composite() {
 
 #[test]
 fn resolve_unpanned() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let l1 = loc(1, 0.0, 0.0); // heading = 0
     let mut l2 = loc(2, 0.0, 0.0);
     l2.heading = 90.0;
     let adds = vec![l1, l2];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Unpanned);
     assert_eq!(ids, vec![1]);
 }
 
 #[test]
 fn resolve_panoids() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.flags = crate::types::LocationFlags::LOAD_AS_PANO_ID;
     let l2 = loc(2, 0.0, 0.0);
     let adds = vec![l1, l2];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let pano = resolve(&view, &SelectionProps::PanoIds);
     let not_pano = resolve(&view, &SelectionProps::NotPanoIds);
     assert_eq!(pano, vec![1]);
@@ -1159,12 +1116,8 @@ fn resolve_panoids() {
 #[test]
 fn resolve_with_dead_batch_rows() {
     let locs = vec![loc(1, 10.0, 20.0), loc(2, 30.0, 40.0), loc(3, 50.0, 60.0)];
-    let batch = locations_to_batch(&locs);
-    let mut dead = HashSet::new();
-    dead.insert(2);
-    let patches = HashMap::new();
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&locs).with_dead([2]);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Everything);
     assert_eq!(ids.len(), 2);
     assert!(ids.contains(&1));
@@ -1175,14 +1128,10 @@ fn resolve_with_dead_batch_rows() {
 #[test]
 fn resolve_with_patched_tags() {
     let locs = vec![loc(1, 0.0, 0.0), loc(2, 0.0, 0.0)];
-    let batch = locations_to_batch(&locs);
-    let dead = HashSet::new();
     let mut patched = loc(1, 0.0, 0.0);
     patched.tags = vec![10];
-    let mut patches = HashMap::new();
-    patches.insert(1, patched);
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&locs).with_patch(1, patched);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Tag { tag_id: 10 });
     assert_eq!(ids, vec![1]);
 }
@@ -1193,8 +1142,6 @@ fn resolve_with_patched_tags() {
 
 #[test]
 fn resolve_intersection() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10];
     l1.flags = crate::types::LocationFlags::LOAD_AS_PANO_ID;
@@ -1203,7 +1150,8 @@ fn resolve_intersection() {
     let mut l3 = loc(3, 0.0, 0.0);
     l3.flags = crate::types::LocationFlags::LOAD_AS_PANO_ID;
     let adds = vec![l1, l2, l3];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let props = SelectionProps::Intersection {
         selections: vec![
             Selection {
@@ -1224,15 +1172,14 @@ fn resolve_intersection() {
 
 #[test]
 fn resolve_union() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10];
     let mut l2 = loc(2, 0.0, 0.0);
     l2.flags = crate::types::LocationFlags::LOAD_AS_PANO_ID;
     let l3 = loc(3, 0.0, 0.0);
     let adds = vec![l1, l2, l3];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let props = SelectionProps::Union {
         selections: vec![
             Selection {
@@ -1255,14 +1202,13 @@ fn resolve_union() {
 
 #[test]
 fn resolve_invert() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.flags = crate::types::LocationFlags::LOAD_AS_PANO_ID;
     let l2 = loc(2, 0.0, 0.0);
     let l3 = loc(3, 0.0, 0.0);
     let adds = vec![l1, l2, l3];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let props = SelectionProps::Invert {
         selections: vec![Selection {
             key: "a".into(),
@@ -1283,8 +1229,6 @@ fn resolve_invert() {
 // Counts must cover every node — the composite AND its nested children, keyed by key.
 #[test]
 fn node_counts_cover_nested_children() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10, 20];
     let mut l2 = loc(2, 0.0, 0.0);
@@ -1292,7 +1236,8 @@ fn node_counts_cover_nested_children() {
     let mut l3 = loc(3, 0.0, 0.0);
     l3.tags = vec![20];
     let adds = vec![l1, l2, l3];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     let tree = vec![Selection {
         key: "root".into(),
@@ -1322,14 +1267,13 @@ fn node_counts_cover_nested_children() {
 // Invert's count is the global complement (universe - inner), not parent-relative.
 #[test]
 fn node_counts_invert_is_global_complement() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10];
     let l2 = loc(2, 0.0, 0.0);
     let l3 = loc(3, 0.0, 0.0);
     let adds = vec![l1, l2, l3];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     let tree = vec![Selection {
         key: "inv".into(),
@@ -1352,8 +1296,6 @@ fn node_counts_invert_is_global_complement() {
 // same top-level sets, same count for every node key.
 #[test]
 fn resolve_forest_matches_individual_resolve() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.tags = vec![10, 20];
     let mut l2 = loc(2, 0.0, 0.0);
@@ -1362,7 +1304,8 @@ fn resolve_forest_matches_individual_resolve() {
     l3.tags = vec![20];
     let l4 = loc(4, 5.0, 5.0);
     let adds = vec![l1, l2, l3, l4];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     let sels = vec![
         Selection {
@@ -1426,14 +1369,13 @@ fn resolve_forest_matches_individual_resolve() {
 
 #[test]
 fn duplicates_finds_nearby() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 51.5000, -0.1000),
         loc(2, 51.5000, -0.1000), // exact same
         loc(3, 0.0, 0.0),         // far away
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Duplicates { distance: 1.0 });
     assert!(ids.contains(&1));
     assert!(ids.contains(&2));
@@ -1445,14 +1387,13 @@ fn duplicates_finds_nearby() {
 // anchor B, so B must not be skipped just because an earlier anchor grouped it.
 #[test]
 fn duplicates_chain_marks_all_members() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 0.00000, 0.0),
         loc(2, 0.00001, 0.0),
         loc(3, 0.00002, 0.0),
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Duplicates { distance: 2.0 });
     assert_eq!(ids, vec![1, 2, 3]);
 }
@@ -1461,8 +1402,6 @@ fn duplicates_chain_marks_all_members() {
 // relation: "has a neighbour within d" == "member of a component of size >= 2".
 #[test]
 fn duplicates_bitmask_matches_flattened_groups() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         // chain of three
         loc(1, 0.00000, 0.0),
@@ -1479,7 +1418,8 @@ fn duplicates_bitmask_matches_flattened_groups() {
         loc(9, 50.0, 50.0),
         loc(10, 50.0, 50.0),
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     for d in [0.5, 2.0, 25.0] {
         let selected = resolve(&view, &SelectionProps::Duplicates { distance: d });
         let mut grouped: Vec<u32> = find_duplicate_groups(&view, d)
@@ -1547,10 +1487,9 @@ fn duplicates_detected_across_antimeridian() {
 // Dense cluster: every member of a same-cell stack is a duplicate at d > 0.
 #[test]
 fn duplicates_dense_cluster_marks_every_member() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds: Vec<Location> = (0..50).map(|i| loc(i + 1, 12.0, 34.0)).collect();
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Duplicates { distance: 5.0 });
     assert_eq!(ids.len(), 50);
 }
@@ -1559,14 +1498,13 @@ fn duplicates_dense_cluster_marks_every_member() {
 // match only locations at the identical coordinate. (#69)
 #[test]
 fn duplicates_zero_distance_is_exact_match() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 51.5000, -0.1000),
         loc(2, 51.5000, -0.1000), // exact same -> dup of 1
         loc(3, 51.5000, -0.1001), // 1 m off -> not a 0 m dup
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Duplicates { distance: 0.0 });
     assert!(ids.contains(&1));
     assert!(ids.contains(&2));
@@ -1576,14 +1514,13 @@ fn duplicates_zero_distance_is_exact_match() {
 // A non-finite coordinate floors to i32::MAX; the neighbor key must not overflow.
 #[test]
 fn duplicates_non_finite_coord_does_not_overflow() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 51.5, -0.1),
         loc(2, 51.5, -0.1),
         loc(3, f64::INFINITY, 0.0),
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Duplicates { distance: 10.0 });
     assert!(ids.contains(&1));
     assert!(ids.contains(&2));
@@ -1594,22 +1531,19 @@ fn duplicates_non_finite_coord_does_not_overflow() {
 // (1-2, 2-3) but 1-3 (~2.22 m) exceeds a 2 m threshold: only transitivity unites them.
 #[test]
 fn duplicate_groups_are_transitive() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 0.00000, 0.0),
         loc(2, 0.00001, 0.0),
         loc(3, 0.00002, 0.0),
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let groups = find_duplicate_groups(&view, 2.0);
     assert_eq!(groups, vec![vec![1, 2, 3]]);
 }
 
 #[test]
 fn duplicate_groups_separate_clusters_and_drop_singletons() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![
         loc(1, 0.00000, 0.0),
         loc(2, 0.00001, 0.0), // with 1
@@ -1617,17 +1551,17 @@ fn duplicate_groups_separate_clusters_and_drop_singletons() {
         loc(5, 0.50001, 0.0), // with 4
         loc(6, 0.80000, 0.0), // alone -> excluded
     ];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let groups = find_duplicate_groups(&view, 2.0);
     assert_eq!(groups, vec![vec![1, 2], vec![4, 5]]);
 }
 
 #[test]
 fn duplicate_groups_empty_when_all_far() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 0.0, 0.0), loc(2, 0.5, 0.0), loc(3, 1.0, 0.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     assert!(find_duplicate_groups(&view, 2.0).is_empty());
 }
 
@@ -1750,14 +1684,13 @@ fn prune_thinning_no_survivors_in_range() {
 
 #[test]
 fn extra_filter_eq_on_adds() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.extra = Some(serde_json::from_str(r#"{"country":"BR"}"#).unwrap());
     let mut l2 = loc(2, 0.0, 0.0);
     l2.extra = Some(serde_json::from_str(r#"{"country":"US"}"#).unwrap());
     let adds = vec![l1, l2];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Filter {
@@ -1775,16 +1708,13 @@ fn extra_filter_eq_on_adds() {
 // top-level keys resolve; the same key nested inside another value must not.
 #[test]
 fn extra_filter_scans_base_batch_top_level_only() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut l1 = loc(1, 0.0, 0.0);
     l1.extra =
         Some(serde_json::from_str(r#"{"alt":100,"note":"a\"b}","wrap":{"alt":999}}"#).unwrap());
     let mut l2 = loc(2, 0.0, 0.0);
     l2.extra = Some(serde_json::from_str(r#"{"wrap":{"alt":100}}"#).unwrap());
-    let batch = locations_to_batch(&[l1, l2]);
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&[l1, l2]);
+    let view = fx.view();
 
     let filter = |field: &str, op: FilterOp, value: serde_json::Value| SelectionProps::Filter {
         field: field.into(),
@@ -1866,10 +1796,9 @@ fn tz_fixture() -> Vec<Location> {
 
 #[test]
 fn filter_tz_local_between_buckets_per_timezone() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = tz_fixture();
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     // Filter "all of Mar 1, 2020" as wall-clock-as-UTC epoch seconds.
     let lo = serde_json::json!(1583020800u64); // 2020-03-01 00:00
@@ -1892,10 +1821,8 @@ fn filter_tz_local_between_buckets_per_timezone() {
 // in resolve_field_and_tz (the adds-based tests go through the Location path).
 #[test]
 fn filter_tz_local_between_on_base_batch() {
-    let batch = locations_to_batch(&tz_fixture());
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(Some(&batch), &dead, &patches, &[]);
+    let fx = Fx::base(&tz_fixture());
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Filter {
@@ -1911,10 +1838,9 @@ fn filter_tz_local_between_on_base_batch() {
 
 #[test]
 fn filter_tz_local_anyyear_uses_local_month_day() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = tz_fixture();
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     // Feb 29 in the pano's local clock: only New York (Feb 29 19:00 local) matches.
     let ids = resolve(
@@ -1932,10 +1858,9 @@ fn filter_tz_local_anyyear_uses_local_month_day() {
 
 #[test]
 fn filter_tz_local_anytime_uses_local_clock() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = tz_fixture();
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
 
     // Morning (in the pano's local clock): Tokyo is 09:00 -> in; New York 19:00 -> out.
     let ids = resolve(
@@ -1955,13 +1880,12 @@ fn filter_tz_local_anytime_uses_local_clock() {
 // normal missing-field semantics instead of excluding everything.
 #[test]
 fn filter_tz_local_ignored_for_nothas() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut with_field = loc(1, 0.0, 0.0);
     with_field.extra = crate::types::RawExtra::from_value(&serde_json::json!({ "datetime": 100 }));
     let without = loc(2, 0.0, 0.0);
     let adds = vec![with_field, without];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::Filter {
@@ -1986,14 +1910,6 @@ fn loc_extra(id: u32, extra: serde_json::Value) -> Location {
     }
 }
 
-fn partition_view<'a>(
-    adds: &'a [Location],
-    dead: &'a HashSet<u32>,
-    patches: &'a HashMap<u32, Location>,
-) -> LocView<'a> {
-    make_view(None, dead, patches, adds)
-}
-
 // --- TopK ---
 
 #[test]
@@ -2005,9 +1921,8 @@ fn topk_selects_highest() {
         loc_extra(4, serde_json::json!({"alt": 500})),
         loc_extra(5, serde_json::json!({"alt": 400})),
     ];
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(None, &dead, &patches, &locs);
+    let fx = Fx::adds(locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2028,9 +1943,8 @@ fn topk_selects_lowest() {
         loc_extra(4, serde_json::json!({"alt": 500})),
         loc_extra(5, serde_json::json!({"alt": 400})),
     ];
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(None, &dead, &patches, &locs);
+    let fx = Fx::adds(locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2049,9 +1963,8 @@ fn topk_skips_missing_field() {
         loc_extra(2, serde_json::json!({})),
         loc_extra(3, serde_json::json!({"alt": 50})),
     ];
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(None, &dead, &patches, &locs);
+    let fx = Fx::adds(locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2070,11 +1983,8 @@ fn topk_works_on_base_batch() {
         loc_extra(2, serde_json::json!({"val": 30})),
         loc_extra(3, serde_json::json!({"val": 20})),
     ];
-    let batch = locations_to_batch(&locs);
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::base(&locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2092,9 +2002,8 @@ fn topk_zero_k_selects_nothing() {
         loc_extra(1, serde_json::json!({"alt": 100})),
         loc_extra(2, serde_json::json!({"alt": 200})),
     ];
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(None, &dead, &patches, &locs);
+    let fx = Fx::adds(locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2113,9 +2022,8 @@ fn topk_k_equals_len_selects_all() {
         loc_extra(2, serde_json::json!({"alt": 300})),
         loc_extra(3, serde_json::json!({"alt": 200})),
     ];
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(None, &dead, &patches, &locs);
+    let fx = Fx::adds(locs);
+    let view = fx.view();
     let ids = resolve(
         &view,
         &SelectionProps::TopK {
@@ -2134,8 +2042,8 @@ fn partition_numeric_count_matches_js() {
         loc_extra(2, serde_json::json!({"alt": 50})),
         loc_extra(3, serde_json::json!({"alt": 100})),
     ];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let groups = partition(
         &view,
         "alt",
@@ -2161,8 +2069,8 @@ fn partition_numeric_width_anchors_at_multiples() {
         loc_extra(2, serde_json::json!({"n": 1237})),
         loc_extra(3, serde_json::json!({"n": 1300})),
     ];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let groups = partition(
         &view,
         "n",
@@ -2188,8 +2096,8 @@ fn partition_value_groups_by_distinct() {
         loc_extra(2, serde_json::json!({"c": "DE"})),
         loc_extra(3, serde_json::json!({"c": "FR"})),
     ];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let groups = partition(&view, "c", &KeySpec::Value, None);
     assert_eq!(groups.len(), 2);
     assert!(groups.iter().all(|g| g.bin.is_none()));
@@ -2211,8 +2119,8 @@ fn partition_date_tz_local_matches_js_golden() {
         1,
         serde_json::json!({"t": ts, "timezone": "Asia/Tokyo"}),
     )];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let part = |p: DatePart| {
         partition(
             &view,
@@ -2239,8 +2147,8 @@ fn partition_date_non_local_reads_utc() {
         .unwrap()
         .timestamp();
     let adds = vec![loc_extra(1, serde_json::json!({"t": ts}))];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let day = partition(
         &view,
         "t",
@@ -2269,8 +2177,8 @@ fn partition_month_field_year_and_month_of_year() {
         loc_extra(1, serde_json::json!({"m": "2019-07"})),
         loc_extra(2, serde_json::json!({"m": "2019-07"})),
     ];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let y = partition(
         &view,
         "m",
@@ -2301,8 +2209,8 @@ fn partition_respects_scope() {
         loc_extra(2, serde_json::json!({"c": "DE"})),
         loc_extra(3, serde_json::json!({"c": "FR"})),
     ];
-    let (dead, patches) = (HashSet::new(), HashMap::new());
-    let view = partition_view(&adds, &dead, &patches);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let scope = resolve_set(
         &view,
         &SelectionProps::Locations {
@@ -2524,9 +2432,8 @@ proptest! {
     #[test]
     fn resolve_matches_oracle_adds_only(masks in masks_strategy(60), tree in oracle_tree_strategy()) {
         let (adds, alive) = build_adds_view(&masks);
-        let dead = HashSet::new();
-        let patches = HashMap::new();
-        let view = make_view(None, &dead, &patches, &adds);
+        let fx = Fx::adds(adds);
+        let view = fx.view();
         let props = to_selection(&tree, &mut 0).props;
         let got: HashSet<u32> = resolve_set(&view, &props).into_iter().collect();
         let want = oracle_resolve(&alive, &tree);
@@ -2536,7 +2443,8 @@ proptest! {
     #[test]
     fn resolve_matches_oracle_with_overlay(entries in entries_strategy(60), tree in oracle_tree_strategy()) {
         let (batch, dead, patches, adds, alive) = build_overlay_view(&entries);
-        let view = make_view(Some(&batch), &dead, &patches, &adds);
+        let fx = Fx { batch: Some(batch), dead, patches, adds };
+        let view = fx.view();
         let props = to_selection(&tree, &mut 0).props;
         let got: HashSet<u32> = resolve_set(&view, &props).into_iter().collect();
         let want = oracle_resolve(&alive, &tree);
@@ -2546,9 +2454,8 @@ proptest! {
     #[test]
     fn resolve_output_is_sorted_and_dedup(masks in masks_strategy(60), tree in oracle_tree_strategy()) {
         let (adds, _alive) = build_adds_view(&masks);
-        let dead = HashSet::new();
-        let patches = HashMap::new();
-        let view = make_view(None, &dead, &patches, &adds);
+        let fx = Fx::adds(adds);
+        let view = fx.view();
         let props = to_selection(&tree, &mut 0).props;
         let ids = resolve(&view, &props);
         for w in ids.windows(2) {
@@ -2562,9 +2469,8 @@ proptest! {
         trees in prop::collection::vec(oracle_tree_strategy(), 1..=4),
     ) {
         let (adds, _alive) = build_adds_view(&masks);
-        let dead = HashSet::new();
-        let patches = HashMap::new();
-        let view = make_view(None, &dead, &patches, &adds);
+        let fx = Fx::adds(adds);
+        let view = fx.view();
         let mut counter = 0u32;
         let sels: Vec<Selection> = trees.iter().map(|t| to_selection(t, &mut counter)).collect();
         let (sets, _counts) = resolve_forest(&view, &sels);
@@ -2579,9 +2485,8 @@ proptest! {
     #[test]
     fn invert_is_involutive_on_alive_set(masks in masks_strategy(60), tree in oracle_tree_strategy()) {
         let (adds, _alive) = build_adds_view(&masks);
-        let dead = HashSet::new();
-        let patches = HashMap::new();
-        let view = make_view(None, &dead, &patches, &adds);
+        let fx = Fx::adds(adds);
+        let view = fx.view();
         let inner = to_selection(&tree, &mut 0);
         let x_set = resolve_set(&view, &inner.props);
         let double_invert = SelectionProps::Invert {
@@ -2606,10 +2511,9 @@ proptest! {
 
 #[test]
 fn intersection_of_empty_selections_is_empty_not_universe() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 0.0, 0.0), loc(2, 0.0, 0.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Intersection { selections: vec![] });
     assert!(
         ids.is_empty(),
@@ -2619,20 +2523,18 @@ fn intersection_of_empty_selections_is_empty_not_universe() {
 
 #[test]
 fn union_of_empty_selections_is_empty() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 0.0, 0.0), loc(2, 0.0, 0.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Union { selections: vec![] });
     assert!(ids.is_empty());
 }
 
 #[test]
 fn invert_of_empty_selections_is_the_alive_universe() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let adds = vec![loc(1, 0.0, 0.0), loc(2, 0.0, 0.0), loc(3, 0.0, 0.0)];
-    let view = make_view(None, &dead, &patches, &adds);
+    let fx = Fx::adds(adds);
+    let view = fx.view();
     let ids = resolve(&view, &SelectionProps::Invert { selections: vec![] });
     assert_eq!(ids, vec![1, 2, 3]);
 }
