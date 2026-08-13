@@ -9,8 +9,5 @@ export function isOfficialPano(panoId: string): boolean {
  *  `fetchSvMetadata` are sorted ascending by date, so "newest" is the last official entry —
  *  scanning backwards rather than indexing keeps that assumption in one place. */
 export function newestOfficialPano<T extends { pano: string }>(time: readonly T[]): T | null {
-	for (let i = time.length - 1; i >= 0; i--) {
-		if (isOfficialPano(time[i].pano)) return time[i];
-	}
-	return null;
+	return time.findLast((t) => isOfficialPano(t.pano)) ?? null;
 }
