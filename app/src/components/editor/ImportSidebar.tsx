@@ -10,6 +10,7 @@ import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { TagPill } from "@/components/primitives/TagPill";
 import { tagColorFor, errText, toggleInSet } from "@/lib/util/util";
+import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
 
 const FIELD_PREFS_KEY = "import-field-prefs";
 const AUTOCOMMIT_ACK_KEY = "import-autocommit-ack";
@@ -19,13 +20,7 @@ function autoCommitAcked(): boolean {
 }
 
 function loadDroppedFields(): Set<string> {
-	try {
-		const stored = localStorage.getItem(FIELD_PREFS_KEY);
-		if (stored) return new Set(JSON.parse(stored));
-	} catch {
-		// ignored
-	}
-	return new Set();
+	return new Set(getLocal<string[]>(FIELD_PREFS_KEY, []));
 }
 
 /** Import staging sidebar: field picker, file tags, bulk tag, and warnings. */
@@ -46,7 +41,7 @@ export function ImportSidebar() {
 	const toggleField = (key: string) => {
 		setDroppedFields((prev) => {
 			const next = toggleInSet(prev, key);
-			localStorage.setItem(FIELD_PREFS_KEY, JSON.stringify([...next]));
+			setLocal(FIELD_PREFS_KEY, [...next]);
 			return next;
 		});
 	};

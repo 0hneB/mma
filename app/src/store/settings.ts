@@ -1,4 +1,5 @@
 import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
+import { getLocal, setLocal, reloadLocal } from "@/lib/hooks/useLocalStorage";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
@@ -213,29 +214,11 @@ export const CSS_VAR_SETTINGS: ReadonlyArray<
 
 const STORAGE_KEY = "appSettings";
 
-function readStoredSettings(): AppSettings | null {
-	try {
-		const stored = localStorage.getItem(STORAGE_KEY);
-		return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : null;
-	} catch {
-		return null;
-	}
-}
-
-let settings: AppSettings = { ...DEFAULTS };
-const storedAtInit = readStoredSettings();
-if (storedAtInit) {
-	settings = storedAtInit;
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-	} catch {
-		// ignored
-	}
-}
+let settings: AppSettings = { ...getLocal(STORAGE_KEY, DEFAULTS) };
 
 // Another window changed settings: reread the shared localStorage before re-emitting.
 bridgeAcrossWindows("settings:changed", () => {
-	settings = readStoredSettings() ?? settings;
+	settings = { ...reloadLocal(STORAGE_KEY, DEFAULTS) };
 });
 
 export function getSettings(): AppSettings {
@@ -261,7 +244,7 @@ export function panoDisplayOptions(s: AppSettings) {
 
 export function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
 	settings = { ...settings, [key]: value };
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+	setLocal(STORAGE_KEY, settings);
 	emitEvent("settings:changed");
 }
 

@@ -1,5 +1,6 @@
 import { getCommands, getCommand } from "@/store/commands";
 import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
+import { getLocal, setLocal, reloadLocal } from "@/lib/hooks/useLocalStorage";
 
 const QUICKTAG_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 type QuicktagSlot = (typeof QUICKTAG_SLOTS)[number];
@@ -361,20 +362,11 @@ const STORAGE_KEY = "hotkeyOverrides";
 
 type HotkeyOverrides = Partial<Record<string, string>>;
 
-function readStoredOverrides(): HotkeyOverrides {
-	try {
-		const stored = localStorage.getItem(STORAGE_KEY);
-		return stored ? JSON.parse(stored) : {};
-	} catch {
-		return {};
-	}
-}
-
-let overrides: HotkeyOverrides = readStoredOverrides();
+let overrides: HotkeyOverrides = getLocal<HotkeyOverrides>(STORAGE_KEY, {});
 
 // Another window changed bindings: reread the shared localStorage before re-emitting.
 bridgeAcrossWindows("hotkeys:changed", () => {
-	overrides = readStoredOverrides();
+	overrides = reloadLocal<HotkeyOverrides>(STORAGE_KEY, {});
 });
 
 function getDefaultBinding(action: string): string {
@@ -414,7 +406,7 @@ export function getConflicts(action: string, binding: string): HotkeyDef[] {
 
 export function setBinding(action: HotkeyAction, binding: string): void {
 	overrides[action] = binding;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+	setLocal(STORAGE_KEY, overrides);
 	emitEvent("hotkeys:changed");
 }
 
@@ -424,20 +416,20 @@ export function reassignBinding(action: HotkeyAction, binding: string): string[]
 	const cleared = getConflicts(action, binding).map((d) => d.action);
 	for (const a of cleared) overrides[a] = "";
 	overrides[action] = binding;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+	setLocal(STORAGE_KEY, overrides);
 	emitEvent("hotkeys:changed");
 	return cleared;
 }
 
 export function resetBinding(action: HotkeyAction): void {
 	delete overrides[action];
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+	setLocal(STORAGE_KEY, overrides);
 	emitEvent("hotkeys:changed");
 }
 
 export function resetAllBindings(): void {
 	overrides = {};
-	localStorage.removeItem(STORAGE_KEY);
+	setLocal(STORAGE_KEY, overrides);
 	emitEvent("hotkeys:changed");
 }
 

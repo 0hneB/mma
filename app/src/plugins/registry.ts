@@ -4,6 +4,7 @@ import { runAsPlugin, disposePlugin } from "@/plugins/scope";
 import { cmpVersion } from "@/lib/util/util";
 import { cmd } from "@/lib/commands";
 import type { PluginManifest } from "@/bindings.gen";
+import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
 
 export interface PluginSettingDef {
 	key: string;
@@ -78,19 +79,11 @@ export function setPendingManifest(manifest: PluginManifest | null) {
 }
 
 const ENABLED_KEY = "mma_plugins_enabled";
-function loadEnabled(): Set<string> {
-	try {
-		return new Set(JSON.parse(localStorage.getItem(ENABLED_KEY) || "[]"));
-	} catch {
-		return new Set();
-	}
-}
-
 function saveEnabled(set: Set<string>) {
-	localStorage.setItem(ENABLED_KEY, JSON.stringify([...set]));
+	setLocal(ENABLED_KEY, [...set]);
 }
 
-const enabledSet = loadEnabled();
+const enabledSet = new Set(getLocal<string[]>(ENABLED_KEY, []));
 
 /** Register a plugin. `activate` runs when a map opens; its returned cleanup runs on map close. */
 export function registerPlugin(plugin: Plugin | PluginBehavior) {
@@ -161,15 +154,11 @@ function pluginStoreKey(id: string): string {
 }
 
 function readPluginStore(id: string): Record<string, unknown> {
-	try {
-		return JSON.parse(localStorage.getItem(pluginStoreKey(id)) || "{}");
-	} catch {
-		return {};
-	}
+	return getLocal<Record<string, unknown>>(pluginStoreKey(id), {});
 }
 
 function writePluginStore(id: string, data: Record<string, unknown>) {
-	localStorage.setItem(pluginStoreKey(id), JSON.stringify(data));
+	setLocal(pluginStoreKey(id), data);
 }
 
 /** Persistent key-value storage namespaced to a plugin. Survives restarts. */

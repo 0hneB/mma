@@ -18,6 +18,7 @@ import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";
 import { textColorFor, rgbToHex } from "@/lib/util/color";
 import { fmt } from "@/lib/util/format";
 import { toggleInSet } from "@/lib/util/util";
+import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
 import { toggleTagSelections } from "@/store/useMapStore";
 import { useStableHandler } from "@/lib/hooks/useStableHandler";
 import { useSetting } from "@/store/settings";
@@ -69,17 +70,11 @@ const TagTreeCtx = createContext<TagTreeCallbacks>(null!);
 const EXPANDED_KEY = "tagTreeExpanded";
 
 function loadExpanded(): Set<string> {
-	try {
-		const raw = localStorage.getItem(EXPANDED_KEY);
-		if (raw) return new Set(JSON.parse(raw));
-	} catch {
-		/* ignored */
-	}
-	return new Set();
+	return new Set(getLocal<string[]>(EXPANDED_KEY, []));
 }
 
 function saveExpanded(set: Set<string>) {
-	localStorage.setItem(EXPANDED_KEY, JSON.stringify([...set]));
+	setLocal(EXPANDED_KEY, [...set]);
 }
 
 export interface TagTreeHandle {
