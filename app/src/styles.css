@@ -1400,7 +1400,7 @@ input[type="range"]:disabled {
 .import-preview__item--dup {
 	background: var(--accent-muted);
 }
-.import-preview__item--deselected {
+.import-preview__item:has(input:not(:checked)) {
 	opacity: 0.5;
 }
 .import-preview__name {
@@ -1960,10 +1960,10 @@ input[type="range"]:disabled {
 	line-height: calc(2rem - 2px);
 	display: inline-block;
 }
-.tag-input.has-button {
+.tag-input:has(> .tag-input__button) {
 	padding-left: 0;
 }
-.tag-input.is-disabled {
+.tag-input:has(:disabled) {
 	opacity: 0.75;
 }
 .tag-input__button {
@@ -3557,7 +3557,7 @@ input.date-picker__trigger:focus {
 	max-width: 100%;
 	min-width: 0;
 }
-.tag.has-button {
+.tag:has(> .tag__button) {
 	display: inline-flex;
 	align-items: center;
 }
@@ -3569,7 +3569,7 @@ input.date-picker__trigger:focus {
 	opacity: 1;
 	padding: 0 1rem;
 }
-.tag.has-button {
+.tag:has(> .tag__button) {
 	padding: 0 0.75rem 0 0;
 }
 .tag[aria-roledescription="sortable"][aria-pressed="true"] {

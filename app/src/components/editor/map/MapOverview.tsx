@@ -55,7 +55,6 @@ function PerSelectionToggle({
 	);
 }
 
-
 function RandomPickPanel() {
 	const [value, setValue] = useState("");
 	const [perSelection, setPerSelection] = useState(false);
@@ -136,7 +135,9 @@ function SpacedPickPanel() {
 						)
 					: t({ one: "Selected {n} location", other: "Selected {n} locations" }, { n: picked });
 				const spacing =
-					distanceM > 0 ? t(", at least {distance}m apart", { distance: fmt.format(distanceM) }) : "";
+					distanceM > 0
+						? t(", at least {distance}m apart", { distance: fmt.format(distanceM) })
+						: "";
 				toast(base + spacing);
 			})
 			.catch((err) => toast(String(err)));
@@ -271,7 +272,7 @@ function BulkTagForm() {
 
 	return (
 		<form className="selection-manager__bulk-tag" onSubmit={handleBulkAddTag}>
-			<span className={`tag-input has-button${!hasSelection ? " is-disabled" : ""}`}>
+			<span className="tag-input">
 				<button type="submit" className="button tag-input__button" disabled={!hasSelection}>
 					+
 				</button>

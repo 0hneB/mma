@@ -750,7 +750,6 @@ function ImportPreviewModal({
 							className={clsx(
 								"import-preview__item",
 								entry.isDuplicate && "import-preview__item--dup",
-								!entry.selected && "import-preview__item--deselected",
 							)}
 							onClick={() => toggle(i)}
 						>
