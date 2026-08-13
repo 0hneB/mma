@@ -12,7 +12,7 @@ import * as commitDiff from "@/store/commitDiff";
 import * as scope from "@/store/scope";
 import * as mapList from "@/store/mapList";
 import * as review from "@/lib/review/review";
-import type { Scope, Location } from "@/bindings.gen";
+import { events, type Scope, type Location } from "@/bindings.gen";
 import { cmd as commands, type Cmd } from "@/lib/commands";
 import { createLocation, applyLocationPatch } from "@/types";
 import { registerPlugin, createPluginStorage, usePluginState } from "@/plugins/registry";
@@ -30,7 +30,6 @@ import { preloadModules, getAvailableExternals } from "@/plugins/externals";
 import { registerEnrichFields, registerEnrichmentProvider } from "@/lib/data/fieldDefs";
 import { getFieldDef, getAllFieldDefs } from "@/lib/data/fieldDefRegistry";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { Command } from "@tauri-apps/plugin-shell";
 import { open as dialogOpen, save as dialogSave } from "@tauri-apps/plugin-dialog";
 import { subscribe, type EditorEvent, type EventHandler } from "@/lib/events";
@@ -130,13 +129,13 @@ function routeSidecarEvent(reqId: number, ev: SidecarEvent) {
 
 function listenForSidecarEvents(): Promise<void> {
 	sidecarListeners ??= (async () => {
-		await listen<{ reqId: number; line: string }>("sidecar-line", (ev) =>
+		await events.sidecarLine.listen((ev) =>
 			routeSidecarEvent(ev.payload.reqId, { kind: "line", line: ev.payload.line }),
 		);
-		await listen<{ reqId: number; line: string }>("sidecar-log", (ev) =>
+		await events.sidecarLog.listen((ev) =>
 			routeSidecarEvent(ev.payload.reqId, { kind: "log", line: ev.payload.line }),
 		);
-		await listen<{ reqId: number; error: string | null }>("sidecar-done", (ev) =>
+		await events.sidecarDone.listen((ev) =>
 			routeSidecarEvent(ev.payload.reqId, { kind: "done", error: ev.payload.error }),
 		);
 	})();

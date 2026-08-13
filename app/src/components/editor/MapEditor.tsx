@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { MutationResult } from "@/bindings.gen";
+import { events } from "@/bindings.gen";
 import {
 	useMapState,
 	getMapState,
@@ -233,7 +233,7 @@ export function MapEditor() {
 
 	// Another window mutated this map
 	useEffect(() => {
-		const unlisten = listen<MutationResult & { mapId: string }>("store-external-mutation", (e) => {
+		const unlisten = events.storeExternalMutation.listen((e) => {
 			if (e.payload.mapId === getMapState().mapId) void mutate(() => Promise.resolve(e.payload));
 		});
 		return () => {

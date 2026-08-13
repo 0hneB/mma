@@ -1182,8 +1182,9 @@ pub async fn bulk_import_preview(path: String) -> AppResult<Vec<ImportPreviewEnt
 
 /// Progress event emitted per-map during bulk import, consumed by the frontend
 /// to drive a progress indicator.
-#[derive(serde::Serialize, Clone, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "bulk-import-progress")]
 pub struct ImportProgress {
     pub current: u32,
     pub total: u32,

@@ -17,7 +17,6 @@ import { cmpVersion } from "@/lib/util/util";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { cmd } from "@/lib/commands";
 import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
-import { listen } from "@tauri-apps/api/event";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Dialog, DialogContent, useCloseDialog } from "@/components/primitives/Dialog";
 import { Icon } from "@/components/primitives/Icon";
@@ -37,7 +36,7 @@ import {
 } from "@mdi/js";
 import clsx from "clsx";
 import type { SortMode } from "@/types";
-import type { MapMeta } from "@/bindings.gen";
+import { events, type MapMeta } from "@/bindings.gen";
 import { fmt, relativeTime, shortDateFmt } from "@/lib/util/format";
 import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { useSetting, setSetting, getSettings, type MapListField } from "@/store/settings";
@@ -793,13 +792,11 @@ export function BulkActions() {
 	const handleExport = useCallback(async () => {
 		setExporting(true);
 		const progress = progressToast("Exporting maps...");
-		const unlisten = await listen<{ current: number; total: number; mapName: string }>(
-			"bulk-export-progress",
-			(e) =>
-				progress.update(
-					e.payload.current / e.payload.total,
-					`${e.payload.current} / ${e.payload.total}`,
-				),
+		const unlisten = await events.bulkExportProgress.listen((e) =>
+			progress.update(
+				e.payload.current / e.payload.total,
+				`${e.payload.current} / ${e.payload.total}`,
+			),
 		);
 		try {
 			const path = await cmd.storeExportBulkZip();
@@ -889,13 +886,8 @@ export function BulkActions() {
 		const total = indices.length;
 		let base = 0; // maps confirmed in prior files, for global progress across the per-file loop
 		const progress = progressToast("Importing maps...");
-		const unlisten = await listen<{ current: number; total: number; mapName: string }>(
-			"bulk-import-progress",
-			(e) =>
-				progress.update(
-					(base + e.payload.current) / total,
-					`${base + e.payload.current} / ${total}`,
-				),
+		const unlisten = await events.bulkImportProgress.listen((e) =>
+			progress.update((base + e.payload.current) / total, `${base + e.payload.current} / ${total}`),
 		);
 		let failed = 0;
 		try {

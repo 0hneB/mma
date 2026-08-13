@@ -17,10 +17,9 @@ import {
 	isPluginCompatible,
 	isBackgroundPlugin,
 } from "@/plugins/registry";
-import type { PluginManifest } from "@/bindings.gen";
+import { events, type PluginManifest } from "@/bindings.gen";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
 import { cmd } from "@/lib/commands";
-import { listen } from "@tauri-apps/api/event";
 import { log } from "@/lib/util/log";
 
 const REGISTRY_URL = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins/registry.json";
@@ -34,14 +33,11 @@ async function installSidecar(
 	onProgress: (pct: number) => void,
 ): Promise<void> {
 	if (!manifest.sidecar) return;
-	const unlisten = await listen<{ pluginId: string; downloaded: number; total: number }>(
-		"sidecar-install-progress",
-		(ev) => {
-			if (ev.payload.pluginId === manifest.id && ev.payload.total > 0) {
-				onProgress(Math.round((ev.payload.downloaded / ev.payload.total) * 100));
-			}
-		},
-	);
+	const unlisten = await events.sidecarInstallProgress.listen((ev) => {
+		if (ev.payload.pluginId === manifest.id && ev.payload.total > 0) {
+			onProgress(Math.round((ev.payload.downloaded / ev.payload.total) * 100));
+		}
+	});
 	try {
 		await cmd.sidecarInstall(manifest.id, manifest.sidecar.name, manifest.sidecar.version);
 	} finally {

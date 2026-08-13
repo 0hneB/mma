@@ -703,6 +703,16 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             plugins::vali_cancel,
             plugins::vali_subdivisions,
         ])
+        .events(tauri_specta::collect_events![
+            sidecar::SidecarProgress,
+            sidecar::SidecarLine,
+            sidecar::SidecarLog,
+            sidecar::SidecarDone,
+            import::ImportProgress,
+            export::ExportProgress,
+            location_store::ExternalMutation,
+            plugins::ValiProgress,
+        ])
 }
 
 pub fn run() {

@@ -1794,7 +1794,7 @@ macro_rules! with_store {
 /// `known_field_keys` lists every extra-field key that exists in location data
 /// on this map. Add-only within a session; seeded from `MapMeta.extra.fields`
 /// on map open.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreStatus {
     pub version: u64,
@@ -1827,7 +1827,7 @@ pub struct SummaryResult {
 /// Every entry states the row's resulting selection state, so applying a delta is
 /// idempotent and the base cells and the selection overlay cannot drift apart.
 /// `full_reset` signals JS to discard all cell data and re-fetch via `store_fill_render_file`.
-#[derive(serde::Serialize, Default, specta::Type)]
+#[derive(serde::Serialize, Clone, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderDelta {
     pub added: Vec<RenderEntry>,
@@ -1871,7 +1871,7 @@ pub struct SelPaint {
 }
 
 /// A marker appended to a render cell: position, heading, and selection state.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderEntry {
     pub cell: String,
@@ -1890,7 +1890,7 @@ pub struct RenderEntry {
 /// Update to an existing marker within its cell. Position and heading are `None` when
 /// unchanged; `sel` always states the row's current selection state, so a membership
 /// change with no movement is just a patch with no coordinates.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderPatchEntry {
     pub cell: String,
@@ -1903,7 +1903,7 @@ pub struct RenderPatchEntry {
 
 /// A swap-removal from a render cell. JS must move the last element into `cell_index`
 /// and pop the array to mirror the Rust-side swap-remove.
-#[derive(serde::Serialize, Default, specta::Type)]
+#[derive(serde::Serialize, Clone, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CellRemoval {
     pub cell: String,
@@ -1914,7 +1914,7 @@ pub struct CellRemoval {
 /// Selection bitmask sync payload. `bitmask` carries the packed per-cell bitmask bytes
 /// inline in the IPC response (no shared temp file → no clobber race under concurrent
 /// mutations). `None` when nothing changed. `counts` gives per-selection match counts.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectionSync {
     /// Resolved count per selection node, keyed by `Selection.key` (top-level and nested).
@@ -1929,7 +1929,7 @@ pub struct SelectionSync {
 /// `new_field_defs` carries the inferred/known field definitions for extra-field keys
 /// discovered for the first time in this mutation. JS merges them straight into the
 /// field-def registry, so field metadata is live without a reload.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MutationResult {
     #[serde(flatten)]
@@ -1938,6 +1938,16 @@ pub struct MutationResult {
     pub selection_sync: Option<SelectionSync>,
     pub new_field_defs: Option<HashMap<String, map_meta::ExtraFieldDef>>,
     pub tags: Option<HashMap<u32, Tag>>,
+}
+
+/// A mutation another window made to a map this window may have open, routed by `map_id`.
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "store-external-mutation")]
+pub struct ExternalMutation {
+    #[serde(flatten)]
+    pub result: MutationResult,
+    pub map_id: String,
 }
 
 /// Deserialize a present-but-null JSON field as `Some(None)` instead of `None`.
@@ -2876,14 +2886,13 @@ pub fn store_copy_locations_to_map(
                 _t.elapsed().as_millis()
             );
             // Ship the full MutationResult (+ target map id for routing) on the event.
-            let mut payload = serde_json::to_value(&result)?;
-            if let Some(obj) = payload.as_object_mut() {
-                obj.insert(
-                    "mapId".into(),
-                    serde_json::Value::String(target_map_id.clone()),
-                );
-            }
-            crate::emit_event("store-external-mutation", payload);
+            crate::emit_event(
+                "store-external-mutation",
+                ExternalMutation {
+                    result,
+                    map_id: target_map_id.clone(),
+                },
+            );
         }
         return Ok(CopyToMapResult {
             copied,

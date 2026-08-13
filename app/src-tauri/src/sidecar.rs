@@ -34,24 +34,36 @@ const RESIDENT_IDLE_SECS: u64 = 600;
 /// Budget for a resident process to bind a port and report it.
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(30);
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
-struct SidecarProgress {
+#[tauri_specta(event_name = "sidecar-install-progress")]
+pub(crate) struct SidecarProgress {
     plugin_id: String,
     downloaded: u64,
     total: u64,
 }
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
-struct SidecarLine {
+#[tauri_specta(event_name = "sidecar-line")]
+pub(crate) struct SidecarLine {
     req_id: u32,
     line: String,
 }
 
-#[derive(serde::Serialize, Clone)]
+/// Same shape as [`SidecarLine`]; a distinct type because one type carries one channel.
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
-struct SidecarDone {
+#[tauri_specta(event_name = "sidecar-log")]
+pub(crate) struct SidecarLog {
+    req_id: u32,
+    line: String,
+}
+
+#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "sidecar-done")]
+pub(crate) struct SidecarDone {
     req_id: u32,
     error: Option<String>,
 }
@@ -677,7 +689,7 @@ fn run_oneshot_inner(
         std::thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                 log::info!("[sidecar:{log_id}] {line}");
-                emit_event("sidecar-log", SidecarLine { req_id, line });
+                emit_event("sidecar-log", SidecarLog { req_id, line });
             }
         })
     });
