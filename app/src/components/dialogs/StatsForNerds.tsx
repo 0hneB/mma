@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cmd } from "@/lib/commands";
+import { useAsync } from "@/lib/hooks/useAsync";
 import { useDomEvent } from "@/lib/hooks/useDomEvent";
 import { google } from "@/lib/sv/opensv";
 import { getMapState } from "@/store/useMapStore";
@@ -151,15 +152,8 @@ function liveRows(live: LiveStats): [string, string][] {
 }
 
 export function StatsForNerds({ onClose }: { onClose: () => void }) {
-	const [stats, setStats] = useState<Stats | null>(null);
 	const [live, setLive] = useState<LiveStats | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		gatherStats()
-			.then(setStats)
-			.catch((e) => setError(String(e)));
-	}, []);
+	const { data: stats, error } = useAsync(gatherStats, []);
 
 	useEffect(() => {
 		startFrameMeter();
@@ -232,7 +226,7 @@ export function StatsForNerds({ onClose }: { onClose: () => void }) {
 						x
 					</button>
 				</div>
-				{error && <div style={{ color: "var(--destructive)" }}>{error}</div>}
+				{error && <div style={{ color: "var(--destructive)" }}>{String(error)}</div>}
 				{stats && (
 					<table style={{ width: "100%", borderCollapse: "collapse" }}>
 						<tbody>

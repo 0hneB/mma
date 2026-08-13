@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { cmd } from "@/lib/commands";
+import { useAsync } from "@/lib/hooks/useAsync";
 import { log } from "@/lib/util/log";
-import type { MapMeta } from "@/bindings.gen";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { SuggestInput } from "@/components/primitives/SuggestInput";
 import { getMapState } from "@/store/useMapStore";
@@ -15,16 +15,16 @@ export function QuickCopyToMapDialog({
 	locationId: number;
 	onClose: () => void;
 }) {
-	const [maps, setMaps] = useState<MapMeta[] | null>(null);
 	const [query, setQuery] = useState("");
 	const contentRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		cmd
-			.storeListMaps()
-			.then(setMaps)
-			.catch((e) => log.error("[quickCopy] list failed:", e));
-	}, []);
+	const { data: maps } = useAsync(
+		() =>
+			cmd.storeListMaps().catch((e) => {
+				log.error("[quickCopy] list failed:", e);
+				return null;
+			}),
+		[],
+	);
 
 	const lower = query.trim().toLowerCase();
 	const suggestions = useMemo(

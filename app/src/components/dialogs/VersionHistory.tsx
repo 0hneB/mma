@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { useMapState, checkoutCommit } from "@/store/useMapStore";
 import { beginCommitDiffPreview } from "@/store/commitDiff";
 import { cmd } from "@/lib/commands";
+import { useAsync } from "@/lib/hooks/useAsync";
 import type { CommitInfo } from "@/bindings.gen";
 
 const fmt = new Intl.NumberFormat("en");
@@ -41,20 +42,14 @@ function diffLabel(c: CommitInfo): ReactNode | null {
 
 export function VersionHistory({ onClose }: { onClose: () => void }) {
 	const map = useMapState((s) => s.map);
-	const [commits, setCommits] = useState<CommitInfo[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [restoring, setRestoring] = useState<string | null>(null);
 	const [confirmingId, setConfirmingId] = useState<string | null>(null);
+	const { data: commits } = useAsync(
+		() => (map ? cmd.storeListCommits(map.meta.id) : null),
+		[map?.meta.id],
+	);
 
-	useEffect(() => {
-		if (!map) return;
-		cmd.storeListCommits(map.meta.id).then((c) => {
-			setCommits(c);
-			setLoading(false);
-		});
-	}, [map?.meta.id]);
-
-	if (!map || loading) return null;
+	if (!map || !commits) return null;
 
 	const viewDiff = async (commit: CommitInfo) => {
 		await beginCommitDiffPreview(commit);

@@ -44,6 +44,7 @@ import {
 	type BulkDownloadResult,
 	type PanoRenderMode,
 } from "@/lib/sv/panoDownload";
+import { useAsync } from "@/lib/hooks/useAsync";
 import { saveExportTempFile } from "@/lib/util/util";
 import { fmt } from "@/lib/util/format";
 import { toast } from "@/lib/util/toast";
@@ -828,12 +829,8 @@ const SETUPS: Record<BulkOperation, React.ComponentType<SetupProps>> = {
 
 export function BulkOperationModal({ operation, onClose }: Props) {
 	const [runner, setRunner] = useState<BulkRunner | null>(null);
-	const [locs, setLocs] = useState<Location[] | null>(null);
 	const scopeCtl = useScope();
-
-	useEffect(() => {
-		fetchAllLocations().then(setLocs);
-	}, []);
+	const { data: locs } = useAsync(fetchAllLocations, []);
 
 	if (locs === null) return null;
 

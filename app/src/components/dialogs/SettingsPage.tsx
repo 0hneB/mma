@@ -56,7 +56,7 @@ import { cmd } from "@/lib/commands";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
-import type { DataLocation } from "@/bindings.gen";
+import { useAsync } from "@/lib/hooks/useAsync";
 import { useUpdateState, checkForUpdate, installUpdate, relaunchApp } from "@/lib/util/updateCheck";
 import { ColorPicker } from "@/components/primitives/ColorPicker";
 
@@ -1067,17 +1067,10 @@ function IntegrationsBody() {
 }
 
 function DataBody() {
-	const [loc, setLoc] = useState<DataLocation | null>(null);
 	// undefined = no dialog; string = chosen folder; null = reset to default.
 	const [pending, setPending] = useState<string | null | undefined>(undefined);
 	const [busy, setBusy] = useState(false);
-
-	useEffect(() => {
-		cmd
-			.getDataLocation()
-			.then(setLoc)
-			.catch(() => {});
-	}, []);
+	const { data: loc } = useAsync(() => cmd.getDataLocation().catch(() => null), []);
 
 	const pick = useCallback(async () => {
 		const picked = await openDialog({ directory: true, title: "Choose data folder" });

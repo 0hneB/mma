@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { cmd } from "@/lib/commands";
+import { useAsync } from "@/lib/hooks/useAsync";
 import { log } from "@/lib/util/log";
-import type { MapMeta } from "@/bindings.gen";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { HotkeyInput } from "@/components/primitives/HotkeyInput";
 import { SuggestInput } from "@/components/primitives/SuggestInput";
@@ -14,18 +14,18 @@ import { getMapState } from "@/store/useMapStore";
  *  Shows only configured maps; new targets are added via autocomplete (type a
  *  map name), then keyed. Bindings persist to this map's settings as changed. */
 export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
-	const [maps, setMaps] = useState<MapMeta[] | null>(null);
 	const [bindings, setBindings] = useMapSetting("keyBindings");
 	// Added via autocomplete but not yet keyed; persisted only once a key is recorded.
 	const [pendingIds, setPendingIds] = useState<string[]>([]);
 	const [query, setQuery] = useState("");
-
-	useEffect(() => {
-		cmd
-			.storeListMaps()
-			.then(setMaps)
-			.catch((e) => log.error("[copyToMap] list failed:", e));
-	}, []);
+	const { data: maps } = useAsync(
+		() =>
+			cmd.storeListMaps().catch((e) => {
+				log.error("[copyToMap] list failed:", e);
+				return null;
+			}),
+		[],
+	);
 
 	const byId = useMemo(() => new Map((maps ?? []).map((m) => [m.id, m])), [maps]);
 
