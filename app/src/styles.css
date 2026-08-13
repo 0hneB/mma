@@ -989,28 +989,98 @@ input[type="range"]:disabled {
 	}
 }
 .welcome-dialog {
-	background: var(--surface-2);
-	color: var(--text-1);
-	max-width: 480px;
+	position: relative;
+	width: min(24rem, 92vw);
+	padding-bottom: 1.5rem;
 }
-.welcome-dialog .modal__title {
+/* keep the Radix title for a11y; the hero carries the visible name */
+.welcome-dialog__header {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	padding: 0;
+	z-index: 1;
+}
+.welcome-dialog__header .modal__title {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+}
+.welcome-dialog__hero {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.125rem;
+	padding: 1rem 0 1.25rem;
+	text-align: center;
+}
+.welcome-dialog__hero img {
+	width: 80px;
+	height: 80px;
+	margin-bottom: 0.625rem;
+	filter: drop-shadow(0 4px 12px #00000059);
+	user-select: none;
+}
+.welcome-dialog__name {
+	font-size: 1.3rem;
+	font-weight: 600;
+}
+.welcome-dialog__version {
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	color: var(--text-3);
+}
+.welcome-dialog__links {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+.welcome-dialog__link {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.625rem 0.75rem;
+	background: var(--surface-1);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-2);
+	color: var(--text-1);
+	font: inherit;
+	text-align: left;
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		border-color 0.1s,
+		background 0.1s;
+}
+.welcome-dialog__link:hover {
+	background: var(--surface-3);
+	border-color: var(--border-strong);
+}
+.welcome-dialog .modal__content a.welcome-dialog__link,
+.welcome-dialog .modal__content a.welcome-dialog__link:active,
+.welcome-dialog .modal__content a.welcome-dialog__link:visited {
 	color: var(--text-1);
 }
-.welcome-dialog .modal__close {
+.welcome-dialog__link svg {
+	flex-shrink: 0;
 	color: var(--text-2);
 }
-.welcome-dialog .modal__close:hover {
-	color: var(--text-1);
+.welcome-dialog__link strong {
+	display: block;
+	font-weight: 600;
+	font-size: 0.9rem;
 }
-.welcome-dialog .modal__content p {
-	margin: 0 0 0.75rem;
-	line-height: 1.5;
+.welcome-dialog__link small {
+	display: block;
 	color: var(--text-2);
+	font-size: 0.8rem;
+	line-height: 1.35;
 }
-.welcome-dialog .modal__content a,
-.welcome-dialog .modal__content a:active,
-.welcome-dialog .modal__content a:visited {
-	color: var(--accent);
+.welcome-dialog__cta {
+	width: 100%;
 }
 .edit-map-modal {
 	width: 540px;

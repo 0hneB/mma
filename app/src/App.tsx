@@ -267,6 +267,8 @@ function useCustomCss() {
 	}, [customCss]);
 }
 
+declare const __APP_VERSION__: string;
+
 function WelcomeDialog({ open, onDismiss }: { open: boolean; onDismiss: () => void }) {
 	return (
 		<Dialog
@@ -276,32 +278,44 @@ function WelcomeDialog({ open, onDismiss }: { open: boolean; onDismiss: () => vo
 			}}
 		>
 			<DialogContent title={`Welcome to ${APP_NAME}`} className="welcome-dialog">
-				<p>
-					If you're new, the{" "}
-					<a
-						href="#"
-						onClick={(e) => {
-							e.preventDefault();
+				<div className="welcome-dialog__hero">
+					<img src="/icon-1024.png" alt="" width={80} height={80} draggable={false} />
+					<div className="welcome-dialog__name">{APP_NAME}</div>
+					<div className="welcome-dialog__version">
+						v{typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev"}
+					</div>
+				</div>
+				<div className="welcome-dialog__links">
+					<button
+						type="button"
+						className="welcome-dialog__link"
+						onClick={() => {
 							onDismiss();
 							openManual();
 						}}
 					>
-						manual
-					</a>{" "}
-					covers every feature. It's a recommended read and reference point!
-				</p>
-				<p>
-					Got questions or feedback?{" "}
-					<a href="https://discord.gg/4wPNJTuzD8" target="_blank" rel="noopener noreferrer">
-						Join the Discord
-					</a>
-					.
-				</p>
-				<div style={{ display: "flex", justifyContent: "flex-end" }}>
-					<button className="button button--primary" onClick={onDismiss}>
-						Got it
+						<Icon path={mdiBookOpenPageVariantOutline} />
+						<span>
+							<strong>Read the manual</strong>
+							<small>Every feature, explained. A recommended read and reference point.</small>
+						</span>
 					</button>
+					<a
+						className="welcome-dialog__link"
+						href="https://discord.gg/4wPNJTuzD8"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<Icon path={mdiDiscord} />
+						<span>
+							<strong>Join the Discord</strong>
+							<small>Questions, feedback, and release news.</small>
+						</span>
+					</a>
 				</div>
+				<button className="button button--primary welcome-dialog__cta" onClick={onDismiss}>
+					Got it
+				</button>
 			</DialogContent>
 		</Dialog>
 	);
