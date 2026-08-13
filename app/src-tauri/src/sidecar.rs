@@ -501,10 +501,11 @@ fn spawn_resident(plugin_id: &str, spec: &SidecarSpec, epoch: u64) -> AppResult<
         .spawn()
         .map_err(|e| AppError(format!("Failed to start {} serve: {e}", spec.name)))?;
 
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AppError("sidecar stdout unavailable".into()))?;
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(AppError("sidecar stdout unavailable".into()));
+    };
     let stderr = child.stderr.take();
 
     // First stdout line is the port handshake; the rest is drained so a chatty
