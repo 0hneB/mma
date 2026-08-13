@@ -206,17 +206,45 @@ pub(crate) struct CellRender {
 /// overlay back into the batch. The sorted ID invariant on `batch` + `overlay_adds` enables
 /// O(log n) lookups via binary search. Render cells, selection bitmasks, undo/redo stacks,
 /// and tag metadata all live here.
+///
+/// This is also the on-disk `.delta` sidecar format: serializing it is the autosave, and
+/// deserializing it is the reload. `dead_ids`/`patches` are the wire names and shapes
+/// (a seq either way), so the msgpack stays byte-compatible with existing delta files.
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Overlay {
     pub adds: Vec<Location>,
+    #[serde(rename = "dead_ids")]
     pub dead: HashSet<u32>,
+    #[serde(with = "patches_as_seq")]
     pub patches: HashMap<u32, Location>,
     /// Unsaved since the last autosave. Cleared by `store_save_dirty` after a
     /// confirmed write (rev-guarded); NOT a "has uncommitted content" flag — that
     /// is [`Overlay::is_empty`].
+    #[serde(skip)]
     pub dirty: bool,
     /// Bumped on every overlay mutation. `store_save_dirty` clears `dirty` only if
     /// the rev it serialized is still current once the async write lands.
+    #[serde(skip)]
     pub rev: u64,
+}
+
+/// Patches ride the wire as a plain list of locations, keyed back by id on the way in.
+mod patches_as_seq {
+    use super::{HashMap, Location};
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(m: &HashMap<u32, Location>, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_seq(m.values())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<HashMap<u32, Location>, D::Error> {
+        Ok(Vec::<Location>::deserialize(d)?
+            .into_iter()
+            .map(|l| (l.id, l))
+            .collect())
+    }
 }
 
 impl Overlay {
@@ -224,6 +252,17 @@ impl Overlay {
     /// clean but stays non-empty until baked by a commit.
     pub(crate) fn is_empty(&self) -> bool {
         self.adds.is_empty() && self.dead.is_empty() && self.patches.is_empty()
+    }
+
+    /// Apply these changes onto a plain location list read off disk.
+    fn apply_to(self, locs: &mut Vec<Location>) {
+        locs.retain(|l| !self.dead.contains(&l.id));
+        for l in locs.iter_mut() {
+            if let Some(p) = self.patches.get(&l.id) {
+                *l = p.clone();
+            }
+        }
+        locs.extend(self.adds);
     }
 
     /// Mark the overlay mutated: flag it unsaved and invalidate in-flight saves.
@@ -493,13 +532,7 @@ impl Store {
             version: 0,
             alive_count: 0,
             known_field_keys: HashSet::new(),
-            overlay: Overlay {
-                adds: Vec::new(),
-                dead: HashSet::new(),
-                patches: HashMap::new(),
-                dirty: false,
-                rev: 0,
-            },
+            overlay: Overlay::default(),
             render: RenderState {
                 cells: [const { None }; 32],
                 id_to_cell_idx: Vec::new(),
@@ -2029,7 +2062,7 @@ pub async fn store_open_map(
             };
             let delta = if delta_path.exists() {
                 match std::fs::read(&delta_path) {
-                    Ok(d) => match rmp_serde::from_slice::<DeltaOverlay>(&d) {
+                    Ok(d) => match rmp_serde::from_slice::<Overlay>(&d) {
                         Ok(parsed) => Some(parsed),
                         Err(e) => {
                             log::warn!("[store_open] delta parse failed, ignoring: {e}");
@@ -2099,12 +2132,9 @@ pub async fn store_open_map(
     store.mmap_handle = mmap_handle;
 
     // Load uncommitted edits into the overlay; the base batch stays at the last commit.
+    // `adds` are persisted in sorted-id order.
     if let Some(d) = delta {
-        store.overlay.dead = d.dead_ids.into_iter().collect();
-        for p in d.patches {
-            store.overlay.patches.insert(p.id, p);
-        }
-        store.overlay.adds = d.adds; // persisted in sorted-id order
+        store.overlay = d;
         store.overlay.dirty = true;
     }
     store.next_id = seed_next_id(max_id, &store.overlay.adds, &undo, &redo);
@@ -2624,25 +2654,12 @@ pub async fn store_country_distribution(
     crate::borders::tally_countries(&level, &coords)
 }
 
-/// Msgpack-serialized overlay state written to the `.delta` file on autosave.
-/// On next `store_open_map` it is loaded back into the overlay (the base file stays
-/// pinned at the last commit); a commit bakes it into the base and deletes the file.
-#[derive(serde::Serialize, serde::Deserialize)]
-struct DeltaOverlay {
-    adds: Vec<Location>,
-    dead_ids: Vec<u32>,
-    patches: Vec<Location>,
-}
-
-/// Serialize the overlay (uncommitted changes) as a `DeltaOverlay` msgpack blob.
-/// This is the sidecar that lets the base file stay pinned at the last commit.
+/// Msgpack-serialize the overlay (uncommitted changes) for the `.delta` sidecar.
+/// This is what lets the base file stay pinned at the last commit: on next
+/// `store_open_map` the blob is loaded straight back into the overlay, and a commit
+/// bakes it into the base and deletes the file.
 fn overlay_delta_bytes(store: &Store) -> AppResult<Vec<u8>> {
-    let overlay = DeltaOverlay {
-        adds: store.overlay.adds.clone(),
-        dead_ids: store.overlay.dead.iter().cloned().collect(),
-        patches: store.overlay.patches.values().cloned().collect(),
-    };
-    rmp_serde::to_vec_named(&overlay).map_err(AppError::from)
+    rmp_serde::to_vec_named(&store.overlay).map_err(AppError::from)
 }
 
 /// Read a map's full current state from disk = base file + uncommitted delta sidecar.
@@ -2661,17 +2678,8 @@ pub(crate) fn read_full_state_from_disk(map_id: &str) -> AppResult<Vec<Location>
     let delta_path = storage::arrow_delta_path(map_id)?;
     if delta_path.exists() {
         if let Ok(data) = std::fs::read(&delta_path) {
-            if let Ok(delta) = rmp_serde::from_slice::<DeltaOverlay>(&data) {
-                let dead: HashSet<u32> = delta.dead_ids.into_iter().collect();
-                let patches: HashMap<u32, Location> =
-                    delta.patches.into_iter().map(|l| (l.id, l)).collect();
-                locs.retain(|l| !dead.contains(&l.id));
-                for l in locs.iter_mut() {
-                    if let Some(p) = patches.get(&l.id) {
-                        *l = p.clone();
-                    }
-                }
-                locs.extend(delta.adds);
+            if let Ok(delta) = rmp_serde::from_slice::<Overlay>(&data) {
+                delta.apply_to(&mut locs);
             }
         }
     }
@@ -2947,14 +2955,10 @@ pub fn store_copy_locations_to_map(
         }
         let t_save = std::time::Instant::now();
         let delta_path = storage::arrow_delta_path(&target_map_id)?;
-        let mut delta: DeltaOverlay = if delta_path.exists() {
+        let mut delta: Overlay = if delta_path.exists() {
             rmp_serde::from_slice(&std::fs::read(&delta_path)?)?
         } else {
-            DeltaOverlay {
-                adds: Vec::new(),
-                dead_ids: Vec::new(),
-                patches: Vec::new(),
-            }
+            Overlay::default()
         };
         delta.adds.extend(fresh);
         let bytes = rmp_serde::to_vec_named(&delta)?;

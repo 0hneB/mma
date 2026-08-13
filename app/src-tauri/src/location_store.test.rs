@@ -1179,20 +1179,26 @@ fn bake_overlay_all_three_simultaneously() {
 }
 
 // -----------------------------------------------------------------------
-// DeltaOverlay msgpack round-trip
+// Overlay (.delta sidecar) msgpack round-trip
 // -----------------------------------------------------------------------
+
+/// The overlay shape a delta file carries: adds, dead ids, patches keyed by id.
+fn delta_overlay(adds: Vec<Location>, dead: &[u32], patches: Vec<Location>) -> Overlay {
+    Overlay {
+        adds,
+        dead: dead.iter().copied().collect(),
+        patches: patches.into_iter().map(|l| (l.id, l)).collect(),
+        ..Overlay::default()
+    }
+}
 
 #[test]
 fn delta_overlay_msgpack_round_trip_empty() {
-    let overlay = DeltaOverlay {
-        adds: vec![],
-        dead_ids: vec![],
-        patches: vec![],
-    };
+    let overlay = delta_overlay(vec![], &[], vec![]);
     let bytes = rmp_serde::to_vec_named(&overlay).unwrap();
-    let restored: DeltaOverlay = rmp_serde::from_slice(&bytes).unwrap();
+    let restored: Overlay = rmp_serde::from_slice(&bytes).unwrap();
     assert!(restored.adds.is_empty());
-    assert!(restored.dead_ids.is_empty());
+    assert!(restored.dead.is_empty());
     assert!(restored.patches.is_empty());
 }
 
@@ -1200,18 +1206,16 @@ fn delta_overlay_msgpack_round_trip_empty() {
 fn delta_overlay_msgpack_round_trip_with_data() {
     let l1 = loc_with_tags(1, 48.8, 2.35, vec![10, 20]);
     let l2 = loc_with_heading(2, -33.8, 151.2, 90.0);
-    let overlay = DeltaOverlay {
-        adds: vec![l1.clone()],
-        dead_ids: vec![99, 100],
-        patches: vec![l2.clone()],
-    };
+    let overlay = delta_overlay(vec![l1.clone()], &[99, 100], vec![l2.clone()]);
     let bytes = rmp_serde::to_vec_named(&overlay).unwrap();
-    let restored: DeltaOverlay = rmp_serde::from_slice(&bytes).unwrap();
+    let restored: Overlay = rmp_serde::from_slice(&bytes).unwrap();
     assert_eq!(restored.adds.len(), 1);
     assert_eq!(restored.adds[0], l1);
-    assert_eq!(restored.dead_ids, vec![99, 100]);
+    let mut dead: Vec<u32> = restored.dead.into_iter().collect();
+    dead.sort_unstable();
+    assert_eq!(dead, vec![99, 100]);
     assert_eq!(restored.patches.len(), 1);
-    assert_eq!(restored.patches[0], l2);
+    assert_eq!(restored.patches[&2], l2);
 }
 
 #[test]
@@ -1220,16 +1224,51 @@ fn delta_overlay_preserves_extra_fields() {
     l.extra = Some(serde_json::from_str(r#"{"country":"FR","altitude":35.2}"#).unwrap());
     l.pano_id = Some("CAoSLEF".into());
     l.modified_at = Some(1_705_276_800);
-    let overlay = DeltaOverlay {
-        adds: vec![l.clone()],
-        dead_ids: vec![],
-        patches: vec![],
-    };
+    let overlay = delta_overlay(vec![l.clone()], &[], vec![]);
     let bytes = rmp_serde::to_vec_named(&overlay).unwrap();
-    let restored: DeltaOverlay = rmp_serde::from_slice(&bytes).unwrap();
+    let restored: Overlay = rmp_serde::from_slice(&bytes).unwrap();
     assert_eq!(restored.adds[0].extra, l.extra);
     assert_eq!(restored.adds[0].pano_id, l.pano_id);
     assert_eq!(restored.adds[0].modified_at, l.modified_at);
+}
+
+/// The literal on-disk `.delta` shape, restated independently of `Overlay` so a change
+/// to the in-memory field types cannot silently rewrite the file format. Unknown fields
+/// are rejected, so `dirty`/`rev` leaking into the file fails here.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DeltaFile {
+    adds: Vec<Location>,
+    dead_ids: Vec<u32>,
+    patches: Vec<Location>,
+}
+
+#[test]
+fn delta_overlay_wire_format_is_stable() {
+    let l1 = loc(1, 1.0, 2.0);
+    let l3 = loc(3, 3.0, 4.0);
+
+    // Written by the app, read by the format spec.
+    let overlay = delta_overlay(vec![l1.clone()], &[7], vec![l3.clone()]);
+    let bytes = rmp_serde::to_vec_named(&overlay).unwrap();
+    let on_disk: DeltaFile = rmp_serde::from_slice(&bytes).unwrap();
+    assert_eq!(on_disk.adds, vec![l1.clone()]);
+    assert_eq!(on_disk.dead_ids, vec![7]);
+    assert_eq!(on_disk.patches, vec![l3.clone()]);
+
+    // Written by an older build, read by the app.
+    let legacy = rmp_serde::to_vec_named(&DeltaFile {
+        adds: vec![l1.clone()],
+        dead_ids: vec![7],
+        patches: vec![l3.clone()],
+    })
+    .unwrap();
+    let restored: Overlay = rmp_serde::from_slice(&legacy).unwrap();
+    assert_eq!(restored.adds, vec![l1]);
+    assert!(restored.dead.contains(&7));
+    assert_eq!(restored.patches[&3], l3);
+    assert!(!restored.dirty, "dirty is not carried by the file");
+    assert_eq!(restored.rev, 0);
 }
 
 // -----------------------------------------------------------------------
@@ -1675,21 +1714,17 @@ fn delta_overlay_only_includes_actual_changes() {
     // Modify only l1
     store.overlay_update(1, &patch!(heading: 90.0));
 
-    // Build delta overlay
-    let overlay = DeltaOverlay {
-        adds: store.overlay.adds.clone(),
-        dead_ids: store.overlay.dead.iter().cloned().collect(),
-        patches: store.overlay.patches.values().cloned().collect(),
-    };
+    // The delta is the overlay itself.
+    let bytes = overlay_delta_bytes(&store).unwrap();
+    let overlay: Overlay = rmp_serde::from_slice(&bytes).unwrap();
     assert!(overlay.adds.is_empty(), "no new locations added");
-    assert!(overlay.dead_ids.is_empty(), "no locations deleted");
+    assert!(overlay.dead.is_empty(), "no locations deleted");
     assert_eq!(
         overlay.patches.len(),
         1,
         "only modified location in patches"
     );
-    assert_eq!(overlay.patches[0].id, 1);
-    assert_eq!(overlay.patches[0].heading, 90.0);
+    assert_eq!(overlay.patches[&1].heading, 90.0);
 }
 
 #[test]
@@ -1707,20 +1742,15 @@ fn delta_overlay_round_trip_preserves_store_state() {
     store.overlay_update(2, &patch!(heading: 180.0));
 
     // Serialize
-    let overlay = DeltaOverlay {
-        adds: store.overlay.adds.clone(),
-        dead_ids: store.overlay.dead.iter().cloned().collect(),
-        patches: store.overlay.patches.values().cloned().collect(),
-    };
-    let bytes = rmp_serde::to_vec_named(&overlay).unwrap();
+    let bytes = overlay_delta_bytes(&store).unwrap();
 
     // Simulate reopen: deserialize and verify
-    let restored: DeltaOverlay = rmp_serde::from_slice(&bytes).unwrap();
+    let restored: Overlay = rmp_serde::from_slice(&bytes).unwrap();
     assert_eq!(restored.adds.len(), 1);
     assert_eq!(restored.adds[0].id, 3);
-    assert!(restored.dead_ids.contains(&1));
+    assert!(restored.dead.contains(&1));
     assert_eq!(restored.patches.len(), 1);
-    assert_eq!(restored.patches[0].heading, 180.0);
+    assert_eq!(restored.patches[&2].heading, 180.0);
 }
 
 // -----------------------------------------------------------------------
@@ -2942,18 +2972,14 @@ fn close_and_reopen(store: &Store) -> Store {
     let undo_bytes = rmp_serde::to_vec_named(&store.edits.undo).unwrap();
     let redo_bytes = rmp_serde::to_vec_named(&store.edits.redo).unwrap();
 
-    let delta: DeltaOverlay = rmp_serde::from_slice(&delta_bytes).unwrap();
+    let delta: Overlay = rmp_serde::from_slice(&delta_bytes).unwrap();
     let undo: Vec<EditEntry> = rmp_serde::from_slice(&undo_bytes).unwrap();
     let redo: Vec<EditEntry> = rmp_serde::from_slice(&redo_bytes).unwrap();
 
     let mut reopened = Store::new();
     reopened.map_id = store.map_id.clone();
     reopened.batch = Some(empty_batch());
-    reopened.overlay.dead = delta.dead_ids.into_iter().collect();
-    for p in delta.patches {
-        reopened.overlay.patches.insert(p.id, p);
-    }
-    reopened.overlay.adds = delta.adds;
+    reopened.overlay = delta;
     reopened.overlay.dirty = true;
     reopened.next_id = seed_next_id(0, &reopened.overlay.adds, &undo, &redo);
     reopened.alive_count = reopened.overlay.adds.len();
@@ -3535,7 +3561,7 @@ fn delta_parse_never_panics_on_corrupt_bytes() {
         vec![0xff, 0x00, 0x13, 0x37, 0xde, 0xad, 0xbe, 0xef],
     ];
     for bytes in &cases {
-        let result = std::panic::catch_unwind(|| rmp_serde::from_slice::<DeltaOverlay>(bytes));
+        let result = std::panic::catch_unwind(|| rmp_serde::from_slice::<Overlay>(bytes));
         assert!(result.is_ok(), "parsing must not panic: {:?}", bytes);
         assert!(result.unwrap().is_err(), "must fail to parse: {:?}", bytes);
     }
@@ -3548,7 +3574,7 @@ fn delta_parse_never_panics_on_truncated_bytes() {
     assert!(full_bytes.len() > 1, "sanity: overlay has real content");
     let truncated = &full_bytes[..full_bytes.len() / 2];
 
-    let result = std::panic::catch_unwind(|| rmp_serde::from_slice::<DeltaOverlay>(truncated));
+    let result = std::panic::catch_unwind(|| rmp_serde::from_slice::<Overlay>(truncated));
     assert!(result.is_ok(), "parsing must not panic on truncated bytes");
     assert!(
         result.unwrap().is_err(),
@@ -3560,21 +3586,11 @@ fn delta_parse_never_panics_on_truncated_bytes() {
 fn delta_bytes_roundtrip_exact() {
     let store = store_with_full_overlay();
     let bytes = overlay_delta_bytes(&store).unwrap();
-    let parsed: DeltaOverlay = rmp_serde::from_slice(&bytes).unwrap();
+    let parsed: Overlay = rmp_serde::from_slice(&bytes).unwrap();
 
     assert_eq!(parsed.adds, store.overlay.adds, "adds preserved exactly");
-
-    let mut expected_dead: Vec<u32> = store.overlay.dead.iter().cloned().collect();
-    expected_dead.sort_unstable();
-    let mut got_dead = parsed.dead_ids.clone();
-    got_dead.sort_unstable();
-    assert_eq!(got_dead, expected_dead, "dead ids preserved exactly");
-
-    let mut expected_patches: Vec<Location> = store.overlay.patches.values().cloned().collect();
-    expected_patches.sort_by_key(|l| l.id);
-    let mut got_patches = parsed.patches.clone();
-    got_patches.sort_by_key(|l| l.id);
-    assert_eq!(got_patches, expected_patches, "patches preserved exactly");
+    assert_eq!(parsed.dead, store.overlay.dead, "dead ids preserved exactly");
+    assert_eq!(parsed.patches, store.overlay.patches, "patches preserved exactly");
 }
 
 // -----------------------------------------------------------------------
@@ -3595,18 +3611,10 @@ fn crash_window_stale_delta_double_applies_baked_locations() {
     store.alive_count = x.len();
 
     // Stale delta from before the bake: re-adds the same ids the base now already has.
-    let delta = DeltaOverlay {
-        adds: x.clone(),
-        dead_ids: vec![],
-        patches: vec![],
-    };
+    let delta = delta_overlay(x.clone(), &[], vec![]);
 
     // Mirror store_open_map's delta-application block exactly.
-    store.overlay.dead = delta.dead_ids.into_iter().collect();
-    for p in delta.patches {
-        store.overlay.patches.insert(p.id, p);
-    }
-    store.overlay.adds = delta.adds;
+    store.overlay = delta;
     store.overlay.dirty = true;
 
     // Mirror the post-load alive_count recompute via scan_locations.
