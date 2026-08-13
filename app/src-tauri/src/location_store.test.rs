@@ -1805,6 +1805,47 @@ fn push_resolved(store: &mut Store, key: &str, color: [u8; 3], members: &[u32]) 
     });
 }
 
+/// Generator, not an assertion. `cargo test emit_render_fixture -- --ignored` rewrites
+/// `app/test/unit/fixtures/render-buffer.bin`, the scene `cellManager.test.ts` parses:
+/// the writer here and the reader there then agree on one artifact instead of two
+/// restatements of the layout. Content is fixed (no clock, no ids from disk), so a
+/// regenerated file is byte-identical unless the format actually changed.
+///
+/// Scene: 4 locations in 3 cells (d: id 3, r: id 2, u: ids 1 and 4), arrow style, and
+/// two selections -- "a" [255,0,0] over ids 1 and 4, "b" [0,0,255] over id 2.
+#[test]
+#[ignore]
+fn emit_render_fixture() {
+    let locs = vec![
+        loc_with_heading(1, 48.8, 2.35, 90.0),
+        loc_with_heading(2, -33.8, 151.2, 180.0),
+        loc_with_heading(3, 40.7, -74.0, 270.0),
+        loc_with_heading(4, 48.9, 2.4, 45.0),
+    ];
+    let mut store = setup_store_with(&locs);
+    store.bake_overlay();
+    push_resolved(&mut store, "a", [255, 0, 0], &[1, 4]);
+    push_resolved(&mut store, "b", [0, 0, 255], &[2]);
+    for id in [1, 2, 4] {
+        store.selections.ids.insert(id);
+    }
+
+    let req = RenderRequest {
+        west: -180.0,
+        south: -90.0,
+        east: 180.0,
+        north: 90.0,
+        selected_ids: None,
+        marker_style: "arrow".into(),
+        marker_color: None,
+    };
+    let buf = build_cell_render_buffers(&mut store, &req);
+
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../test/unit/fixtures");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("render-buffer.bin"), &buf).unwrap();
+}
+
 #[test]
 fn render_buffer_with_selection_overlay() {
     let l1 = loc(1, 10.0, 20.0);
