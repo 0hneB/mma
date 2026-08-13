@@ -603,8 +603,8 @@ input {
 	/* Pre-boot defaults only: the runtime accent follows the SV coverage line
 	   color (applyAccentColor in lib/util/color.ts stamps these on :root). */
 	--accent: #1098ad;
-	--accent-hover: #13b2c9;
-	--accent-muted: #1098ad26;
+	--accent-hover: hsl(from var(--accent) h s min(calc(l + 8), 95));
+	--accent-muted: color-mix(in srgb, var(--accent) 15%, transparent);
 	--on-accent: #fff;
 
 	/* primary actions */
