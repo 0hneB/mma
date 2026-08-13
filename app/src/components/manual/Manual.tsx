@@ -3,6 +3,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { mdiClose, mdiChevronLeft, mdiChevronRight } from "@mdi/js";
 import { CHAPTERS } from "@/components/manual/chapters";
 import { MANUAL_COMPONENTS, ManualNav } from "@/components/manual/components";
+import { useHotkey } from "@/lib/hooks/useHotkey";
 import "@/components/manual/manual.css";
 
 export function Manual({
@@ -20,13 +21,7 @@ export function Manual({
 	const chapter = CHAPTERS[index];
 	const Body = chapter.Body;
 
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [onClose]);
+	useHotkey("escape", onClose);
 
 	useEffect(() => {
 		contentRef.current?.scrollTo(0, 0);

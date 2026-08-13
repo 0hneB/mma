@@ -1,5 +1,6 @@
 import { imageKeyToPanoId } from "@/lib/sv/svMeta";
 import { fovToZoom, schemeBase } from "@/lib/util/util";
+import { runConcurrent } from "@/lib/util/concurrent";
 import { LocationFlag } from "@/types";
 import type { Location } from "@/bindings.gen";
 
@@ -171,14 +172,13 @@ export async function parseUrlList(input: string): Promise<ParsedLocation[]> {
 	if (lines.length === 0 || !URL_LINE.test(lines[0])) return [];
 
 	const results: (ParsedLocation | null)[] = new Array(lines.length);
-	let next = 0;
-	const worker = async () => {
-		while (next < lines.length) {
-			const i = next++;
-			results[i] = await parseMapsUrl(lines[i]);
-		}
-	};
-	await Promise.all(Array.from({ length: Math.min(5, lines.length) }, worker));
+	await runConcurrent(
+		lines,
+		async (line, i) => {
+			results[i] = await parseMapsUrl(line);
+		},
+		{ concurrency: 5 },
+	);
 	return results.filter((r): r is ParsedLocation => r != null);
 }
 

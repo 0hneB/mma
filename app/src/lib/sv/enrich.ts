@@ -15,6 +15,7 @@ import {
 } from "@/lib/data/fieldDefs";
 import { registerSvResolver, runResolvers, type SvResolver } from "@/lib/sv/svRunner";
 import { SV_CONCURRENCY } from "@/lib/sv/constants";
+import { runConcurrent } from "@/lib/util/concurrent";
 import { log } from "@/lib/util/log";
 import { cmd } from "@/lib/commands";
 import { toast } from "@/lib/util/toast";
@@ -129,12 +130,13 @@ export const exactDateProvider: EnrichmentProvider = {
 		const pending = locations.filter(
 			(l) => l.extra?.imageDate && (ctx?.force || l.extra?.datetime == null),
 		);
-		let next = 0;
-		async function worker() {
-			// On abort, stop early and return what resolved so far -- the runner
-			// persists partial results before propagating the abort.
-			while (next < pending.length && !ctx?.signal?.aborted) {
-				const loc = pending[next++];
+		// On abort, stop early and return what resolved so far -- the runner persists
+		// partial results before propagating the abort, so the signal isn't passed to
+		// runConcurrent (which would throw instead).
+		await runConcurrent(
+			pending,
+			async (loc) => {
+				if (ctx?.signal?.aborted) return;
 				try {
 					const ts = await resolveExactTimestamp(
 						loc.lat,
@@ -155,10 +157,8 @@ export const exactDateProvider: EnrichmentProvider = {
 					ctx?.onFail?.(loc.id);
 				}
 				ctx?.onUnit?.();
-			}
-		}
-		await Promise.all(
-			Array.from({ length: Math.min(SV_CONCURRENCY, pending.length) }, () => worker()),
+			},
+			{ concurrency: SV_CONCURRENCY },
 		);
 		return out;
 	},
