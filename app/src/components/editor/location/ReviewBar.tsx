@@ -8,6 +8,7 @@ import {
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { mdiClose } from "@mdi/js";
+import { t } from "@/lib/i18n";
 
 /** Header shown above the pano during a review pass. Single point of review-UI in the
  *  preview; the rest of LocationPreview only calls reviewNext/Prev/Delete. */
@@ -21,7 +22,7 @@ export const ReviewBar = memo(function ReviewBar() {
 	return (
 		<div className="review-header">
 			<span>
-				Reviewing{" "}
+				{t("Reviewing")}{" "}
 				<span
 					className="mono"
 					style={{ color: reviewedHere ? "var(--constructive)" : undefined, fontWeight: 600 }}
@@ -34,7 +35,7 @@ export const ReviewBar = memo(function ReviewBar() {
 				<Tooltip content="Exit review" side="bottom">
 					<button
 						className="icon-button"
-						aria-label="Exit review"
+						aria-label={t("Exit review")}
 						onClick={cancelReview}
 						data-qa="review-cancel"
 					>

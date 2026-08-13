@@ -7,6 +7,7 @@ import { latLngToWorld } from "@/lib/geo/mercator";
 import { densifyRing, unwrapLng } from "@/lib/geo/geo";
 import { POLYGON_CLOSE_VERTEX_PX } from "@/lib/render/buildSceneLayers";
 import { clamp } from "@/types/util";
+import { t } from "@/lib/i18n";
 
 type DrawMode = "polygon" | "rectangle" | "freehand" | null;
 
@@ -248,7 +249,7 @@ export function PolygonTools({
 				type="button"
 				onClick={() => setMode((m) => (m === "polygon" ? null : "polygon"))}
 				className={mode === "polygon" ? "is-active" : undefined}
-				aria-label="Draw a polygon selection"
+				aria-label={t("Draw a polygon selection")}
 			>
 				<Icon path={polygonOutline} />
 			</button>
@@ -256,7 +257,7 @@ export function PolygonTools({
 				type="button"
 				onClick={() => setMode((m) => (m === "rectangle" ? null : "rectangle"))}
 				className={mode === "rectangle" ? "is-active" : undefined}
-				aria-label="Draw a rectangle selection"
+				aria-label={t("Draw a rectangle selection")}
 			>
 				<Icon path={rectangleOutline} />
 			</button>
@@ -264,7 +265,7 @@ export function PolygonTools({
 				type="button"
 				onClick={() => setMode((m) => (m === "freehand" ? null : "freehand"))}
 				className={mode === "freehand" ? "is-active" : undefined}
-				aria-label="Freehand polygon selection"
+				aria-label={t("Freehand polygon selection")}
 			>
 				<Icon path={mdiPencil} />
 			</button>

@@ -26,6 +26,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { clamp, range } from "@/types/util";
 import { DocRenderer } from "@/components/editor/doclink/DocRenderer";
 import "./doclink.css";
+import { t } from "@/lib/i18n";
 
 const WIDTH_RANGE = range([280, 900]);
 
@@ -178,7 +179,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					<button
 						className="icon-button"
 						type="button"
-						aria-label="Refresh document"
+						aria-label={t("Refresh document")}
 						disabled={!url || loading}
 						onClick={onRefresh}
 					>
@@ -192,7 +193,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					<button
 						className="icon-button"
 						type="button"
-						aria-label="Toggle whole document"
+						aria-label={t("Toggle whole document")}
 						disabled={!docRef?.anchor}
 						onClick={() => setWholeDoc((w) => !w)}
 					>
@@ -206,7 +207,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					<button
 						className="icon-button"
 						type="button"
-						aria-label="Pin section"
+						aria-label={t("Pin section")}
 						onClick={() => setPinned((p) => !p)}
 					>
 						<Icon path={pinned ? mdiPin : mdiPinOutline} />
@@ -216,7 +217,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					<button
 						className="icon-button"
 						type="button"
-						aria-label="Open in browser"
+						aria-label={t("Open in browser")}
 						disabled={!url}
 						onClick={() => url && void openExternal(url)}
 					>
@@ -227,7 +228,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					<button
 						className="icon-button"
 						type="button"
-						aria-label="Close doclink panel"
+						aria-label={t("Close doclink panel")}
 						onClick={onClose}
 					>
 						<Icon path={mdiClose} />
@@ -261,20 +262,26 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 					</div>
 				)}
 				{tags.length === 0 ? (
-					<div className="doclink-panel__status">No tags in this map carry document links.</div>
+					<div className="doclink-panel__status">
+						{t("No tags in this map carry document links.")}
+					</div>
 				) : !selTag ? (
 					<div className="doclink-panel__status">
-						Select a tag with document links to view its section.
+						{t("Select a tag with document links to view its section.")}
 					</div>
 				) : !url ? (
-					<div className="doclink-panel__status">No document link selected.</div>
+					<div className="doclink-panel__status">{t("No document link selected.")}</div>
 				) : !docRef ? (
-					<div className="doclink-panel__status">Unsupported document link: {url}</div>
+					<div className="doclink-panel__status">
+						{t("Unsupported document link:")} {url}
+					</div>
 				) : error ? (
-					<div className="doclink-panel__status">Couldn't load the document. {error.message}</div>
+					<div className="doclink-panel__status">
+						{t("Couldn't load the document.")} {error.message}
+					</div>
 				) : shown && !shown.anchorFound ? (
 					<div className="doclink-panel__status">
-						The linked section no longer exists in this document.
+						{t("The linked section no longer exists in this document.")}
 					</div>
 				) : shown?.blocks ? (
 					<DocRenderer blocks={shown.blocks} />

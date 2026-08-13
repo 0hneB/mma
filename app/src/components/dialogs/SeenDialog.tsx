@@ -11,6 +11,8 @@ import {
 	getSeenCountries,
 	getSeenMaps,
 } from "@/lib/seen/seen";
+import { dayMonthFmt } from "@/lib/util/format";
+import { getLocale, t } from "@/lib/i18n";
 import type { SeenEntry, SeenFilter } from "@/bindings.gen";
 
 const PAGE_SIZE = 9;
@@ -19,9 +21,13 @@ function formatDateTime(ms: number): string {
 	const d = new Date(ms);
 	const now = new Date();
 	const sameDay = d.toDateString() === now.toDateString();
-	const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+	const time = d.toLocaleTimeString(getLocale(), {
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+	});
 	if (sameDay) return time;
-	return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + time;
+	return dayMonthFmt.format(d) + " " + time;
 }
 
 function SeenEntryCard({
@@ -151,7 +157,7 @@ export function SeenDialog({
 						value={filterCountry || "_all"}
 						onChange={(e) => setFilterCountry(e.target.value === "_all" ? "" : e.target.value)}
 					>
-						<option value="_all">All countries</option>
+						<option value="_all">{t("All countries")}</option>
 						{countries.map((c) => (
 							<option key={c} value={c}>
 								{c.toUpperCase()}
@@ -163,7 +169,7 @@ export function SeenDialog({
 						value={filterMap || "_all"}
 						onChange={(e) => setFilterMap(e.target.value === "_all" ? "" : e.target.value)}
 					>
-						<option value="_all">All maps</option>
+						<option value="_all">{t("All maps")}</option>
 						{maps.map((m) => (
 							<option key={m.id} value={m.id}>
 								{m.name}
@@ -173,14 +179,14 @@ export function SeenDialog({
 					<TextInput
 						className="seen-dialog__search"
 						type="text"
-						placeholder="Search address..."
+						placeholder={t("Search address...")}
 						value={filterSearch}
 						onChange={(e) => handleSearchInput(e.target.value)}
 					/>
 				</div>
 				<div className="seen-dialog__grid">
 					{entries.length === 0 && !loading ? (
-						<div className="seen-dialog__empty">No panos found.</div>
+						<div className="seen-dialog__empty">{t("No panos found.")}</div>
 					) : (
 						entries.map((e) => <SeenEntryCard key={e.id} entry={e} onLoad={handleLoad} />)
 					)}
@@ -195,14 +201,14 @@ export function SeenDialog({
 					</Button>
 					<div className="seen-dialog__pagination">
 						<Button disabled={page === 0 || loading} onClick={() => load(page - 1, buildFilter())}>
-							Prev
+							{t("Prev")}
 						</Button>
 						<span className="mono">{totalPages > 0 ? `${page + 1} / ${totalPages}` : "0 / 0"}</span>
 						<Button
 							disabled={page >= totalPages - 1 || loading}
 							onClick={() => load(page + 1, buildFilter())}
 						>
-							Next
+							{t("Next")}
 						</Button>
 					</div>
 				</div>

@@ -5,23 +5,24 @@ import { type PanoReference } from "@/lib/sv/lookup";
 import { useCameraType, type FullCameraType } from "./useCameraType";
 import { usePanoViewer } from "./PanoViewerContext";
 import { NSelect } from "@/components/primitives/NSelect";
+import { getLocale, t } from "@/lib/i18n";
 
 function PanoBadge({ cameraType }: { cameraType: FullCameraType | null }) {
 	switch (cameraType) {
 		case "unofficial":
 			return <span className="pano-option__badge badge badge--unofficial">unofficial</span>;
 		case "gen1":
-			return <span className="pano-option__badge badge badge--gen1">Gen1</span>;
+			return <span className="pano-option__badge badge badge--gen1">{t("Gen1")}</span>;
 		case "gen2":
-			return <span className="pano-option__badge badge badge--gen2">Gen2/3</span>;
+			return <span className="pano-option__badge badge badge--gen2">{t("Gen2/3")}</span>;
 		case "gen4":
-			return <span className="pano-option__badge badge badge--gen4">Gen4</span>;
+			return <span className="pano-option__badge badge badge--gen4">{t("Gen4")}</span>;
 		case "badcam":
-			return <span className="pano-option__badge badge badge--badcam">Badcam</span>;
+			return <span className="pano-option__badge badge badge--badcam">{t("Badcam")}</span>;
 		case "tripod":
-			return <span className="pano-option__badge badge badge--tripod">Tripod</span>;
+			return <span className="pano-option__badge badge badge--tripod">{t("Tripod")}</span>;
 		case "trekker":
-			return <span className="pano-option__badge badge badge--rb">Trekker</span>;
+			return <span className="pano-option__badge badge badge--rb">{t("Trekker")}</span>;
 		default:
 			return null;
 	}
@@ -68,7 +69,7 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 	const tzOption = dateTimezone === "utc" ? "UTC" : (resolvedTz ?? undefined);
 	const exactLabel = exactDate.ts
 		? exactDateFormat === "datetime"
-			? new Date(exactDate.ts * 1000).toLocaleString("en-US", {
+			? new Date(exactDate.ts * 1000).toLocaleString(getLocale(), {
 					year: "numeric",
 					month: "short",
 					day: "numeric",
@@ -76,7 +77,7 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 					minute: "2-digit",
 					timeZone: tzOption,
 				})
-			: new Date(exactDate.ts * 1000).toLocaleDateString("en-US", {
+			: new Date(exactDate.ts * 1000).toLocaleDateString(getLocale(), {
 					year: "numeric",
 					month: "short",
 					day: "numeric",
@@ -88,7 +89,7 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 		return (
 			<NSelect className="pano-date-select" disabled>
 				<button type="button" className="pano-date-select__trigger">
-					<span className="pano-value">No dates</span>
+					<span className="pano-value">{t("No dates")}</span>
 				</button>
 			</NSelect>
 		);
@@ -117,15 +118,15 @@ export const PanoDatePicker = memo(function PanoDatePicker({
 					<span className="badge badge--number">{sorted.length}</span>
 				</span>
 			</button>
-			<optgroup label="Specific Panorama">
+			<optgroup label={t("Specific Panorama")}>
 				{sorted.map((d) => (
 					<PanoOption key={d.pano} pano={d} />
 				))}
 			</optgroup>
-			<optgroup label="Default / auto-updating">
+			<optgroup label={t("Default / auto-updating")}>
 				<option value="default" className="pano-option">
 					<span className="pano-option__name">
-						Default
+						{t("Default")}
 						{(defaultEntry?.date ?? sorted[sorted.length - 1]?.date)
 							? ` (${dateFmt.format((defaultEntry?.date ?? sorted[sorted.length - 1]?.date)!)})`
 							: ""}

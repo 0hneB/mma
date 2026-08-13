@@ -9,6 +9,7 @@ import { Button } from "@/components/primitives/Button";
 import { useMapSetting } from "@/store/useMapSetting";
 import { getMapCopyBindingKey, withMapCopyBinding } from "@/lib/map/mapKeyBindings";
 import { getMapState } from "@/store/useMapStore";
+import { t } from "@/lib/i18n";
 
 /** Assign per-map hotkeys that copy the active location into other maps.
  *  Shows only configured maps; new targets are added via autocomplete (type a
@@ -78,11 +79,12 @@ export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
 				if (!open) onClose();
 			}}
 		>
-			<DialogContent title="Copy location to map (hotkeys)" className="copy-to-map-modal-host">
+			<DialogContent title={t("Copy location to map (hotkeys)")} className="copy-to-map-modal-host">
 				<div className="copy-to-map-modal">
 					<p className="copy-to-map-modal__hint">
-						Pressing an assigned key while a location is open copies that location into the map
-						(duplicates are skipped).
+						{t(
+							"Pressing an assigned key while a location is open copies that location into the map\n\t\t\t\t\t\t(duplicates are skipped).",
+						)}
 					</p>
 					{rowIds.length > 0 && (
 						<ul className="copy-to-map-modal__list">
@@ -96,7 +98,7 @@ export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
 											{meta?.folder && <small> · {meta.folder}</small>}
 										</span>
 										<HotkeyInput value={key} onChange={(combo) => setRowKey(id, combo)} />
-										<Button onClick={() => removeRow(id)}>Remove</Button>
+										<Button onClick={() => removeRow(id)}>{t("Remove")}</Button>
 									</li>
 								);
 							})}
@@ -104,7 +106,7 @@ export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
 					)}
 					<SuggestInput
 						containerClassName="copy-to-map-modal__add"
-						placeholder="Add a map..."
+						placeholder={t("Add a map...")}
 						value={query}
 						onChange={setQuery}
 						suggestions={suggestions}

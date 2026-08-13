@@ -6,6 +6,7 @@ import { mdiMinus, mdiPlus } from "@mdi/js";
 import { useSetting, setSetting } from "@/store/settings";
 import { range, clamp } from "@/types/util";
 import { useHoverExpand } from "@/lib/hooks/useHoverExpand";
+import { t } from "@/lib/i18n";
 
 const PREVIEW_SCALE = range([0.5, 2]);
 const PREVIEW_SCALE_STEP = 0.5;
@@ -65,7 +66,7 @@ export function FullscreenMiniLocationPreview({ children }: { children: ReactNod
 				<button
 					type="button"
 					className="fullscreen-mini-location__size-btn"
-					aria-label="Smaller location preview"
+					aria-label={t("Smaller location preview")}
 					disabled={scale <= PREVIEW_SCALE.min}
 					onClick={() => setScale(scale - PREVIEW_SCALE_STEP)}
 				>
@@ -74,7 +75,7 @@ export function FullscreenMiniLocationPreview({ children }: { children: ReactNod
 				<button
 					type="button"
 					className="fullscreen-mini-location__size-btn"
-					aria-label="Larger location preview"
+					aria-label={t("Larger location preview")}
 					disabled={scale >= PREVIEW_SCALE.max}
 					onClick={() => setScale(scale + PREVIEW_SCALE_STEP)}
 				>

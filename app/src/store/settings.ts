@@ -1,9 +1,17 @@
 import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
 import { getLocal, setLocal, reloadLocal } from "@/lib/hooks/useLocalStorage";
+import { msg } from "@/lib/i18n";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
 import type { RGB } from "@/lib/util/color";
+
+/** `en-XA` is the generated pseudolocale -- accented and ~40% longer, so unextracted strings and
+ *  layout overflow are visible without a translator. Offered in dev builds only. */
+export const LANGUAGES = {
+	en: msg("English"),
+	"en-XA": msg("Pseudolocale"),
+} as const;
 
 export const MOVEMENT_MODES = {
 	moving: "Moving",
@@ -79,6 +87,7 @@ export const PREVIEW_ASPECT_RATIOS = {
 	free: "Free",
 } as const;
 
+export type Language = keyof typeof LANGUAGES;
 export type MovementMode = keyof typeof MOVEMENT_MODES;
 export const MOVEMENT_CYCLE = Object.keys(MOVEMENT_MODES) as MovementMode[];
 export type ExactDateFormat = keyof typeof EXACT_DATE_FORMATS;
@@ -144,6 +153,8 @@ const DEFAULTS = {
 	slowModifier: 4,
 	showFps: false,
 	mapListFields: ["locationCount"] as MapListField[],
+	/** Read once at boot; changing it relaunches the app rather than re-rendering. */
+	language: "en" as Language,
 	/** Reopen the maps that were open when the session last ended (main window closed). */
 	restoreSession: true,
 	/** Discord Rich Presence: off, generic (no map name), or full (map name + count). */

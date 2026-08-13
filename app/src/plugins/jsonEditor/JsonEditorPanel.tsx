@@ -3,6 +3,7 @@ import type { Location, Tag } from "@/bindings.gen";
 import { createTags } from "@/store/useMapStore";
 import { locDate } from "@/lib/util/format";
 import { errText } from "@/lib/util/util";
+import { t } from "@/lib/i18n";
 
 function tagIdsToNames(tagIds: number[], tags: Record<string, Tag>): string[] {
 	return tagIds.map((id) => tags[id]?.name ?? String(id));
@@ -100,9 +101,11 @@ export function JsonEditorPanel() {
 			{error && <div style={{ color: "#e53e3e", fontSize: "11px", marginTop: 4 }}>{error}</div>}
 			<div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
 				<button className="button" onClick={handleSave}>
-					Apply
+					{t("Apply")}
 				</button>
-				{saved && <span style={{ color: "var(--constructive)", fontSize: "11px" }}>Saved</span>}
+				{saved && (
+					<span style={{ color: "var(--constructive)", fontSize: "11px" }}>{t("Saved")}</span>
+				)}
 			</div>
 		</div>
 	);

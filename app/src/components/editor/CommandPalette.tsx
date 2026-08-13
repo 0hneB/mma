@@ -13,6 +13,7 @@ import { getBinding, useBinding } from "@/lib/util/hotkeys";
 import { getMapState, closeMap } from "@/store/useMapStore";
 import { useMapList } from "@/store/mapList";
 import { goToMap } from "@/store/router";
+import { t } from "@/lib/i18n";
 
 interface PaletteContext {
 	close: () => void;
@@ -115,11 +116,11 @@ function MainCommands() {
 				const groupCmds = commands.filter((c) => c.group === group);
 				if (groupCmds.length === 0) return null;
 				return (
-					<Command.Group key={group} heading={group}>
+					<Command.Group key={group} heading={t(group)}>
 						{groupCmds.map((cmd) => (
 							<PaletteItem
 								key={cmd.id}
-								label={cmd.label}
+								label={t(cmd.label)}
 								icon={cmd.icon ? <Icon path={cmd.icon} size={18} /> : undefined}
 								onSelect={cmd.execute}
 								disabled={cmd.enabled ? !cmd.enabled() : false}
@@ -131,7 +132,7 @@ function MainCommands() {
 						))}
 						{group === "Map" && (
 							<PaletteItem
-								label="Open map..."
+								label={t("Open map...")}
 								onSelect={() => ctx.setPage("maps")}
 								closeOnSelect={false}
 							/>
@@ -150,15 +151,15 @@ function MapSwitcher() {
 	const others = maps.filter((m) => m.id !== currentId);
 
 	return (
-		<Command.Group heading="Switch map">
+		<Command.Group heading={t("Switch map")}>
 			<PaletteItem
-				label="Back"
+				label={t("Back")}
 				onSelect={() => ctx.setPage(null)}
 				icon={<UndoIcon />}
 				closeOnSelect={false}
 			/>
 			{others.length === 0 ? (
-				<Command.Empty>No other maps.</Command.Empty>
+				<Command.Empty>{t("No other maps.")}</Command.Empty>
 			) : (
 				others.map((m) => (
 					<PaletteItem
@@ -203,7 +204,7 @@ function PaletteContent({ onChangeOpen }: { onChangeOpen: (v: boolean) => void }
 					value={inputValue}
 					onValueChange={setInputValue}
 					autoFocus
-					placeholder="Type command"
+					placeholder={t("Type command")}
 					className="command-palette__input"
 				/>
 				<Command.List className="command-palette__scroll">
@@ -230,7 +231,7 @@ export function CommandPalette() {
 					<RadixDialog.Overlay className="modal__backdrop" />
 					<RadixDialog.Content className="modal command-palette" aria-describedby={undefined}>
 						<VisuallyHidden.Root>
-							<RadixDialog.Title>Command Palette</RadixDialog.Title>
+							<RadixDialog.Title>{t("Command Palette")}</RadixDialog.Title>
 						</VisuallyHidden.Root>
 						<PaletteContent onChangeOpen={setOpen} />
 					</RadixDialog.Content>

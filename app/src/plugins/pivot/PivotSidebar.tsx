@@ -36,6 +36,7 @@ type RowSource = "all" | "active" | string; // "all", "active", or saved selecti
 const TAGS_FIELD_KEY = "__tags__";
 
 import type { FieldEntry } from "@/components/editor/map/FilterBuilder";
+import { msg, t } from "@/lib/i18n";
 
 async function computePivot(
 	rowSource: RowSource,
@@ -55,7 +56,7 @@ async function computePivot(
 
 	if (rowSource === "all") {
 		const allIds = new Set(allLocs.map((l) => l.id));
-		rowDefs = [{ label: "All locations", color: [140, 140, 140] }];
+		rowDefs = [{ label: t("All locations"), color: [140, 140, 140] }];
 		idSets = [allIds];
 	} else if (rowSource === "active") {
 		const sels = MMA.getActiveSelections();
@@ -208,7 +209,7 @@ async function computePivot(
 	return { rows: pivotRows, columns, columnLabels, columnTotals, numericDistinct, columnProps };
 }
 
-const TAGS_FIELD: FieldEntry = { key: TAGS_FIELD_KEY, label: "Tags", def: { type: "enum" } };
+const TAGS_FIELD: FieldEntry = { key: TAGS_FIELD_KEY, label: msg("Tags"), def: { type: "enum" } };
 
 // Fields the map actually carries, with a known definition.
 function pivotFields(all: FieldEntry[], knownKeys: ReadonlySet<string>): FieldEntry[] {
@@ -286,15 +287,15 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 	const view = useMemo(() => (data && !includeNa ? stripNa(data) : data), [data, includeNa]);
 
 	return (
-		<Sidebar title="Pivot Table" onBack={onClose} className="pivot-sidebar" flush>
+		<Sidebar title={t("Pivot Table")} onBack={onClose} className="pivot-sidebar" flush>
 			<div className="pivot-sidebar__controls">
-				<Field label="Rows">
+				<Field label={t("Rows")}>
 					<NSelect value={rowSource} onChange={(e) => setRowSource(e.target.value)}>
 						<option value="all" className="pivot-sidebar__opt-builtin">
-							All locations
+							{t("All locations")}
 						</option>
 						<option value="active" className="pivot-sidebar__opt-builtin">
-							Active selections
+							{t("Active selections")}
 						</option>
 						{savedSelections.map((s) => (
 							<option key={s.id} value={s.id}>
@@ -303,17 +304,17 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 						))}
 					</NSelect>
 				</Field>
-				<Field label="Column field">
+				<Field label={t("Column field")}>
 					<NSelect value={fieldKey} onChange={(e) => setFieldKey(e.target.value)}>
 						{fields.map((f) => (
 							<option key={f.key} value={f.key}>
-								{f.label}
+								{t(f.label)}
 							</option>
 						))}
 					</NSelect>
 				</Field>
 				{isNumericField && !bucketHidden && (
-					<Field label="Bucket numeric values">
+					<Field label={t("Bucket numeric values")}>
 						<NSelect
 							value={bucketForced ? (bucketCount ?? DEFAULT_BUCKETS) : (bucketCount ?? "off")}
 							onChange={(e) =>
@@ -323,35 +324,36 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 							<option value="off" disabled={bucketForced}>
 								{bucketForced ? "Off (too many values)" : "Off"}
 							</option>
-							<option value="5">5 buckets</option>
-							<option value="10">10 buckets</option>
-							<option value="15">15 buckets</option>
-							<option value="20">20 buckets</option>
+							<option value="5">{t("5 buckets")}</option>
+							<option value="10">{t("10 buckets")}</option>
+							<option value="15">{t("15 buckets")}</option>
+							<option value="20">{t("20 buckets")}</option>
 						</NSelect>
 					</Field>
 				)}
-				<Field label="Values">
+				<Field label={t("Values")}>
 					<SegmentedControl<ValueMode>
 						value={valueMode}
 						onChange={setValueMode}
 						options={[
-							{ value: "count", label: "Count" },
-							{ value: "rowPct", label: "Row %" },
-							{ value: "colPct", label: "Col %" },
+							{ value: "count", label: t("Count") },
+							{ value: "rowPct", label: t("Row %") },
+							{ value: "colPct", label: t("Col %") },
 						]}
 					/>
 				</Field>
 				{hasNa && (
 					<label className="pivot-sidebar__check">
 						<Checkbox checked={includeNa} onChange={(e) => setIncludeNa(e.target.checked)} />
-						Include N/A
+
+						{t("Include N/A")}
 					</label>
 				)}
 			</div>
 
 			<div className="pivot-sidebar__body">
 				{fields.length === 0 && (
-					<EmptyState>No extra fields on this map. Enrich locations first.</EmptyState>
+					<EmptyState>{t("No extra fields on this map. Enrich locations first.")}</EmptyState>
 				)}
 				{fields.length > 0 && !data && !loading && (
 					<EmptyState>
@@ -362,7 +364,7 @@ export function PivotSidebar({ onClose }: { onClose: () => void }) {
 								: "Saved selection could not be resolved."}
 					</EmptyState>
 				)}
-				{loading && !view && <EmptyState>Computing...</EmptyState>}
+				{loading && !view && <EmptyState>{t("Computing...")}</EmptyState>}
 				{view && <PivotTable data={view} mode={valueMode} stale={loading} />}
 			</div>
 		</Sidebar>
@@ -457,7 +459,8 @@ function PivotTable({ data, mode, stale }: { data: PivotData; mode: ValueMode; s
 							className="pivot-sidebar__th-corner pivot-sidebar__th-sort"
 							onClick={() => handleSort("label")}
 						>
-							Selection{arrow("label")}
+							{t("Selection")}
+							{arrow("label")}
 						</th>
 						{data.columnLabels.map((label, i) => {
 							const selectable = !!data.columnProps?.[i];
@@ -482,7 +485,8 @@ function PivotTable({ data, mode, stale }: { data: PivotData; mode: ValueMode; s
 							);
 						})}
 						<th className="pivot-sidebar__th-sort" onClick={() => handleSort("total")}>
-							Total{arrow("total")}
+							{t("Total")}
+							{arrow("total")}
 						</th>
 					</tr>
 				</thead>
@@ -527,7 +531,7 @@ function PivotTable({ data, mode, stale }: { data: PivotData; mode: ValueMode; s
 				</tbody>
 				<tfoot>
 					<tr>
-						<td className="pivot-sidebar__row-label">Total</td>
+						<td className="pivot-sidebar__row-label">{t("Total")}</td>
 						{data.columnTotals.map((t, i) => (
 							<td key={data.columns[i]}>{t}</td>
 						))}

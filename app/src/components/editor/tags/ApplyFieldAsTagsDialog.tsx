@@ -17,6 +17,7 @@ import { Dialog, DialogContent, type DialogProps } from "@/components/primitives
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { t } from "@/lib/i18n";
 
 export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 	const tzDefault = useSetting("dateTimezone") === "location";
@@ -105,7 +106,7 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 				}
 			}}
 		>
-			<DialogContent title="Apply metadata as tags">
+			<DialogContent title={t("Apply metadata as tags")}>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
@@ -122,10 +123,10 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 							style={{ flex: 1 }}
 							autoFocus
 						>
-							<option value="">Select a field...</option>
+							<option value="">{t("Select a field...")}</option>
 							{fields.map((f) => (
 								<option key={f.key} value={f.key}>
-									{f.label}
+									{t(f.label)}
 								</option>
 							))}
 						</NSelect>
@@ -137,7 +138,7 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 							>
 								{projOptions.map((p) => (
 									<option key={p.id} value={p.id}>
-										{p.label}
+										{t(p.label)}
 									</option>
 								))}
 							</NSelect>
@@ -149,7 +150,7 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 							min="0"
 							value={width}
 							onChange={(e) => setWidth(e.target.value)}
-							placeholder="Bucket width..."
+							placeholder={t("Bucket width...")}
 						/>
 					)}
 					{showTz && (
@@ -167,13 +168,14 @@ export function ApplyFieldAsTagsDialog({ open, onOpenChange }: DialogProps) {
 								disabled={!hasTzData}
 								onChange={(e) => setTzLocal(e.target.checked)}
 							/>
-							Location timezone
+
+							{t("Location timezone")}
 						</label>
 					)}
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-						<Button onClick={() => onOpenChange(false)}>Cancel</Button>
+						<Button onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
 						<Button variant="primary" type="submit" disabled={!field || !widthValid}>
-							Apply
+							{t("Apply")}
 						</Button>
 					</div>
 				</form>

@@ -20,6 +20,7 @@ import { log } from "@/lib/util/log";
 import { cmd } from "@/lib/commands";
 import { toast } from "@/lib/util/toast";
 import type { Location } from "@/bindings.gen";
+import { msg } from "@/lib/i18n";
 
 /** True when the location is missing any of the given enrich fields (default: the enabled set). */
 export function needsEnrichment(loc: Location, enrichFields?: string[]): boolean {
@@ -41,10 +42,7 @@ export function buildPatch(
 		drivingDirection: data.extra.drivingDirection ?? null,
 		uploaderName: data.extra.uploaderName ?? null,
 		imageDate: data.imageDate || null,
-		coverageDates:
-			data.time
-				?.filter((t) => t.date)
-				.map((t) => ymFromDate(t.date!)) ?? [],
+		coverageDates: data.time?.filter((t) => t.date).map((t) => ymFromDate(t.date!)) ?? [],
 	};
 	const filtered = filterEnrichPatch(fullPatch, enrichFields);
 	// Stale exact-date data is wrong once imageDate changes; clear it regardless of the
@@ -95,7 +93,7 @@ export async function enrich(
 /** Core metadata enrichment: pano data -> `extra` fields. Drives the provider pass. */
 export const enrichMetaResolver: SvResolver = {
 	id: "enrichMeta",
-	label: "Enrich metadata",
+	label: msg("Enrich metadata"),
 	pending: (loc, force) => {
 		if (force) return true;
 		const map = getMapState().map;
@@ -117,7 +115,7 @@ export const enrichMetaResolver: SvResolver = {
  *  pass has written `imageDate`. */
 export const exactDateProvider: EnrichmentProvider = {
 	id: "exactDate",
-	label: "Exact dates",
+	label: msg("Exact dates"),
 	requires: ["imageDate"],
 	fieldDefs: knownFieldDefs("datetime", "timezone"),
 	units: (locations, enrichFields, force) =>
@@ -186,7 +184,7 @@ function ensureAdm1(): Promise<boolean> {
 export const subdivisionProvider: EnrichmentProvider = {
 	id: "subdivision",
 	fieldDefs: {
-		subdivision: { type: "string", label: "Subdivision" },
+		subdivision: { type: "string", label: msg("Subdivision") },
 	},
 	async enrich(locations, enrichFields, ctx) {
 		const out = new Map<number, Record<string, unknown>>();

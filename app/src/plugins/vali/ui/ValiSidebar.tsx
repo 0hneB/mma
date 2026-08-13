@@ -7,6 +7,7 @@ import { createTags } from "@/store/useMapStore";
 import { Sidebar } from "@/components/primitives/Sidebar";
 import { log } from "@/lib/util/log";
 import "./vali.css";
+import { t } from "@/lib/i18n";
 
 // The embedded Vali GUI (vendored bundle, ?host=mma) owns the whole flow: definition
 // editor, tag input, generate button, progress. This side is just the bridge:
@@ -72,9 +73,9 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 	}, []);
 
 	return (
-		<Sidebar title="Vali" onBack={onClose} className="vali-sidebar" flush>
+		<Sidebar title={t("Vali")} onBack={onClose} className="vali-sidebar" flush>
 			<div className="vali-sidebar__iframe-wrap">
-				<iframe ref={iframeRef} src={VALIG_URL} title="Vali" />
+				<iframe ref={iframeRef} src={VALIG_URL} title={t("Vali")} />
 			</div>
 		</Sidebar>
 	);

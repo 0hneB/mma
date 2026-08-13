@@ -7,6 +7,7 @@ import { parseDoclink, loadOutline, type DocRef } from "@/lib/doclink";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { textColorFor } from "@/lib/util/color";
 import type { Tag } from "@/bindings.gen";
+import { t } from "@/lib/i18n";
 
 function headingUrl(docId: string, anchor: string): string {
 	return `https://docs.google.com/document/d/${docId}/edit#heading=${anchor}`;
@@ -95,12 +96,12 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Assign document links" className="doclink-assign">
+			<DialogContent title={t("Assign document links")} className="doclink-assign">
 				<div className="doclink-assign__url">
 					<input
 						className="input"
 						type="text"
-						placeholder="Paste a Google Docs link..."
+						placeholder={t("Paste a Google Docs link...")}
 						value={url}
 						onChange={(e) => setUrlInput(e.target.value)}
 					/>
@@ -108,19 +109,21 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 						type="button"
 						className="button"
 						disabled={!docRef || assignments.size === 0}
-						title="Remove this document's links from every tag"
+						title={t("Remove this document's links from every tag")}
 						onClick={() => void clearDoc()}
 					>
-						Clear doc links
+						{t("Clear doc links")}
 					</button>
 				</div>
 				{!docRef ? (
-					<p className="doclink-assign__hint">Paste a link to a Google Doc to load its headings.</p>
+					<p className="doclink-assign__hint">
+						{t("Paste a link to a Google Doc to load its headings.")}
+					</p>
 				) : (
 					<div className="doclink-assign__panes">
 						<div className="doclink-assign__tags">
 							<div className="doclink-assign__pane-title">
-								Tags {armed ? "" : "(pick one to arm)"}
+								{t("Tags")} {armed ? "" : "(pick one to arm)"}
 							</div>
 							{tags.map((tag) => {
 								const n = anchorsInDoc(tag, docRef.docId).size;
@@ -140,15 +143,21 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 									/>
 								);
 							})}
-							{tags.length === 0 && <p className="doclink-assign__hint">This map has no tags.</p>}
+							{tags.length === 0 && (
+								<p className="doclink-assign__hint">{t("This map has no tags.")}</p>
+							)}
 						</div>
 						<div className="doclink-assign__outline">
 							<div className="doclink-assign__pane-title">
 								{outline?.title ?? "Document"}
 								{armed ? ` — click a heading to assign "${armed.name}"` : ""}
 							</div>
-							{loading && <p className="doclink-assign__hint">Loading document...</p>}
-							{error && <p className="doclink-assign__hint">Couldn't load: {error.message}</p>}
+							{loading && <p className="doclink-assign__hint">{t("Loading document...")}</p>}
+							{error && (
+								<p className="doclink-assign__hint">
+									{t("Couldn't load:")} {error.message}
+								</p>
+							)}
 							{outline?.headings.map((h) => {
 								const assigned = assignments.get(h.anchor) ?? [];
 								const armedHere = armed !== null && assigned.some((t) => t.id === armed.id);
@@ -174,7 +183,9 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 								);
 							})}
 							{outline && outline.headings.length === 0 && (
-								<p className="doclink-assign__hint">No linkable headings found in this doc.</p>
+								<p className="doclink-assign__hint">
+									{t("No linkable headings found in this doc.")}
+								</p>
 							)}
 						</div>
 					</div>

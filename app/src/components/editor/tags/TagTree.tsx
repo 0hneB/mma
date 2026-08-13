@@ -37,6 +37,7 @@ import {
 } from "./tagTreeRange";
 import type { TagSortMode } from "@/types";
 import type { Tag, VirtualTag } from "@/bindings.gen";
+import { t } from "@/lib/i18n";
 
 type DropTarget = { path: string; position: "before" | "after" | "into" };
 
@@ -640,14 +641,14 @@ const TagTreeNodeRow = memo(function TagTreeNodeRow({
 									className="context-menu__item"
 									onClick={() => onNewFolder(node.fullPath)}
 								>
-									New subfolder...
+									{t("New subfolder...")}
 								</ContextMenu.Item>
 								{node.descendantTagIds.length === 0 && (
 									<ContextMenu.Item
 										className="context-menu__item"
 										onClick={() => onDeleteFolder(node.fullPath)}
 									>
-										Delete folder
+										{t("Delete folder")}
 									</ContextMenu.Item>
 								)}
 							</ContextMenu.Popup>

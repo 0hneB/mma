@@ -3,7 +3,7 @@ import type { ScopeController, SourceScope } from "@/store/scope";
 import { getSavedSelections } from "@/store/savedSelections";
 import { NSelect } from "@/components/primitives/NSelect";
 import { Radio } from "@/components/primitives/Radio";
-import { fmt } from "@/lib/util/format";
+import { t } from "@/lib/i18n";
 // Radio picker for a ScopeController (from useScope). One shared affordance for
 // "operate on all locations vs the current selection", used by core and plugins.
 // Controllers with `saved: true` additionally offer saved selections.
@@ -27,7 +27,7 @@ export function ScopeSelector({
 					checked={scope.kind === "all"}
 					onChange={() => setScope({ kind: "all" })}
 				/>
-				All locations ({fmt.format(allCount)})
+				{t("All locations ({n})", { n: allCount })}
 			</label>
 			<label
 				className="scope-selector__option"
@@ -39,7 +39,7 @@ export function ScopeSelector({
 					disabled={!hasSelection}
 					onChange={() => setScope({ kind: "selected" })}
 				/>
-				Current selection ({fmt.format(selectionCount)})
+				{t("Current selection ({n})", { n: selectionCount })}
 			</label>
 			{saved.length > 0 && (
 				<label className="scope-selector__option">
@@ -48,14 +48,15 @@ export function ScopeSelector({
 						checked={scope.kind === "saved"}
 						onChange={() => setScope({ kind: "saved", id: saved[0].id })}
 					/>
-					Saved
+
+					{t("Saved")}
 					<NSelect
 						value={scope.kind === "saved" ? scope.id : ""}
 						onChange={(e) => setScope({ kind: "saved", id: e.target.value })}
 					>
 						{scope.kind !== "saved" && <option value="" disabled hidden />}
 						{savedMissing && scope.kind === "saved" && (
-							<option value={scope.id}>(deleted selection)</option>
+							<option value={scope.id}>{t("(deleted selection)")}</option>
 						)}
 						{saved.map((s) => (
 							<option key={s.id} value={s.id}>

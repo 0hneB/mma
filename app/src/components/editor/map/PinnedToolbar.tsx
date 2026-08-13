@@ -15,6 +15,7 @@ import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { ContextMenu } from "@base-ui-components/react/context-menu";
 import { toggleInSet } from "@/lib/util/util";
+import { t } from "@/lib/i18n";
 
 export interface PanelDef {
 	render: (onClose: () => void) => ReactNode;
@@ -36,8 +37,7 @@ export function PinnedToolbar({
 	);
 
 	useDialog("inline-panel", (id) => {
-		if (panels[id])
-			setOpenPanels((prev) => toggleInSet(prev, id));
+		if (panels[id]) setOpenPanels((prev) => toggleInSet(prev, id));
 	});
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- enabled() reads arbitrary external state; no dep list covers it
@@ -56,8 +56,7 @@ export function PinnedToolbar({
 	});
 
 	if (pinned.length === 0 && !right) return null;
-	const togglePanel = (id: string) =>
-		setOpenPanels((prev) => toggleInSet(prev, id));
+	const togglePanel = (id: string) => setOpenPanels((prev) => toggleInSet(prev, id));
 
 	const handleDragStart = (i: number, e: React.MouseEvent) => {
 		if (e.button !== 0) return;
@@ -116,7 +115,7 @@ export function PinnedToolbar({
 												className="context-menu__item"
 												onClick={() => removePinnedAt(i)}
 											>
-												Remove separator
+												{t("Remove separator")}
 											</ContextMenu.Item>
 										</ContextMenu.Popup>
 									</ContextMenu.Positioner>
@@ -141,7 +140,7 @@ export function PinnedToolbar({
 								"is-dragging": dragIdx === i,
 							})}
 							type="button"
-							aria-label={command.label}
+							aria-label={t(command.label)}
 							data-qa={id}
 							data-drop={dropIdx === i ? "" : undefined}
 							onClick={disabled ? undefined : handleClick}
@@ -162,13 +161,13 @@ export function PinnedToolbar({
 							onMouseDown={(e) => handleDragStart(i, e)}
 							onMouseMove={() => handleDragOver(i)}
 						>
-							{command.label}
+							{t(command.label)}
 						</Button>
 					);
 
 					return (
 						<ContextMenu.Root key={id}>
-							<Tooltip content={command.label} side="bottom">
+							<Tooltip content={t(command.label)} side="bottom">
 								<ContextMenu.Trigger render={btn} />
 							</Tooltip>
 							<ContextMenu.Portal>
@@ -179,7 +178,7 @@ export function PinnedToolbar({
 												className="context-menu__item"
 												onClick={() => movePinnedCommand(i, -1)}
 											>
-												Move left
+												{t("Move left")}
 											</ContextMenu.Item>
 										)}
 										{!isLast && (
@@ -187,7 +186,7 @@ export function PinnedToolbar({
 												className="context-menu__item"
 												onClick={() => movePinnedCommand(i, 1)}
 											>
-												Move right
+												{t("Move right")}
 											</ContextMenu.Item>
 										)}
 										<ContextMenu.Separator className="context-menu__separator" />
@@ -195,20 +194,20 @@ export function PinnedToolbar({
 											className="context-menu__item"
 											onClick={() => insertSeparator(i, "before")}
 										>
-											Add separator before
+											{t("Add separator before")}
 										</ContextMenu.Item>
 										<ContextMenu.Item
 											className="context-menu__item"
 											onClick={() => insertSeparator(i, "after")}
 										>
-											Add separator after
+											{t("Add separator after")}
 										</ContextMenu.Item>
 										<ContextMenu.Separator className="context-menu__separator" />
 										<ContextMenu.Item
 											className="context-menu__item"
 											onClick={() => removePinnedAt(i)}
 										>
-											Remove from toolbar
+											{t("Remove from toolbar")}
 										</ContextMenu.Item>
 									</ContextMenu.Popup>
 								</ContextMenu.Positioner>

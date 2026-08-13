@@ -11,6 +11,7 @@ import type { SyncOutcome } from "../engine";
 import type { RemoteMapSummary } from "../provider";
 import type { SyncStatus } from "../scheduler";
 import { errText } from "@/lib/util/util";
+import { t } from "@/lib/i18n";
 
 type Side = "local" | "remote";
 
@@ -143,19 +144,23 @@ function ConflictItem({
 				{CONFLICT_LABEL[conflict.kind]}
 				{known ? ` · ${coord(known)}` : ""}
 			</span>
-			{!local && <span className="mma-input__help">Deleted here</span>}
-			{!remote && <span className="mma-input__help">Deleted on the remote</span>}
+			{!local && <span className="mma-input__help">{t("Deleted here")}</span>}
+			{!remote && <span className="mma-input__help">{t("Deleted on the remote")}</span>}
 			{diffs.map((d) => (
 				<span className="mma-input__help" key={d.field}>
-					{d.field}: local {d.local} · remote {d.remote}
+					{t("{field}: local {local} · remote {remote}", {
+						field: d.field,
+						local: String(d.local),
+						remote: String(d.remote),
+					})}
 				</span>
 			))}
 			<div style={{ display: "flex", gap: 8 }}>
 				<button className="button" disabled={busy} onClick={() => onResolve("local")}>
-					Keep local
+					{t("Keep local")}
 				</button>
 				<button className="button" disabled={busy} onClick={() => onResolve("remote")}>
-					Keep remote
+					{t("Keep remote")}
 				</button>
 			</div>
 		</div>
@@ -336,7 +341,7 @@ export function SyncSidebar({
 				) : undefined
 			}
 		>
-			<Section title="Connection" defaultOpen>
+			<Section title={t("Connection")} defaultOpen>
 				{/* 2rem is the button height both auth states resolve to, so the swap does not shift. */}
 				{checking ? (
 					<div
@@ -347,25 +352,25 @@ export function SyncSidebar({
 							minHeight: "2rem",
 						}}
 					>
-						<span className="spinner" aria-label="Checking connection" />
+						<span className="spinner" aria-label={t("Checking connection")} />
 					</div>
 				) : (
 					auth
 				)}
 			</Section>
 
-			{authed && !mapId && <EmptyState>Open a map to link it.</EmptyState>}
+			{authed && !mapId && <EmptyState>{t("Open a map to link it.")}</EmptyState>}
 
 			{/* mapId and link are synchronous; never gate this on the async identity check. */}
 			{mapId && link && (
-				<Section title="Sync" defaultOpen>
-					<Field label="Linked to" row>
+				<Section title={t("Sync")} defaultOpen>
+					<Field label={t("Linked to")} row>
 						<span>
 							{link.remoteMapName || "(unnamed)"}{" "}
 							<span style={{ opacity: 0.6 }}>#{link.remoteMapId}</span>
 						</span>
 					</Field>
-					<Field label="Last synced" row>
+					<Field label={t("Last synced")} row>
 						<span>
 							{link.lastSyncedAt ? new Date(link.lastSyncedAt).toLocaleString() : "never"}
 						</span>
@@ -373,7 +378,7 @@ export function SyncSidebar({
 					<Field
 						label={
 							<span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-								Live
+								{t("Live")}
 								<Tooltip content="Sync continuously while this map is open">
 									<span
 										style={{ display: "inline-flex", cursor: "help", opacity: 0.6 }}
@@ -417,7 +422,7 @@ export function SyncSidebar({
 							{busy ? "Syncing..." : "Sync now"}
 						</button>
 						<button className="button" disabled={busy} onClick={doUnlink}>
-							Unlink
+							{t("Unlink")}
 						</button>
 					</div>
 					{status === "error" && controller.liveError() && (
@@ -427,8 +432,14 @@ export function SyncSidebar({
 					)}
 					{outcome && (
 						<p className="mma-input__help">
-							Pushed +{outcome.pushed.create} ~{outcome.pushed.update} -{outcome.pushed.delete} ·
-							Pulled +{outcome.pulled.create} ~{outcome.pulled.update} -{outcome.pulled.delete}
+							{t("Pushed +{pc} ~{pu} -{pd} · Pulled +{lc} ~{lu} -{ld}", {
+								pc: outcome.pushed.create,
+								pu: outcome.pushed.update,
+								pd: outcome.pushed.delete,
+								lc: outcome.pulled.create,
+								lu: outcome.pulled.update,
+								ld: outcome.pulled.delete,
+							})}
 							{outcome.adopted ? ` · Adopted ${outcome.adopted}` : ""}
 							{outcome.conflicts.length
 								? ` · ${outcome.conflicts.length} conflict(s) held for review`
@@ -439,10 +450,10 @@ export function SyncSidebar({
 						<>
 							<div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
 								<button className="button" disabled={busy} onClick={() => resolveAll("local")}>
-									Keep local for all
+									{t("Keep local for all")}
 								</button>
 								<button className="button" disabled={busy} onClick={() => resolveAll("remote")}>
-									Keep remote for all
+									{t("Keep remote for all")}
 								</button>
 							</div>
 							{outcome.conflicts.map((c) => (
@@ -459,17 +470,17 @@ export function SyncSidebar({
 			)}
 
 			{authed && mapId && !link && !pendingLink && (
-				<Section title="Link this map" defaultOpen>
+				<Section title={t("Link this map")} defaultOpen>
 					{!maps && error ? (
 						<button className="button" onClick={() => setMapsAttempt((n) => n + 1)}>
-							Retry loading maps
+							{t("Retry loading maps")}
 						</button>
 					) : !maps ? (
 						<div style={{ display: "flex", justifyContent: "center", padding: "0.5rem 0" }}>
-							<span className="spinner" aria-label="Loading maps" />
+							<span className="spinner" aria-label={t("Loading maps")} />
 						</div>
 					) : (
-						<Field label="Find a remote map">
+						<Field label={t("Find a remote map")}>
 							<SuggestInput
 								// Portalled: the sidebar clips overflow, so an inline dropdown is both cut
 								// off and forced to grow the section instead of floating over it.
@@ -504,11 +515,16 @@ export function SyncSidebar({
 			)}
 
 			{authed && mapId && !link && pendingLink && (
-				<Section title="First sync" defaultOpen>
+				<Section title={t("First sync")} defaultOpen>
 					<p className="mma-input__help">
-						This map ({controller.localLocationCount()}) and "{pendingLink.name || "(unnamed)"}" (
-						{pendingLink.locationCount ?? "count unknown"}) may both already have locations. How
-						should the first sync go?
+						{t(
+							'This map ({local}) and "{name}" ({remote}) may both already have locations. How should the first sync go?',
+							{
+								local: controller.localLocationCount(),
+								name: pendingLink.name || t("(unnamed)"),
+								remote: pendingLink.locationCount ?? t("count unknown"),
+							},
+						)}
 					</p>
 					<button
 						className="button button--primary"
@@ -516,7 +532,7 @@ export function SyncSidebar({
 						style={{ display: "block", width: "100%", textAlign: "left" }}
 						onClick={() => performLink(pendingLink, "merge")}
 					>
-						Merge · keep everything on both sides
+						{t("Merge · keep everything on both sides")}
 					</button>
 					<button
 						className="button"
@@ -524,7 +540,7 @@ export function SyncSidebar({
 						style={{ display: "block", width: "100%", textAlign: "left" }}
 						onClick={() => performLink(pendingLink, "mirrorFromRemote")}
 					>
-						Use remote · delete local-only pins
+						{t("Use remote · delete local-only pins")}
 					</button>
 					<button
 						className="button"
@@ -532,10 +548,10 @@ export function SyncSidebar({
 						style={{ display: "block", width: "100%", textAlign: "left" }}
 						onClick={() => performLink(pendingLink, "mirrorFromLocal")}
 					>
-						Use local · delete remote-only pins
+						{t("Use local · delete remote-only pins")}
 					</button>
 					<button className="button" disabled={busy} onClick={() => setPendingLink(null)}>
-						Cancel
+						{t("Cancel")}
 					</button>
 				</Section>
 			)}

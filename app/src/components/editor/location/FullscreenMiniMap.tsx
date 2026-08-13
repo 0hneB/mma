@@ -15,6 +15,7 @@ import {
 } from "@/lib/map/host";
 import { usePanoViewer } from "./PanoViewerContext";
 import { useHoverExpand } from "@/lib/hooks/useHoverExpand";
+import { t } from "@/lib/i18n";
 
 const MINIMAP_SCALE = range([0.5, 2]);
 const MINIMAP_SCALE_STEP = 0.25;
@@ -148,7 +149,7 @@ export function FullscreenMiniMap() {
 				<button
 					type="button"
 					className="fullscreen-minimap__size-btn"
-					aria-label="Smaller minimap"
+					aria-label={t("Smaller minimap")}
 					disabled={scale <= MINIMAP_SCALE.min}
 					onClick={() => setScale(scale - MINIMAP_SCALE_STEP)}
 				>
@@ -157,7 +158,7 @@ export function FullscreenMiniMap() {
 				<button
 					type="button"
 					className="fullscreen-minimap__size-btn"
-					aria-label="Larger minimap"
+					aria-label={t("Larger minimap")}
 					disabled={scale >= MINIMAP_SCALE.max}
 					onClick={() => setScale(scale + MINIMAP_SCALE_STEP)}
 				>

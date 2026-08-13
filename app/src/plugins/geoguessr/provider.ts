@@ -1,12 +1,13 @@
 import { createSyncController } from "@/lib/sync/controller";
 import { isAuthPrefixed, type SyncProvider } from "@/lib/sync/provider";
 import { listDrafts, listPublished } from "./api";
+import { msg } from "@/lib/i18n";
 
 export const PLUGIN_ID = "geoguessr";
 
 export const geoguessrProvider: SyncProvider = {
 	id: "geoguessr",
-	label: "GeoGuessr",
+	label: msg("GeoGuessr"),
 
 	isAuthError: isAuthPrefixed,
 

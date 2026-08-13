@@ -1,7 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import { memo, useEffect, useRef, useState, useCallback } from "react";
 import { hasLoadAsPanoId, LocationFlag } from "@/types";
-import { PANO_ZOOM, SV_JUMP_RADIUS, displayZoom, zoomInStep, zoomOutStep } from "@/lib/sv/constants";
+import {
+	PANO_ZOOM,
+	SV_JUMP_RADIUS,
+	displayZoom,
+	zoomInStep,
+	zoomOutStep,
+} from "@/lib/sv/constants";
 import { google } from "@/lib/sv/opensv";
 import { lookupStreetView } from "@/lib/sv/lookup";
 import { shortenMapsUrl, mapsPanoUrl, fovForZoom, appendLinkTags } from "@/lib/sv/mapsLink";
@@ -35,6 +41,7 @@ import {
 	mdiContentCopy,
 	mdiImageFilterHdrOutline,
 } from "@mdi/js";
+import { t } from "@/lib/i18n";
 
 // --- Compass ---
 
@@ -289,7 +296,7 @@ function CompassControl({ panorama }: { panorama: google.maps.StreetViewPanorama
 						<button
 							className="compass-control__button"
 							onClick={pointNorth}
-							aria-label="Point north"
+							aria-label={t("Point north")}
 						>
 							<Compass panorama={panorama} />
 						</button>
@@ -337,17 +344,17 @@ function ZoomControl({ panorama }: { panorama: google.maps.StreetViewPanorama })
 		>
 			<div className="map-control map-control--button">
 				<Tooltip content="Zoom in" side="right">
-					<button onClick={zoomIn} aria-label="Zoom in">
+					<button onClick={zoomIn} aria-label={t("Zoom in")}>
 						<Icon path={mdiPlus} />
 					</button>
 				</Tooltip>
 				<Tooltip content="Reset zoom" side="right">
-					<button disabled={atMin} onClick={resetZoom} aria-label="Reset zoom">
+					<button disabled={atMin} onClick={resetZoom} aria-label={t("Reset zoom")}>
 						<Icon path={mdiImageFilterCenterFocus} />
 					</button>
 				</Tooltip>
 				<Tooltip content="Zoom out" side="right">
-					<button disabled={atMin} onClick={zoomOut} aria-label="Zoom out">
+					<button disabled={atMin} onClick={zoomOut} aria-label={t("Zoom out")}>
 						<Icon path={mdiMinus} />
 					</button>
 				</Tooltip>
@@ -385,7 +392,11 @@ function ReturnToSpawnControl({
 		>
 			<div className="map-control map-control--button">
 				<Tooltip content="Return to spawn (R)" side="right">
-					<button disabled={!hasChanged} onClick={onReturnToSpawn} aria-label="Return to spawn (R)">
+					<button
+						disabled={!hasChanged}
+						onClick={onReturnToSpawn}
+						aria-label={t("Return to spawn (R)")}
+					>
 						<Icon path={mdiHome} />
 					</button>
 				</Tooltip>
@@ -435,11 +446,14 @@ function PanoMetadataControl() {
 				className="map-control coordinate-control is-dark"
 				style={{ fontSize: "10px", display: "flex", flexDirection: "column", gap: "2px" }}
 			>
-				<span>Pinned pano: {hasLoadAsPanoId(location) ? "yes" : "no"}</span>
+				<span>
+					{t("Pinned pano:")} {hasLoadAsPanoId(location) ? "yes" : "no"}
+				</span>
 				{location.extra &&
 					Object.entries(location.extra).map(([key, val]) => (
 						<span key={key}>
-							{key}: {val == null ? "null" : String(val)}
+							{key}
+							{t(":")} {val == null ? "null" : String(val)}
 						</span>
 					))}
 			</div>
@@ -596,7 +610,7 @@ export const PanoControls = memo(function PanoControls({
 								<button
 									onClick={(e) => takeScreenshot(e.shiftKey)}
 									disabled={screenshotState !== "idle"}
-									aria-label="Copy screenshot to clipboard"
+									aria-label={t("Copy screenshot to clipboard")}
 									data-qa="pano-screenshot"
 								>
 									{screenshotState === "loading" ? (
@@ -678,14 +692,14 @@ export const PanoControls = memo(function PanoControls({
 				{vis.showMapLinks && (
 					<div className="map-control map-control--button map-links-control">
 						<Tooltip content="Open in maps" side="top" align="start">
-							<button onClick={openInMaps} aria-label="Open in maps">
+							<button onClick={openInMaps} aria-label={t("Open in maps")}>
 								<Icon path={mdiOpenInNew} />
 							</button>
 						</Tooltip>
 						<Tooltip content="Copy link - Shift: without tags, Alt: long URL" side="right">
 							<button
 								onClick={(e) => doCopy({ long: e.altKey, noTags: e.shiftKey })}
-								aria-label="Copy link"
+								aria-label={t("Copy link")}
 							>
 								{copyState === "loading" ? (
 									<Icon path={mdiLoading} className="spin" />

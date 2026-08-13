@@ -5,6 +5,7 @@ import { searchManual } from "@/components/manual/search";
 import type { DialogProps } from "@/components/primitives/Dialog";
 import { openManual } from "@/store/router";
 import "@/components/manual/manual.css";
+import { t } from "@/lib/i18n";
 
 export function ManualSearch({ open, onOpenChange }: DialogProps) {
 	const [query, setQuery] = useState("");
@@ -40,7 +41,7 @@ export function ManualSearch({ open, onOpenChange }: DialogProps) {
 					aria-describedby={undefined}
 				>
 					<VisuallyHidden.Root>
-						<RadixDialog.Title>Search the manual</RadixDialog.Title>
+						<RadixDialog.Title>{t("Search the manual")}</RadixDialog.Title>
 					</VisuallyHidden.Root>
 					<div className="manual-search__panel">
 						<input
@@ -52,12 +53,12 @@ export function ManualSearch({ open, onOpenChange }: DialogProps) {
 								setActive(0);
 							}}
 							onKeyDown={onKeyDown}
-							placeholder="Search the manual..."
+							placeholder={t("Search the manual...")}
 							className="command-palette__input"
 						/>
 						<div className="command-palette__scroll manual-search__results">
 							{query.trim() && results.length === 0 && (
-								<div className="manual-search__empty">No results.</div>
+								<div className="manual-search__empty">{t("No results.")}</div>
 							)}
 							{results.map((r, i) => (
 								<button

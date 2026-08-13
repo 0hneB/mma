@@ -46,6 +46,7 @@ import {
 	type TagTreeNode,
 	type TagMoveResult,
 } from "./tagTreeRange";
+import { t } from "@/lib/i18n";
 
 /** `order` rides the optimistic overlay only; persisted order goes through `reorderTags`. */
 type OptimisticTagPatch = TagPatch & { order?: number };
@@ -201,7 +202,7 @@ export function TagManager() {
 		<>
 			<ToolBlock
 				className="tag-manager"
-				title="Tags"
+				title={t("Tags")}
 				isCollapsed={collapsed}
 				onCollapse={setCollapsed}
 				collapsedAddons={
@@ -220,13 +221,13 @@ export function TagManager() {
 				addons={
 					<>
 						<TextInput
-							placeholder="Filter tags..."
+							placeholder={t("Filter tags...")}
 							value={filterText}
 							onChange={(e) => setFilterText(e.target.value)}
 						/>
 						<span className="tag-manager__spacer"></span>
 						{tagViewMode === "tree" && (
-							<Button onClick={() => setNewFolderParent("")}>New folder</Button>
+							<Button onClick={() => setNewFolderParent("")}>{t("New folder")}</Button>
 						)}
 						<span className="tag-manager__sort button-group">
 							{(["default", "name", "amount"] as TagSortMode[]).map((mode) => (
@@ -410,31 +411,46 @@ export function TagContextMenuContent({
 					className="context-menu__item"
 					onClick={() => removeTagFromAllLocations(tagId)}
 				>
-					Remove from all ({fmt.format(totalCount)} locations)
+					{t(
+						{ one: "Remove from all ({n} location)", other: "Remove from all ({n} locations)" },
+						{ n: totalCount },
+					)}
 				</ContextMenu.Item>
 				<ContextMenu.Item
 					className="context-menu__item"
 					disabled={inSel === 0}
 					onClick={() => removeTagFromLocations(tagId, [...getMapState().selectedLocationIds])}
 				>
-					Remove from selection ({fmt.format(inSel)} locations)
+					{t(
+						{
+							one: "Remove from selection ({n} location)",
+							other: "Remove from selection ({n} locations)",
+						},
+						{ n: inSel },
+					)}
 				</ContextMenu.Item>
 				<ContextMenu.Item className="context-menu__item" disabled={inSel === 0} onClick={onRename}>
-					Rename in selection ({fmt.format(inSel)} locations)
+					{t(
+						{
+							one: "Rename in selection ({n} location)",
+							other: "Rename in selection ({n} locations)",
+						},
+						{ n: inSel },
+					)}
 				</ContextMenu.Item>
 				{onAddAlias && (
 					<ContextMenu.Item className="context-menu__item" onClick={onAddAlias}>
-						Add alias...
+						{t("Add alias...")}
 					</ContextMenu.Item>
 				)}
 				{onNewSubfolder && (
 					<ContextMenu.Item className="context-menu__item" onClick={onNewSubfolder}>
-						New subfolder...
+						{t("New subfolder...")}
 					</ContextMenu.Item>
 				)}
 				{onRemoveAlias && (
 					<ContextMenu.Item className="context-menu__item" onClick={onRemoveAlias}>
-						Remove alias
+						{t("Remove alias")}
 					</ContextMenu.Item>
 				)}
 			</ContextMenu.Popup>
@@ -471,7 +487,7 @@ function RenameInSelectionDialog({
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title="Rename tag in selection">
+			<DialogContent title={t("Rename tag in selection")}>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
@@ -481,9 +497,9 @@ function RenameInSelectionDialog({
 				>
 					<TextInput type="text" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
 					<div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-						<Button onClick={onClose}>Cancel</Button>
+						<Button onClick={onClose}>{t("Cancel")}</Button>
 						<Button variant="primary" type="submit">
-							Rename
+							{t("Rename")}
 						</Button>
 					</div>
 				</form>
@@ -575,7 +591,7 @@ function EditTagDialog({
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title="Edit tag">
+			<DialogContent title={t("Edit tag")}>
 				<form
 					className="edit-tag-modal"
 					onSubmit={(e) => {
@@ -584,7 +600,7 @@ function EditTagDialog({
 					}}
 				>
 					<div className="edit-tag-modal__name">
-						Rename:{" "}
+						{t("Rename:")}{" "}
 						<TextInput
 							type="text"
 							value={name}
@@ -594,13 +610,13 @@ function EditTagDialog({
 						{cascade && (
 							<label className="edit-tag-modal__cascade">
 								<Checkbox checked={cascadeOn} onChange={(e) => setCascadeOn(e.target.checked)} />
-								Rename {cascade.descendantCount} tag{cascade.descendantCount === 1 ? "" : "s"}{" "}
-								inside
+								{t("Rename")} {cascade.descendantCount} tag
+								{cascade.descendantCount === 1 ? "" : "s"} inside
 							</label>
 						)}
 					</div>
 					<div className="edit-tag-modal__color">
-						<span>Color:</span>
+						<span>{t("Color:")}</span>
 						<input
 							className="text-input hex-color"
 							type="text"
@@ -626,32 +642,36 @@ function EditTagDialog({
 									onClose();
 								}}
 							>
-								Apply to {cascade.descendantCount} tag{cascade.descendantCount === 1 ? "" : "s"}{" "}
-								inside
+								{t("Apply to")} {cascade.descendantCount} tag
+								{cascade.descendantCount === 1 ? "" : "s"} inside
 							</Button>
 						)}
 					</div>
 					<div className="edit-tag-modal__hotkey">
-						<span>Hotkey:</span>
+						<span>{t("Hotkey:")}</span>
 						<HotkeyInput value={hotkey} onChange={setHotkey} />
 						<Button disabled={!hotkey} onClick={() => setHotkey("")}>
-							Clear
+							{t("Clear")}
 						</Button>
 						{(holderTag || globalConflicts.length > 0) && (
 							<p className="edit-tag-modal__hotkey-note">
-								{holderTag && <>Takes the key from "{holderTag.name}". </>}
+								{holderTag && <>{t('Takes the key from "{name}". ', { name: holderTag.name })}</>}
 								{globalConflicts.length > 0 && (
-									<>Overrides "{globalConflicts[0].label}" while this map is open.</>
+									<>
+										{t('Overrides "{label}" while this map is open.', {
+											label: globalConflicts[0].label,
+										})}
+									</>
 								)}
 							</p>
 						)}
 					</div>
 					<div className="edit-tag-modal__actions">
 						<Button variant="destructive" onClick={handleDelete} data-qa="tag-delete">
-							Delete
+							{t("Delete")}
 						</Button>
 						<Button variant="primary" type="submit" data-qa="tag-save">
-							Save
+							{t("Save")}
 						</Button>
 					</div>
 				</form>
@@ -695,7 +715,7 @@ function VirtualTagDialog({
 					style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingTop: "2px" }}
 				>
 					<div className="edit-tag-modal__name">
-						Rename:{" "}
+						{t("Rename:")}{" "}
 						<TextInput
 							type="text"
 							value={name}
@@ -704,7 +724,7 @@ function VirtualTagDialog({
 						/>
 					</div>
 					<div className="edit-tag-modal__color">
-						<span>Color:</span>
+						<span>{t("Color:")}</span>
 						<input
 							className="text-input hex-color"
 							type="text"
@@ -725,16 +745,16 @@ function VirtualTagDialog({
 								className="edit-tag-modal__apply-color"
 								onClick={() => onApplyColor(hexValue)}
 							>
-								Apply to {descendantCount} tag{descendantCount === 1 ? "" : "s"} inside
+								{t("Apply to")} {descendantCount} tag{descendantCount === 1 ? "" : "s"} inside
 							</Button>
 						)}
 					</div>
 					<div className="edit-tag-modal__actions">
 						<Button variant="destructive" onClick={onReset} disabled={color == null}>
-							Reset
+							{t("Reset")}
 						</Button>
 						<Button variant="primary" type="submit">
-							Save
+							{t("Save")}
 						</Button>
 					</div>
 				</form>
@@ -791,7 +811,7 @@ function NewFolderDialog({
 							type="text"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
-							placeholder="Folder name"
+							placeholder={t("Folder name")}
 							autoFocus
 						/>
 						<span
@@ -802,13 +822,13 @@ function NewFolderDialog({
 								color: "var(--destructive)",
 							}}
 						>
-							{collision ? `"${path}" already exists in the tree` : ""}
+							{collision ? t('"{path}" already exists in the tree', { path }) : ""}
 						</span>
 					</div>
 					<div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-						<Button onClick={onClose}>Cancel</Button>
+						<Button onClick={onClose}>{t("Cancel")}</Button>
 						<Button variant="primary" type="submit" disabled={!path || collision}>
-							Create
+							{t("Create")}
 						</Button>
 					</div>
 				</form>
@@ -879,7 +899,7 @@ function AddAliasDialog({
 					style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
 				>
 					<div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-						<span style={{ fontSize: "0.85em", opacity: 0.7 }}>Target folder</span>
+						<span style={{ fontSize: "0.85em", opacity: 0.7 }}>{t("Target folder")}</span>
 						<SuggestInput
 							value={folder}
 							onChange={setFolder}
@@ -887,7 +907,7 @@ function AddAliasDialog({
 							onPick={setFolder}
 							renderItem={(p) => p}
 							getKey={(p) => p}
-							placeholder="e.g. Europe/France (blank = top level)"
+							placeholder={t("e.g. Europe/France (blank = top level)")}
 							portal
 							autoFocus
 							pickOnEnter={false}
@@ -895,19 +915,19 @@ function AddAliasDialog({
 						<span style={{ fontSize: "0.85em", opacity: 0.7 }}>
 							{collision ? (
 								<span style={{ color: "var(--destructive)" }}>
-									"{aliasPath}" already exists in the tree
+									{t('"{path}" already exists in the tree', { path: aliasPath })}
 								</span>
 							) : (
 								<>
-									Appears as <strong>{aliasPath}</strong>
+									{t("Appears as")} <strong>{aliasPath}</strong>
 								</>
 							)}
 						</span>
 					</div>
 					<div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-						<Button onClick={onClose}>Cancel</Button>
+						<Button onClick={onClose}>{t("Cancel")}</Button>
 						<Button variant="primary" type="submit" disabled={collision}>
-							Add alias
+							{t("Add alias")}
 						</Button>
 					</div>
 				</form>

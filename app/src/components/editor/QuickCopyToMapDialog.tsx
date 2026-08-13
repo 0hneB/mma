@@ -7,6 +7,7 @@ import { SuggestInput } from "@/components/primitives/SuggestInput";
 import { getMapState } from "@/store/useMapStore";
 import { isVirtualLocation } from "@/types";
 import { toast } from "@/lib/util/toast";
+import { t } from "@/lib/i18n";
 
 export function QuickCopyToMapDialog({
 	locationId,
@@ -70,11 +71,11 @@ export function QuickCopyToMapDialog({
 				if (!open) onClose();
 			}}
 		>
-			<DialogContent title="Copy location to map" className="copy-to-map-modal-host">
+			<DialogContent title={t("Copy location to map")} className="copy-to-map-modal-host">
 				<div className="copy-to-map-modal" ref={contentRef}>
 					<SuggestInput
 						containerClassName="copy-to-map-modal__add"
-						placeholder="Search for a map..."
+						placeholder={t("Search for a map...")}
 						value={query}
 						onChange={setQuery}
 						suggestions={suggestions}

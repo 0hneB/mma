@@ -13,6 +13,7 @@ import { TagPill } from "@/components/primitives/TagPill";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { toggleInSet } from "@/lib/util/util";
+import { t } from "@/lib/i18n";
 
 function DuplicateItem({
 	location,
@@ -46,7 +47,7 @@ function DuplicateItem({
 			<div className="duplicate-item__tags">
 				{location.tags.length > 0 ? (
 					<>
-						<strong>Tags:</strong>{" "}
+						<strong>{t("Tags:")}</strong>{" "}
 						{location.tags.map((tid) => {
 							const tag = tagMap[tid];
 							if (!tag) return null;
@@ -54,13 +55,13 @@ function DuplicateItem({
 						})}
 					</>
 				) : (
-					<em>No tags</em>
+					<em>{t("No tags")}</em>
 				)}
 			</div>
 			<div className="duplicate-item__meta">{Math.round(location.heading)}&deg;</div>
 			<div className="duplicate-item__actions">
 				<Button variant="destructive" onClick={onDelete}>
-					Delete
+					{t("Delete")}
 				</Button>
 			</div>
 		</li>
@@ -119,8 +120,9 @@ export default function SameLocation() {
 				<span className="mono">{locations.length}</span> locations
 			</h2>
 			<p>
-				Multiple locations were selected around this coordinate. Click one of the thumbnails below
-				to view that location.
+				{t(
+					"Multiple locations were selected around this coordinate. Click one of the thumbnails below\n\t\t\t\tto view that location.",
+				)}
 			</p>
 			<ul className="duplicates__location-list">
 				{sorted.map((loc) => (
@@ -138,15 +140,15 @@ export default function SameLocation() {
 			<div className="duplicates__actions">
 				<Tooltip content="Delete all duplicate locations, except the selected ones" side="bottom">
 					<Button variant="destructive" disabled={selected.size === 0} onClick={keepSelected}>
-						Keep selected
+						{t("Keep selected")}
 					</Button>
 				</Tooltip>
 				<Tooltip content="Delete selected locations" side="bottom">
 					<Button variant="destructive" disabled={selected.size === 0} onClick={deleteSelected}>
-						Delete selected
+						{t("Delete selected")}
 					</Button>
 				</Tooltip>
-				<Button onClick={closeDuplicates}>Cancel</Button>
+				<Button onClick={closeDuplicates}>{t("Cancel")}</Button>
 			</div>
 		</section>
 	);

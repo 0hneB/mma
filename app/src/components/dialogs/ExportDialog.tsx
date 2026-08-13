@@ -10,9 +10,10 @@ import { useMapSetting } from "@/store/useMapSetting";
 import { cmd } from "@/lib/commands";
 import { mmaBufUrl, saveExportTempFile } from "@/lib/util/util";
 import { getAllFieldDefs } from "@/lib/data/fieldDefRegistry";
-import { fmt } from "@/lib/util/format";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
+import { t } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 interface Props {
 	onClose: () => void;
@@ -91,10 +92,10 @@ export function ExportDialog({ onClose }: Props) {
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title="Export" className="export-modal">
+			<DialogContent title={t("Export")} className="export-modal">
 				<div className="export-modal__settings">
 					<div className="export-modal__filename">
-						<label htmlFor={`${uid}name`}>File name:</label>
+						<label htmlFor={`${uid}name`}>{t("File name:")}</label>
 						<TextInput
 							id={`${uid}name`}
 							type="text"
@@ -112,7 +113,13 @@ export function ExportDialog({ onClose }: Props) {
 								checked={scope.kind === "all"}
 								onChange={() => setScope({ kind: "all" })}
 							/>
-							Export everything ({fmt.format(locationCount)} locations)
+							{t(
+								{
+									one: "Export everything ({n} location)",
+									other: "Export everything ({n} locations)",
+								},
+								{ n: locationCount },
+							)}
 						</label>
 						<label>
 							<Radio
@@ -123,7 +130,13 @@ export function ExportDialog({ onClose }: Props) {
 								disabled={selCount === 0}
 							/>
 							<span style={selCount === 0 ? { opacity: 0.7 } : undefined}>
-								Export selection ({fmt.format(selCount)} locations)
+								{t(
+									{
+										one: "Export selection ({n} location)",
+										other: "Export selection ({n} locations)",
+									},
+									{ n: selCount },
+								)}
 							</span>
 						</label>
 					</div>
@@ -134,7 +147,8 @@ export function ExportDialog({ onClose }: Props) {
 								checked={saveZoom}
 								onChange={(e) => setSaveZoom(e.target.checked)}
 							/>
-							Save zoom levels
+
+							{t("Save zoom levels")}
 						</label>
 						<label>
 							<Checkbox
@@ -142,11 +156,13 @@ export function ExportDialog({ onClose }: Props) {
 								checked={saveExtras}
 								onChange={(e) => setSaveExtras(e.target.checked)}
 							/>
-							Save app data
+
+							{t("Save app data")}
 							<br />
 							<small className="export-modal__help">
-								Include app-specific data like tags. Not including this makes the file smaller,
-								which can help when uploading maps with 100K+ locations to GeoGuessr.
+								{t(
+									"Include app-specific data like tags. Not including this makes the file smaller,\n\t\t\t\t\t\t\t\twhich can help when uploading maps with 100K+ locations to GeoGuessr.",
+								)}
 							</small>
 						</label>
 						<label>
@@ -155,47 +171,52 @@ export function ExportDialog({ onClose }: Props) {
 								checked={bypassUnpanned}
 								onChange={(e) => setBypassUnpanned(e.target.checked)}
 							/>
-							Bypass GeoGuessr auto-panning for locations with 0 heading
+
+							{t("Bypass GeoGuessr auto-panning for locations with 0 heading")}
 							<br />
 							<small className="export-modal__help">
-								GeoGuessr auto-pans locations that point straight north along the road. To keep your
-								unpanned locations unpanned, enable this option.
+								{t(
+									"GeoGuessr auto-pans locations that point straight north along the road. To keep your\n\t\t\t\t\t\t\t\tunpanned locations unpanned, enable this option.",
+								)}
 							</small>
 						</label>
 					</div>
 				</div>
 				<div className="export-modal__formats">
 					<div className="export-modal__format export-modal__format--json">
-						<h3 className="export-modal__subhead">As JSON (recommended)</h3>
+						<h3 className="export-modal__subhead">{t("As JSON (recommended)")}</h3>
 						<div className="export-modal__export-buttons">
 							<Button onClick={copyJson} disabled={!navigator.clipboard} data-qa="json-copy">
-								Copy
+								{t("Copy")}
 							</Button>
 							<Button onClick={downloadJson} data-qa="json-dl">
-								Download
+								{t("Download")}
 							</Button>
 						</div>
 					</div>
 					<div className="export-modal__format export-modal__format--csv">
-						<h3 className="export-modal__subhead">As CSV</h3>
+						<h3 className="export-modal__subhead">{t("As CSV")}</h3>
 						<p>
-							CSV exports do <em>not</em> retain camera orientation and pano&nbsp;IDs.
+							<Trans
+								msg={"CSV exports do {not} retain camera orientation and pano\u00A0IDs."}
+								not={<em>{t("not")}</em>}
+							/>
 						</p>
 						<div className="export-modal__export-buttons">
 							<Button onClick={copyCsv} disabled={!navigator.clipboard} data-qa="csv-copy">
-								Copy
+								{t("Copy")}
 							</Button>
 							<Button onClick={downloadCsv} data-qa="csv-dl">
-								Download
+								{t("Download")}
 							</Button>
 						</div>
 					</div>
 					<div className="export-format export-modal__format--geojson">
-						<h3 className="export-modal__subhead">As GeoJSON</h3>
-						<p>For use in non-GeoGuessr mapping tools.</p>
+						<h3 className="export-modal__subhead">{t("As GeoJSON")}</h3>
+						<p>{t("For use in non-GeoGuessr mapping tools.")}</p>
 						<div className="export-modal__export-buttons">
 							<Button onClick={downloadGeoJson} data-qa="geojson-download">
-								Download
+								{t("Download")}
 							</Button>
 						</div>
 					</div>

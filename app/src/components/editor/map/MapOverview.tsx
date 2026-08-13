@@ -34,6 +34,7 @@ import { useDialog, useDialogState, openDialog } from "@/store/dialogBus";
 import { SelectionRow } from "./SelectionRow";
 import { PinnedToolbar } from "./PinnedToolbar";
 import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectionDialogs";
+import { t } from "@/lib/i18n";
 
 /** Opt-in "run this pick once per active selection" switch, shown only when there are
  *  enough selections for it to mean anything. */
@@ -49,7 +50,7 @@ function PerSelectionToggle({
 	return (
 		<label className="selection-manager__inline-option">
 			<Checkbox checked={value} onChange={(e) => onChange(e.target.checked)} />
-			from each of {count} selections
+			{t("from each of {n} selections", { n: count })}
 		</label>
 	);
 }
@@ -73,9 +74,7 @@ function RandomPickPanel() {
 					.then((picked) => {
 						if (picked === 0) return;
 						const s = picked !== 1 ? "s" : "";
-						toast(
-							`Selected ${fmt.format(picked)} random location${s}${eachSuffix(perSelection)}`,
-						);
+						toast(`Selected ${fmt.format(picked)} random location${s}${eachSuffix(perSelection)}`);
 					})
 					.catch((err) => toast(String(err)));
 			}}
@@ -84,14 +83,14 @@ function RandomPickPanel() {
 				type="number"
 				min={1}
 				style={{ width: "7rem" }}
-				placeholder="Count"
+				placeholder={t("Count")}
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 			/>
 			<span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>
 			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
-				Pick
+				{t("Pick")}
 			</Button>
 		</form>
 	);
@@ -115,9 +114,7 @@ function SpacedPickPanel() {
 				if (picked === 0) return;
 				const spacing = distanceM > 0 ? `, at least ${fmt.format(distanceM)}m apart` : "";
 				const s = picked !== 1 ? "s" : "";
-				toast(
-					`Selected ${fmt.format(picked)} location${s}${eachSuffix(perSelection)}${spacing}`,
-				);
+				toast(`Selected ${fmt.format(picked)} location${s}${eachSuffix(perSelection)}${spacing}`);
 			})
 			.catch((err) => toast(String(err)));
 	};
@@ -125,8 +122,8 @@ function SpacedPickPanel() {
 	return (
 		<form className="selection-manager__inline-form" onSubmit={handleSubmit}>
 			<NSelect value={mode} onChange={(e) => setMode(e.target.value as "count" | "distance")}>
-				<option value="count">Count</option>
-				<option value="distance">Min distance (m)</option>
+				<option value="count">{t("Count")}</option>
+				<option value="distance">{t("Min distance (m)")}</option>
 			</NSelect>
 			<TextInput
 				type="number"
@@ -139,7 +136,7 @@ function SpacedPickPanel() {
 			{mode === "count" && <span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>}
 			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
-				Pick
+				{t("Pick")}
 			</Button>
 		</form>
 	);
@@ -174,7 +171,7 @@ function TopKPanel({
 			<NSelect value={field} onChange={(e) => setField(e.target.value)}>
 				{fields.map((f) => (
 					<option key={f.key} value={f.key}>
-						{f.label}
+						{t(f.label)}
 					</option>
 				))}
 			</NSelect>
@@ -182,8 +179,8 @@ function TopKPanel({
 				value={ascending ? "bottom" : "top"}
 				onChange={(e) => setAscending(e.target.value === "bottom")}
 			>
-				<option value="top">Top</option>
-				<option value="bottom">Bottom</option>
+				<option value="top">{t("Top")}</option>
+				<option value="bottom">{t("Bottom")}</option>
 			</NSelect>
 			<TextInput
 				type="number"
@@ -193,7 +190,7 @@ function TopKPanel({
 				onChange={(e) => setCount(Math.max(1, Number(e.target.value)))}
 			/>
 			<Button type="submit" disabled={!field}>
-				Select
+				{t("Select")}
 			</Button>
 		</form>
 	);
@@ -258,7 +255,7 @@ function BulkTagForm() {
 				<SuggestInput
 					containerClassName="tag-input__suggest"
 					inputClassName="tag-input__value"
-					placeholder="Bulk-add tag..."
+					placeholder={t("Bulk-add tag...")}
 					disabled={!hasSelection}
 					value={bulkTagInput}
 					onChange={setBulkTagInput}
@@ -304,7 +301,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 
 			<ToolBlock
 				className="selection-manager"
-				title="Selections"
+				title={t("Selections")}
 				isCollapsed={selectionsCollapsed}
 				onCollapse={setSelectionsCollapsed}
 				collapsedAddons={<SelectedCount />}
@@ -313,7 +310,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 						<SelectedCount className="selection-manager__count" />
 						<span className="selection-manager__space" />
 						<PluginToolbar />
-						<Button onClick={() => openDialog("command-palette")}>Commands...</Button>
+						<Button onClick={() => openDialog("command-palette")}>{t("Commands...")}</Button>
 					</>
 				}
 			>
@@ -338,7 +335,7 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 									}}
 								>
 									<label>
-										Distance (m):{" "}
+										{t("Distance (m):")}{" "}
 										<TextInput
 											type="number"
 											min="0"
@@ -347,8 +344,8 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 											onChange={(e) => setDupDistance(Number(e.target.value))}
 										/>
 									</label>
-									<Button type="submit">Find</Button>
-									<Button onClick={() => setShowMergeDuplicates(true)}>Merge</Button>
+									<Button type="submit">{t("Find")}</Button>
+									<Button onClick={() => setShowMergeDuplicates(true)}>{t("Merge")}</Button>
 								</form>
 							),
 						},

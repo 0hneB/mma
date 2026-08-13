@@ -22,6 +22,8 @@ import { useMapSetting } from "@/store/useMapSetting";
 import type { ExtraFieldDef } from "@/bindings.gen";
 import { collectEnumCandidates, type MergeWinner } from "@/lib/data/fieldOps";
 import { mdiClose, mdiDatabasePlusOutline, mdiInformationOutline } from "@mdi/js";
+import { msg, t } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 type Comparison = NonNullable<ExtraFieldDef["comparison"]>;
 const FIELD_TYPES: ExtraFieldDef["type"][] = ["string", "number", "date", "month", "enum", "array"];
@@ -37,10 +39,10 @@ const TYPE_LABELS: Record<ExtraFieldDef["type"], string> = {
 // How a field is compared during disambiguation. "auto" = inferred from type.
 type CompToken = "auto" | "linear" | "circular" | "categorical";
 const COMP_OPTIONS: { token: CompToken; label: string }[] = [
-	{ token: "auto", label: "Auto" },
-	{ token: "linear", label: "Numeric" },
-	{ token: "circular", label: "Circular" },
-	{ token: "categorical", label: "Categorical" },
+	{ token: "auto", label: msg("Auto") },
+	{ token: "linear", label: msg("Numeric") },
+	{ token: "circular", label: msg("Circular") },
+	{ token: "categorical", label: msg("Categorical") },
 ];
 const DEFAULT_PERIOD = 360;
 
@@ -102,7 +104,7 @@ function CoverageIcon({ ratio }: { ratio: number }) {
 	const pct = Math.round(ratio * 100);
 	return (
 		<svg className="manage-fields-table__coverage" width="18" height="18" viewBox="0 0 14 14">
-			<title>{pct}% of locations</title>
+			<title>{t("{pct}% of locations", { pct })}</title>
 			<circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" />
 			{ratio > 0 && (
 				<circle
@@ -139,19 +141,24 @@ export function EnrichmentButton() {
 		<Dialog open={open} onOpenChange={setOpen}>
 			<Tooltip content="Enrichment" side="bottom">
 				<DialogTrigger asChild>
-					<button className="icon-button" type="button" aria-label="Enrichment">
+					<button className="icon-button" type="button" aria-label={t("Enrichment")}>
 						<Icon path={mdiDatabasePlusOutline} />
 					</button>
 				</DialogTrigger>
 			</Tooltip>
-			<DialogContent title="Enrichment" className="enrichment-modal">
+			<DialogContent title={t("Enrichment")} className="enrichment-modal">
 				<label className="enrichment-modal__toggle">
-					<Switch checked={enrichMetadata} onChange={setEnrichMetadata} label="Enrich locations" />
-					Automatically save metadata to locations
+					<Switch
+						checked={enrichMetadata}
+						onChange={setEnrichMetadata}
+						label={t("Enrich locations")}
+					/>
+
+					{t("Automatically save metadata to locations")}
 					<button
 						className="icon-button icon-button--inline"
 						type="button"
-						title="Open manual chapter"
+						title={t("Open manual chapter")}
 						style={{ marginLeft: "0.4rem" }}
 						onClick={(e) => {
 							e.preventDefault();
@@ -285,7 +292,11 @@ function FieldsTable({
 			const present = new Set(p.rows.map((r) => r.value.trim()));
 			const fresh = p.candidates.filter((v) => !present.has(v));
 			const kept = p.rows.filter((r) => r.value.trim() !== "" || r.label.trim() !== "");
-			return { ...p, rows: [...kept, ...fresh.map((v) => ({ value: v, label: "" }))], candidates: [] };
+			return {
+				...p,
+				rows: [...kept, ...fresh.map((v) => ({ value: v, label: "" }))],
+				candidates: [],
+			};
 		});
 
 	const confirmEnumValues = () => {
@@ -362,11 +373,11 @@ function FieldsTable({
 				<thead>
 					<tr>
 						<th />
-						<th>Enrich</th>
-						<th>Field</th>
-						<th>Label</th>
-						<th>Type</th>
-						<th>Compare as</th>
+						<th>{t("Enrich")}</th>
+						<th>{t("Field")}</th>
+						<th>{t("Label")}</th>
+						<th>{t("Type")}</th>
+						<th>{t("Compare as")}</th>
 						<th />
 					</tr>
 				</thead>
@@ -446,7 +457,7 @@ function FieldsTable({
 										<button
 											className="manage-fields-table__values"
 											type="button"
-											title="Edit allowed values"
+											title={t("Edit allowed values")}
 											onClick={() => openEnumValues(row)}
 										>
 											{row.values?.length ? `Values (${row.values.length})` : "Values..."}
@@ -512,34 +523,50 @@ function FieldsTable({
 							<p className="period-prompt__help">
 								{renamePrompt.merge ? (
 									<>
-										Merge <code>{renamePrompt.key}</code> into existing field{" "}
-										<code>{renamePrompt.target}</code> across {renamePrompt.affected} location
-										{renamePrompt.affected === 1 ? "" : "s"}. This cannot be undone.
+										<Trans
+											msg={{
+												one: "Merge {from} into existing field {to} across {n} location. This cannot be undone.",
+												other:
+													"Merge {from} into existing field {to} across {n} locations. This cannot be undone.",
+											}}
+											from={<code>{renamePrompt.key}</code>}
+											to={<code>{renamePrompt.target}</code>}
+											n={renamePrompt.affected}
+										/>
 									</>
 								) : (
 									<>
-										Rename <code>{renamePrompt.key}</code> to <code>{renamePrompt.target}</code>{" "}
-										across {renamePrompt.affected} location
-										{renamePrompt.affected === 1 ? "" : "s"}. This cannot be undone.
+										<Trans
+											msg={{
+												one: "Rename {from} to {to} across {n} location. This cannot be undone.",
+												other: "Rename {from} to {to} across {n} locations. This cannot be undone.",
+											}}
+											from={<code>{renamePrompt.key}</code>}
+											to={<code>{renamePrompt.target}</code>}
+											n={renamePrompt.affected}
+										/>
 									</>
 								)}
 							</p>
 							{renamePrompt.merge && (
 								<fieldset className="manage-fields-action__winner">
-									<legend>On conflict, keep:</legend>
+									<legend>{t("On conflict, keep:")}</legend>
 									<label>
 										<Radio
 											checked={renamePrompt.winner === "from"}
 											onChange={() => setRenamePrompt({ ...renamePrompt, winner: "from" })}
 										/>{" "}
-										<code>{renamePrompt.key}</code>&apos;s values
+										<Trans msg={"{field}\u2019s values"} field={<code>{renamePrompt.key}</code>} />
 									</label>
 									<label>
 										<Radio
 											checked={renamePrompt.winner === "to"}
 											onChange={() => setRenamePrompt({ ...renamePrompt, winner: "to" })}
 										/>{" "}
-										<code>{renamePrompt.target}</code>&apos;s values
+										<Trans
+											msg={"{field}\u2019s values"}
+											field={<code>{renamePrompt.target}</code>}
+										/>
 									</label>
 								</fieldset>
 							)}
@@ -548,7 +575,7 @@ function FieldsTable({
 									{renamePrompt.merge ? "Merge" : "Rename"}
 								</Button>
 								<Button disabled={busy} onClick={cancelRename}>
-									Cancel
+									{t("Cancel")}
 								</Button>
 							</div>
 						</>
@@ -557,27 +584,31 @@ function FieldsTable({
 			</Dialog>
 
 			<Dialog open={deleteKey !== null} onOpenChange={(open) => !open && setDeleteKey(null)}>
-				<DialogContent title="Delete field" className="period-prompt">
+				<DialogContent title={t("Delete field")} className="period-prompt">
 					<p className="period-prompt__help">
-						Delete <code>{deleteKey}</code> and clear its values from every location? This cannot be
-						undone.
+						<Trans
+							msg="Delete {field} and clear its values from every location? This cannot be undone."
+							field={<code>{deleteKey}</code>}
+						/>
 					</p>
 					<div className="period-prompt__actions">
 						<Button variant="destructive" disabled={busy} onClick={confirmDelete}>
-							Delete field
+							{t("Delete field")}
 						</Button>
 						<Button disabled={busy} onClick={() => setDeleteKey(null)}>
-							Cancel
+							{t("Cancel")}
 						</Button>
 					</div>
 				</DialogContent>
 			</Dialog>
 
 			<Dialog open={enumPrompt !== null} onOpenChange={(open) => !open && setEnumPrompt(null)}>
-				<DialogContent title="Enum values" className="enum-values">
+				<DialogContent title={t("Enum values")} className="enum-values">
 					<p className="period-prompt__help">
-						Allowed values for <code>{enumPrompt?.key}</code>. Labels are optional display names;
-						filters, pivots and bulk edits offer these values in this order.
+						<Trans
+							msg="Allowed values for {field}. Labels are optional display names; filters, pivots and bulk edits offer these values in this order."
+							field={<code>{enumPrompt?.key}</code>}
+						/>
 					</p>
 					{enumPrompt?.rows.map((r, i) => (
 						<div className="enum-values__row" key={i}>
@@ -594,11 +625,9 @@ function FieldsTable({
 							<button
 								className="manage-fields-table__delete"
 								type="button"
-								title="Remove value"
+								title={t("Remove value")}
 								onClick={() =>
-									setEnumPrompt((p) =>
-										p ? { ...p, rows: p.rows.filter((_, j) => j !== i) } : p,
-									)
+									setEnumPrompt((p) => (p ? { ...p, rows: p.rows.filter((_, j) => j !== i) } : p))
 								}
 							>
 								<Icon path={mdiClose} size={18} />
@@ -613,28 +642,29 @@ function FieldsTable({
 								)
 							}
 						>
-							Add value
+							{t("Add value")}
 						</Button>
 						{enumPrompt && enumPrompt.candidates.length > 0 && (
 							<Button onClick={addCandidates}>
-								Add {enumPrompt.candidates.length} found in data
+								{t("Add {n} found in data", { n: enumPrompt.candidates.length })}
 							</Button>
 						)}
 					</div>
 					<div className="period-prompt__actions">
 						<Button variant="primary" onClick={confirmEnumValues}>
-							Save
+							{t("Save")}
 						</Button>
-						<Button onClick={() => setEnumPrompt(null)}>Cancel</Button>
+						<Button onClick={() => setEnumPrompt(null)}>{t("Cancel")}</Button>
 					</div>
 				</DialogContent>
 			</Dialog>
 
 			<Dialog open={periodPrompt !== null} onOpenChange={(open) => !open && setPeriodPrompt(null)}>
-				<DialogContent title="Circular period" className="period-prompt">
+				<DialogContent title={t("Circular period")} className="period-prompt">
 					<p className="period-prompt__help">
-						Value at which this field wraps around (e.g. 360 for degrees, 24 for hours, 12 for
-						months).
+						{t(
+							"Value at which this field wraps around (e.g. 360 for degrees, 24 for hours, 12 for\n\t\t\t\t\t\tmonths).",
+						)}
 					</p>
 					<form
 						onSubmit={(e) => {
@@ -652,9 +682,9 @@ function FieldsTable({
 						/>
 						<div className="period-prompt__actions">
 							<Button variant="primary" type="submit">
-								Set
+								{t("Set")}
 							</Button>
-							<Button onClick={() => setPeriodPrompt(null)}>Cancel</Button>
+							<Button onClick={() => setPeriodPrompt(null)}>{t("Cancel")}</Button>
 						</div>
 					</form>
 				</DialogContent>

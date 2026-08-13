@@ -13,6 +13,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { mdiClose } from "@mdi/js";
+import { t } from "@/lib/i18n";
 
 export function SaveSelectionsDialog({
 	open,
@@ -44,9 +45,9 @@ export function SaveSelectionsDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Save current selections">
+			<DialogContent title={t("Save current selections")}>
 				{saveableItems.length === 0 ? (
-					<p>No saveable selections active.</p>
+					<p>{t("No saveable selections active.")}</p>
 				) : (
 					<form
 						onSubmit={(e) => {
@@ -58,7 +59,7 @@ export function SaveSelectionsDialog({
 						<TextInput
 							value={name}
 							onChange={(e) => onNameChange(e.target.value)}
-							placeholder="Name this selection..."
+							placeholder={t("Name this selection...")}
 							autoFocus
 						/>
 						<div className="saved-selection-row__rules">
@@ -75,9 +76,9 @@ export function SaveSelectionsDialog({
 							))}
 						</div>
 						<div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-							<Button onClick={() => onOpenChange(false)}>Cancel</Button>
+							<Button onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
 							<Button variant="primary" type="submit" disabled={!name.trim()}>
-								Save
+								{t("Save")}
 							</Button>
 						</div>
 					</form>
@@ -93,9 +94,9 @@ export function ApplySavedSelectionDialog({ open, onOpenChange }: DialogProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Apply saved selection">
+			<DialogContent title={t("Apply saved selection")}>
 				{saved.length === 0 ? (
-					<p>No saved selections.</p>
+					<p>{t("No saved selections.")}</p>
 				) : (
 					<div className="saved-selection-list">
 						{saved.map((s) => (
@@ -117,7 +118,7 @@ export function ApplySavedSelectionDialog({ open, onOpenChange }: DialogProps) {
 											e.stopPropagation();
 											deleteSavedSelection(s.id);
 										}}
-										title="Delete"
+										title={t("Delete")}
 									>
 										<Icon path={mdiClose} size={14} />
 									</button>

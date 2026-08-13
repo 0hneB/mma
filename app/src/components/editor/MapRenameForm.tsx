@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { useCloseDialog } from "../primitives/Dialog";
 import { Button } from "../primitives/Button";
 import { TextInput } from "../primitives/TextInput";
+import { t } from "@/lib/i18n";
 
 function DeleteMapSection({ mapId, name }: { mapId: string; name: string }) {
 	const [confirming, setConfirming] = useState(false);
@@ -12,7 +13,7 @@ function DeleteMapSection({ mapId, name }: { mapId: string; name: string }) {
 		return (
 			<div className="edit-map-modal__delete">
 				<Button variant="destructive" onClick={() => setConfirming(true)}>
-					Delete map
+					{t("Delete map")}
 				</Button>
 			</div>
 		);
@@ -21,13 +22,14 @@ function DeleteMapSection({ mapId, name }: { mapId: string; name: string }) {
 	return (
 		<div className="edit-map-modal__delete">
 			<p>
-				Delete &ldquo;{name || "(unnamed)"}&rdquo;? This permanently removes the map and its
-				history.
+				{t("Delete \u201C{name}\u201D? This permanently removes the map and its history.", {
+					name: name || t("(unnamed)"),
+				})}
 			</p>
 			<div className="edit-map-modal__actions">
-				<Button onClick={() => setConfirming(false)}>Cancel</Button>
+				<Button onClick={() => setConfirming(false)}>{t("Cancel")}</Button>
 				<Button variant="destructive" onClick={() => void deleteMap(mapId)}>
-					Delete map
+					{t("Delete map")}
 				</Button>
 			</div>
 		</div>
@@ -49,7 +51,7 @@ export function MapRenameForm({ mapId, currentName }: { mapId: string; currentNa
 				}}
 			>
 				<p className="edit-map-modal__name">
-					<label htmlFor={`${id}name`}>Map name:</label>
+					<label htmlFor={`${id}name`}>{t("Map name:")}</label>
 					<TextInput
 						id={`${id}name`}
 						type="text"
@@ -62,7 +64,7 @@ export function MapRenameForm({ mapId, currentName }: { mapId: string; currentNa
 				</p>
 				<div className="edit-map-modal__actions">
 					<Button variant="primary" type="submit" disabled={name.trim().length === 0}>
-						Save
+						{t("Save")}
 					</Button>
 				</div>
 			</form>

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { SuggestInput } from "@/components/primitives/SuggestInput";
 import { parseMapsUrl, parseCoordinates, type ParsedLocation } from "@/lib/data/importExport";
 import type { LatLng } from "@/types";
+import { t } from "@/lib/i18n";
 
 type PlaceResult = LatLng & {
 	name: string;
@@ -67,7 +68,7 @@ export function SearchControl({
 		<SuggestInput
 			containerClassName="map-control search-control"
 			inputClassName="search-control__input"
-			placeholder="Search for places…"
+			placeholder={t("Search for places…")}
 			value={query}
 			onChange={(v) => {
 				setQuery(v);

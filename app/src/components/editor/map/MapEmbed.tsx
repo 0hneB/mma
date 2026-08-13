@@ -39,6 +39,7 @@ import { MapTypeDropdown, MapSettingsDropdown } from "@/components/editor/map/Ma
 import { CUSTOM_STYLES_KEY, type CustomStyle } from "@/lib/geo/mapStack";
 import { type MapEmbedPrefs, DEFAULT_PREFS, toggledOpacity } from "@/store/mapEmbedPrefs";
 import { FpsCounter } from "@/components/editor/map/FpsCounter";
+import { t } from "@/lib/i18n";
 
 /** Live zoom text with its own zoom subscription, so zooming doesn't re-render MapEmbed. */
 function ZoomReadout({ host }: { host: MapHost | null }) {
@@ -48,7 +49,7 @@ function ZoomReadout({ host }: { host: MapHost | null }) {
 		setZoom(host.getZoom());
 		return host.on("zoom", () => setZoom(Math.round(host.getZoom() * 100) / 100));
 	}, [host]);
-	return <> · zoom {zoom}</>;
+	return <> · {t("zoom {zoom}", { zoom })}</>;
 }
 
 export function MapEmbed({
@@ -422,12 +423,12 @@ export function MapEmbed({
 				>
 					<div className="map-control map-control--button white">
 						<Tooltip content="Zoom in" side="left">
-							<button onClick={zoomIn} aria-label="Zoom in">
+							<button onClick={zoomIn} aria-label={t("Zoom in")}>
 								<Icon path={mdiPlus} size={18} />
 							</button>
 						</Tooltip>
 						<Tooltip content="Zoom out" side="left">
-							<button onClick={zoomOut} aria-label="Zoom out">
+							<button onClick={zoomOut} aria-label={t("Zoom out")}>
 								<Icon path={mdiMinus} size={18} />
 							</button>
 						</Tooltip>
@@ -463,7 +464,7 @@ export function MapEmbed({
 			</div>
 			{showStylesDialog && (
 				<Dialog open onOpenChange={(open) => !open && setShowStylesDialog(false)}>
-					<DialogContent title="Manage map styles" className="map-styles-modal">
+					<DialogContent title={t("Manage map styles")} className="map-styles-modal">
 						{customStyles.length > 0 && (
 							<ul className="map-style-list">
 								{customStyles.map((s) => (
@@ -476,7 +477,7 @@ export function MapEmbed({
 												onClick={() => {
 													navigator.clipboard.writeText(JSON.stringify(s.style, null, 2));
 												}}
-												aria-label="Copy JSON"
+												aria-label={t("Copy JSON")}
 											>
 												<Icon path={mdiContentCopy} size={20} />
 											</button>
@@ -488,7 +489,7 @@ export function MapEmbed({
 													setCustomStyles(next);
 													if (prefs.mapStyleName === s.name) pref("mapStyleName")("default");
 												}}
-												aria-label="Delete style"
+												aria-label={t("Delete style")}
 											>
 												<Icon path={mdiDelete} size={20} />
 											</button>
@@ -497,8 +498,8 @@ export function MapEmbed({
 								))}
 							</ul>
 						)}
-						<strong>New style</strong>
-						<p style={{ margin: 0 }}>Paste a Google Maps style JSON array below.</p>
+						<strong>{t("New style")}</strong>
+						<p style={{ margin: 0 }}>{t("Paste a Google Maps style JSON array below.")}</p>
 						<form
 							onSubmit={(ev) => {
 								ev.preventDefault();
@@ -520,7 +521,7 @@ export function MapEmbed({
 							<p>
 								<TextInput
 									name="name"
-									placeholder="Style name"
+									placeholder={t("Style name")}
 									required
 									style={{ width: "100%" }}
 								/>
@@ -541,14 +542,14 @@ export function MapEmbed({
 							</p>
 							<p>
 								<Button variant="primary" type="submit">
-									Upload
+									{t("Upload")}
 								</Button>
 							</p>
 						</form>
 					</DialogContent>
 				</Dialog>
 			)}
-			<ContextMenu.Trigger render={<span ref={contextTriggerRef} title="Context menu" />} />
+			<ContextMenu.Trigger render={<span ref={contextTriggerRef} title={t("Context menu")} />} />
 			<ContextMenu.Portal>
 				<MapContextMenuContent />
 			</ContextMenu.Portal>

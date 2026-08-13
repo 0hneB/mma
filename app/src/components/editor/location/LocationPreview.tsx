@@ -83,6 +83,7 @@ import { singletonPano, singletonDiv, getPanorama, applyResolved } from "@/lib/s
 import { PanoDatePicker } from "./PanoDatePicker";
 import { usePanoNavigation } from "./usePanoNavigation";
 import { useLocationHotkeys } from "./useLocationHotkeys";
+import { t } from "@/lib/i18n";
 
 /** Tags are staged by name, not ID, because some tags do not exist yet. */
 function idsToNames(ids: number[]): string[] {
@@ -145,8 +146,9 @@ const TagEditor = memo(function TagEditor({
 	if (isImport) {
 		return (
 			<p>
-				This location is still being imported and cannot be modified. Complete the import before
-				making changes.
+				{t(
+					"This location is still being imported and cannot be modified. Complete the import before\n\t\t\t\tmaking changes.",
+				)}
 			</p>
 		);
 	}
@@ -172,7 +174,7 @@ const TagEditor = memo(function TagEditor({
 						<input
 							className="form-add-tag__input"
 							type="text"
-							placeholder="Add a tag…"
+							placeholder={t("Add a tag…")}
 							value={tagInput}
 							onChange={(e) => setTagInput(e.target.value)}
 						/>
@@ -654,7 +656,8 @@ export function LocationPreview() {
 						)}
 						{lockInfo && (
 							<div className="viewport-lock-badge">
-								VIEWPORT LOCK h <span className="mono">{lockInfo.relHeading.toFixed(1)}</span> p{" "}
+								{t("VIEWPORT LOCK")} h{" "}
+								<span className="mono">{lockInfo.relHeading.toFixed(1)}</span> p{" "}
 								<span className="mono">{lockInfo.relPitch.toFixed(1)}</span> z{" "}
 								<span className="mono">{lockInfo.lockedZoom.toFixed(1)}</span>
 							</div>
@@ -696,10 +699,11 @@ export function LocationPreview() {
 							<span className="location-preview__timestamp-sep"> · </span>
 						)}
 						<span className="location-preview__timestamps">
-							Created {relativeTime(location.createdAt)}
+							{t("Created")} {relativeTime(location.createdAt)}
 							{location.modifiedAt != null && (
 								<>
-									{" · "}Modified {relativeTime(location.modifiedAt)}
+									{" · "}
+									{t("Modified")} {relativeTime(location.modifiedAt)}
 								</>
 							)}
 						</span>
@@ -717,7 +721,7 @@ export function LocationPreview() {
 									<Button
 										onClick={() => reviewPrev()}
 										disabled={reviewSession ? isAtStart(reviewSession) : true}
-										aria-label="Go to previous location (Control+Left)"
+										aria-label={t("Go to previous location (Control+Left)")}
 										data-qa="review-prev"
 									>
 										<Icon path={mdiChevronLeft} />
@@ -726,7 +730,7 @@ export function LocationPreview() {
 								<Tooltip content="Go to next location (Control+Right)">
 									<Button
 										onClick={handleClose}
-										aria-label="Go to next location (Control+Right)"
+										aria-label={t("Go to next location (Control+Right)")}
 										data-qa="review-next"
 									>
 										<Icon path={mdiChevronRight} />
@@ -735,11 +739,11 @@ export function LocationPreview() {
 							</div>
 						) : (
 							<Button onClick={handleClose} data-qa="location-close">
-								Close
+								{t("Close")}
 							</Button>
 						)}
 						<Button variant="destructive" onClick={handleDelete} data-qa="location-delete">
-							Delete
+							{t("Delete")}
 						</Button>
 					</div>
 					<div className="location-preview__tags">

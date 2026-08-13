@@ -55,6 +55,7 @@ import { useCountrySelect } from "@/lib/map/useCountrySelect";
 import { useDeletePolygon } from "@/lib/map/useDeletePolygon";
 import { useMapKeyBindings } from "@/lib/map/mapKeyBindings";
 import { range, clamp } from "@/types/util";
+import { t } from "@/lib/i18n";
 
 function usePasteHandler() {
 	useEffect(() => {
@@ -337,7 +338,7 @@ export function MapEditor() {
 								<a
 									href="#"
 									style={{ textDecoration: "none" }}
-									aria-label="Back to map list"
+									aria-label={t("Back to map list")}
 									onClick={(e) => {
 										e.preventDefault();
 										goToList();
@@ -350,12 +351,12 @@ export function MapEditor() {
 							<Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
 								<Tooltip content="Edit map" side="bottom">
 									<DialogTrigger asChild>
-										<button className="icon-button" type="button" aria-label="Edit map">
+										<button className="icon-button" type="button" aria-label={t("Edit map")}>
 											<Icon path={mdiPencil} />
 										</button>
 									</DialogTrigger>
 								</Tooltip>
-								<DialogContent title="Map settings" className="edit-map-modal">
+								<DialogContent title={t("Map settings")} className="edit-map-modal">
 									<MapRenameForm mapId={map.meta.id} currentName={map.meta.name} />
 								</DialogContent>
 							</Dialog>
@@ -367,7 +368,7 @@ export function MapEditor() {
 									<button
 										className="icon-button"
 										type="button"
-										aria-label="Toggle doclink panel"
+										aria-label={t("Toggle doclink panel")}
 										onClick={() => setDocPanelOpen(!docPanelOpen)}
 									>
 										<Icon path={mdiFileDocumentOutline} />
@@ -397,7 +398,7 @@ export function MapEditor() {
 						<CommandPalette />
 						{fileDragging && (
 							<div className="file-drop-overlay">
-								<div className="file-drop-overlay__content">Drop file to import</div>
+								<div className="file-drop-overlay__content">{t("Drop file to import")}</div>
 							</div>
 						)}
 					</div>

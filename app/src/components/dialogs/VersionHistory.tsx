@@ -6,6 +6,7 @@ import { beginCommitDiffPreview } from "@/store/commitDiff";
 import { cmd } from "@/lib/commands";
 import { useAsync } from "@/lib/hooks/useAsync";
 import type { CommitInfo } from "@/bindings.gen";
+import { t } from "@/lib/i18n";
 
 const fmt = new Intl.NumberFormat("en");
 const dateFmt = new Intl.DateTimeFormat("en", {
@@ -70,9 +71,11 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title="Version history" className="version-history-modal">
+			<DialogContent title={t("Version history")} className="version-history-modal">
 				{commits.length === 0 && (
-					<p className="text-muted">No commits yet. Press Commit to create your first version.</p>
+					<p className="text-muted">
+						{t("No commits yet. Press Commit to create your first version.")}
+					</p>
 				)}
 				{commits.length > 0 && (
 					<div style={{ maxHeight: 400, overflowY: "auto" }}>
@@ -84,10 +87,10 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 										borderBottom: "1px solid var(--border-subtle)",
 									}}
 								>
-									<th style={{ padding: "6px 8px" }}>Date</th>
-									<th style={{ padding: "6px 8px" }}>Hash</th>
-									<th style={{ padding: "6px 8px" }}>Changes</th>
-									<th style={{ padding: "6px 8px", textAlign: "right" }}>Locations</th>
+									<th style={{ padding: "6px 8px" }}>{t("Date")}</th>
+									<th style={{ padding: "6px 8px" }}>{t("Hash")}</th>
+									<th style={{ padding: "6px 8px" }}>{t("Changes")}</th>
+									<th style={{ padding: "6px 8px", textAlign: "right" }}>{t("Locations")}</th>
 									<th style={{ padding: "6px 8px" }}></th>
 								</tr>
 							</thead>

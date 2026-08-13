@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { commitMap } from "@/store/useMapStore";
 import { useCommitDiff } from "@/store/commitDiff";
+import { t } from "@/lib/i18n";
 
 const fmt = new Intl.NumberFormat("en");
 
@@ -15,7 +16,7 @@ export function CommitDialog({ onClose }: { onClose: () => void }) {
 	};
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title="Commit changes" className="commit-dialog">
+			<DialogContent title={t("Commit changes")} className="commit-dialog">
 				<span className="map-meta__count mono">
 					<span className="map-meta__count--added">+{fmt.format(diff.added)}</span>{" "}
 					<span className="map-meta__count--removed">-{fmt.format(diff.removed)}</span>{" "}
@@ -25,7 +26,7 @@ export function CommitDialog({ onClose }: { onClose: () => void }) {
 					type="text"
 					autoFocus
 					className="text-input commit-dialog__message"
-					placeholder="Commit message (optional)"
+					placeholder={t("Commit message (optional)")}
 					value={message}
 					onChange={(e) => setMessage(e.target.value)}
 					onKeyDown={(e) => {
@@ -33,9 +34,9 @@ export function CommitDialog({ onClose }: { onClose: () => void }) {
 					}}
 				/>
 				<div className="commit-dialog__actions">
-					<Button onClick={onClose}>Cancel</Button>
+					<Button onClick={onClose}>{t("Cancel")}</Button>
 					<Button variant="primary" onClick={commit}>
-						Commit
+						{t("Commit")}
 					</Button>
 				</div>
 			</DialogContent>

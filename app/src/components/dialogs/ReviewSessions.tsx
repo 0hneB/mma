@@ -10,11 +10,13 @@ import {
 	selectReviewSet,
 	renameReview,
 } from "@/lib/review/review";
+import { shortDateFmt } from "@/lib/util/format";
+import { getLocale, t } from "@/lib/i18n";
 import type { ReviewSession } from "@/bindings.gen";
 
 function formatDate(iso: string): string {
 	const d = new Date(iso);
-	return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+	return shortDateFmt.format(d);
 }
 
 function formatRelative(iso: string): string {
@@ -82,24 +84,24 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Review sessions" className="review-sessions-modal">
+			<DialogContent title={t("Review sessions")} className="review-sessions-modal">
 				<div className="review-sessions__tabs">
 					<button
 						className={`review-sessions__tab${filter === "active" ? " is-active" : ""}`}
 						onClick={() => setFilter("active")}
 					>
-						In progress
+						{t("In progress")}
 					</button>
 					<button
 						className={`review-sessions__tab${filter === "done" ? " is-active" : ""}`}
 						onClick={() => setFilter("done")}
 					>
-						Completed
+						{t("Completed")}
 					</button>
 				</div>
 
 				{loading ? (
-					<p className="review-sessions__empty">Loading...</p>
+					<p className="review-sessions__empty">{t("Loading...")}</p>
 				) : sessions.length === 0 ? (
 					<p className="review-sessions__empty">
 						{filter === "active" ? "No reviews in progress." : "No completed reviews."}
@@ -142,7 +144,7 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 										) : (
 											<div
 												className="review-sessions__name"
-												title="Click to rename"
+												title={t("Click to rename")}
 												onClick={() => startEdit(s)}
 											>
 												{s.name || "Review"}
@@ -150,13 +152,17 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 										)}
 										<div className="review-sessions__meta">
 											<span>
-												{s.reviewed.length} / {s.order.length} reviewed ({pct}%)
+												{t("{done} / {total} reviewed ({pct}%)", {
+													done: s.reviewed.length,
+													total: s.order.length,
+													pct,
+												})}
 											</span>
-											<span title={new Date(s.createdAt).toLocaleString()}>
-												Started {formatDate(s.createdAt)}
+											<span title={new Date(s.createdAt).toLocaleString(getLocale())}>
+												{t("Started")} {formatDate(s.createdAt)}
 											</span>
-											<span title={new Date(s.updatedAt).toLocaleString()}>
-												Updated {formatRelative(s.updatedAt)}
+											<span title={new Date(s.updatedAt).toLocaleString(getLocale())}>
+												{t("Updated")} {formatRelative(s.updatedAt)}
 											</span>
 										</div>
 										<div className="review-sessions__bar">
@@ -166,8 +172,8 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 									<div className="review-sessions__actions">
 										<button
 											className="icon-button"
-											title="Select reviewed"
-											aria-label="Select reviewed"
+											title={t("Select reviewed")}
+											aria-label={t("Select reviewed")}
 											onClick={() => handleSelect(s, "reviewed")}
 											data-qa="review-select-reviewed"
 										>
@@ -175,8 +181,8 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 										</button>
 										<button
 											className="icon-button"
-											title="Select unreviewed"
-											aria-label="Select unreviewed"
+											title={t("Select unreviewed")}
+											aria-label={t("Select unreviewed")}
 											onClick={() => handleSelect(s, "unreviewed")}
 											data-qa="review-select-unreviewed"
 										>
@@ -190,13 +196,14 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 												data-qa="review-resume"
 											>
 												<Icon path={mdiPlay} size={16} />
-												Resume
+
+												{t("Resume")}
 											</Button>
 										)}
 										<button
 											className="icon-button review-sessions__delete"
-											title="Delete session"
-											aria-label="Delete session"
+											title={t("Delete session")}
+											aria-label={t("Delete session")}
 											onClick={() => handleDelete(s.id)}
 											data-qa="review-session-delete"
 										>

@@ -7,6 +7,7 @@ import { fetchAllLocations } from "@/store/useMapStore";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { usePluginState, createPluginStorage } from "@/plugins/registry";
 import "./distribution.css";
+import { t } from "@/lib/i18n";
 
 type Source = "coords" | "metadata";
 
@@ -101,15 +102,15 @@ export function DistributionSidebar({ onClose }: { onClose: () => void }) {
 	const maxCount = entries.length > 0 ? entries[0].count : 1;
 
 	return (
-		<Sidebar title="Distribution" onBack={onClose} className="distribution-sidebar">
+		<Sidebar title={t("Distribution")} onBack={onClose} className="distribution-sidebar">
 			<SegmentedControl<Source>
 				value={metaAvailable ? source : "coords"}
 				onChange={setSource}
 				options={[
-					{ value: "coords", label: "Coordinates" },
+					{ value: "coords", label: t("Coordinates") },
 					{
 						value: "metadata",
-						label: "Metadata",
+						label: t("Metadata"),
 						disabled: !metaAvailable,
 						title: metaAvailable ? undefined : "Enrich metadata fields to enable",
 					},
@@ -119,7 +120,10 @@ export function DistributionSidebar({ onClose }: { onClose: () => void }) {
 				{total} location{total !== 1 ? "s" : ""} across {entries.length} countr
 				{entries.length !== 1 ? "ies" : "y"}
 				{unknown > 0 && (
-					<span className="distribution-sidebar__unknown"> ({unknown} without country data)</span>
+					<span className="distribution-sidebar__unknown">
+						{" "}
+						{t("({n} without country data)", { n: unknown })}
+					</span>
 				)}
 			</div>
 

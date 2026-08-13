@@ -7,6 +7,7 @@ import { TagPill, TagPillButton } from "@/components/primitives/TagPill";
 import { Icon } from "@/components/primitives/Icon";
 import { useSetting, setSetting } from "@/store/settings";
 import { displayTagName } from "@/store/selections";
+import { t } from "@/lib/i18n";
 
 export function FullscreenTagBar({
 	pendingTags,
@@ -83,7 +84,7 @@ export function FullscreenTagBar({
 						<input
 							className="form-add-tag__input fullscreen-tagbar__input"
 							type="text"
-							placeholder="Add a tag..."
+							placeholder={t("Add a tag...")}
 							spellCheck={false}
 							value={input}
 							onChange={(e) => setInput(e.target.value)}

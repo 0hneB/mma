@@ -3,6 +3,7 @@ import { cmd } from "@/lib/commands";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { useDomEvent } from "@/lib/hooks/useDomEvent";
 import { google } from "@/lib/sv/opensv";
+import { fmt } from "@/lib/util/format";
 import { getMapState } from "@/store/useMapStore";
 import {
 	startFrameMeter,
@@ -16,6 +17,7 @@ import {
 	type DeckMetrics,
 	type RenderStats,
 } from "@/lib/render/renderStats";
+import { t } from "@/lib/i18n";
 
 declare const __APP_VERSION__: string;
 
@@ -113,7 +115,7 @@ interface LiveStats {
 	scene: RenderStats | null;
 }
 
-const fmtInt = (n: number) => Math.round(n).toLocaleString();
+const fmtInt = (n: number) => fmt.format(Math.round(n));
 const fmtMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
 function liveRows(live: LiveStats): [string, string][] {
@@ -210,7 +212,7 @@ export function StatsForNerds({ onClose }: { onClose: () => void }) {
 					}}
 				>
 					<span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)" }}>
-						Stats for Nerds
+						{t("Stats for Nerds")}
 					</span>
 					<button
 						onClick={onClose}
@@ -234,7 +236,7 @@ export function StatsForNerds({ onClose }: { onClose: () => void }) {
 								["Version", stats.appVersion],
 								["Build", stats.buildMode],
 								["Maps", stats.maps],
-								["Locations", stats.locations.toLocaleString()],
+								["Locations", fmt.format(stats.locations)],
 								["Tags", stats.tags],
 								["Commits", stats.commits],
 								["Pending saves", stats.pendingSaves],
@@ -281,7 +283,7 @@ export function StatsForNerds({ onClose }: { onClose: () => void }) {
 								letterSpacing: "0.05em",
 							}}
 						>
-							Rendering (live)
+							{t("Rendering (live)")}
 						</div>
 						<table style={{ width: "100%", borderCollapse: "collapse" }}>
 							<tbody>

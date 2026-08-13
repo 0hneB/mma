@@ -11,6 +11,7 @@ import {
 } from "@/lib/geo/scoring";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Radio } from "@/components/primitives/Radio";
+import { t } from "@/lib/i18n";
 
 type Mode = "auto" | "world" | "fixed";
 
@@ -72,22 +73,24 @@ export function ScoreBoundsEditor() {
 	return (
 		<fieldset className="fieldset">
 			<legend className="fieldset__header">
-				Scoring <span className="fieldset__divider" />
+				{t("Scoring")} <span className="fieldset__divider" />
 			</legend>
 			<label className="settings-popup__item">
 				<Radio name="score-bounds" checked={mode === "auto"} onChange={() => setMode("auto")} />
-				Automatic based on locations
+
+				{t("Automatic based on locations")}
 				{autoError != null && ` (${formatDistance(autoError)})`}
 			</label>
 
 			<label className="settings-popup__item">
 				<Radio name="score-bounds" checked={mode === "world"} onChange={() => setMode("world")} />
-				World map (ACW, {formatDistance(WORLD_MAX_ERROR)})
+				{t("World map (ACW, {distance})", { distance: formatDistance(WORLD_MAX_ERROR) })}
 			</label>
 
 			<label className="settings-popup__item">
 				<Radio name="score-bounds" checked={mode === "fixed"} onChange={() => setMode("fixed")} />
-				Fixed bounds
+
+				{t("Fixed bounds")}
 				{fixedError != null && ` (${formatDistance(fixedError)})`}
 			</label>
 

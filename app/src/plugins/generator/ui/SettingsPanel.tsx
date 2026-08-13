@@ -4,6 +4,7 @@ import { NSelect } from "@/components/primitives/NSelect";
 import { Radio } from "@/components/primitives/Radio";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Section, SegmentedControl } from "@/components/primitives/Sidebar";
+import { t } from "@/lib/i18n";
 
 function Check({
 	label,
@@ -94,16 +95,16 @@ export function SettingsPanel({
 
 	return (
 		<div className="generator-settings">
-			<Section title="Coverage settings">
+			<Section title={t("Coverage settings")}>
 				{!settings.rejectOfficial && (
 					<>
 						<Check
-							label="Reject unofficial"
+							label={t("Reject unofficial")}
 							checked={settings.rejectUnofficial}
 							onChange={(v) => set("rejectUnofficial", v)}
 						/>
 						<Check
-							label="Reject gen 1"
+							label={t("Reject gen 1")}
 							checked={settings.rejectGen1}
 							onChange={(v) => set("rejectGen1", v)}
 						/>
@@ -112,7 +113,7 @@ export function SettingsPanel({
 				{settings.rejectUnofficial && !settings.rejectOfficial && !settings.rejectGen1 && (
 					<>
 						<Check
-							label="Find generation"
+							label={t("Find generation")}
 							checked={settings.findGeneration}
 							onChange={(v) => set("findGeneration", v)}
 						/>
@@ -122,38 +123,38 @@ export function SettingsPanel({
 									value={String(settings.generation)}
 									onChange={(v) => set("generation", Number(v) as 1 | 23 | 4)}
 									options={[
-										{ value: "1", label: "Gen 1" },
-										{ value: "23", label: "Gen 2/3" },
-										{ value: "4", label: "Gen 4" },
+										{ value: "1", label: t("Gen 1") },
+										{ value: "23", label: t("Gen 2/3") },
+										{ value: "4", label: t("Gen 4") },
 									]}
 								/>
 							</div>
 						)}
 						<Check
-							label="Find trekker coverage"
+							label={t("Find trekker coverage")}
 							checked={settings.rejectDescription}
 							onChange={(v) => set("rejectDescription", v)}
 						/>
 					</>
 				)}
 				<Check
-					label="Find unofficial coverage"
+					label={t("Find unofficial coverage")}
 					checked={settings.rejectOfficial}
 					onChange={(v) => set("rejectOfficial", v)}
 				/>
 			</Section>
 
-			<Section title="Location settings">
+			<Section title={t("Location settings")}>
 				{settings.rejectUnofficial && !settings.rejectOfficial && (
 					<Check
-						label="Reject locations without date"
+						label={t("Reject locations without date")}
 						checked={settings.rejectDateless}
 						onChange={(v) => set("rejectDateless", v)}
 					/>
 				)}
 				{settings.rejectUnofficial && !settings.rejectOfficial && !settings.rejectDescription && (
 					<Check
-						label="Reject locations without description"
+						label={t("Reject locations without description")}
 						checked={settings.rejectNoDescription}
 						onChange={(v) => set("rejectNoDescription", v)}
 					/>
@@ -161,19 +162,19 @@ export function SettingsPanel({
 				{settings.rejectUnofficial && !settings.rejectOfficial && (
 					<>
 						<Check
-							label="Only one panorama on location"
+							label={t("Only one panorama on location")}
 							checked={settings.onlyOneInTimeframe}
 							onChange={(v) => set("onlyOneInTimeframe", v)}
-							title="Only allow locations that don't have other nearby coverage in timeframe."
+							title={t("Only allow locations that don't have other nearby coverage in timeframe.")}
 						/>
 						<Check
-							label="Check linked panos"
+							label={t("Check linked panos")}
 							checked={settings.checkLinks}
 							onChange={(v) => set("checkLinks", v)}
 						/>
 						{settings.checkLinks && (
 							<NumberInput
-								label="Depth"
+								label={t("Depth")}
 								value={settings.linksDepth}
 								onChange={(v) => set("linksDepth", v)}
 								min={1}
@@ -185,22 +186,22 @@ export function SettingsPanel({
 				)}
 			</Section>
 
-			<Section title="Map making settings">
+			<Section title={t("Map making settings")}>
 				{settings.rejectUnofficial && !settings.rejectOfficial && (
 					<>
 						<Check
-							label="Find intersection locations"
+							label={t("Find intersection locations")}
 							checked={settings.getIntersection}
 							onChange={(v) => set("getIntersection", v)}
 						/>
 						<Check
-							label="Find curve locations"
+							label={t("Find curve locations")}
 							checked={settings.pinpointSearch}
 							onChange={(v) => set("pinpointSearch", v)}
 						/>
 						{settings.pinpointSearch && (
 							<NumberInput
-								label="Pinpointable angle"
+								label={t("Pinpointable angle")}
 								value={settings.pinpointAngle}
 								onChange={(v) => set("pinpointAngle", v)}
 								min={45}
@@ -209,7 +210,7 @@ export function SettingsPanel({
 							/>
 						)}
 						<Check
-							label="Adjust heading"
+							label={t("Adjust heading")}
 							checked={settings.adjustHeading}
 							onChange={(v) => set("adjustHeading", v)}
 						/>
@@ -221,13 +222,13 @@ export function SettingsPanel({
 									value={settings.headingReference}
 									onChange={(v) => set("headingReference", v as "link" | "forward" | "backward")}
 									options={[
-										{ value: "link", label: "Along road" },
-										{ value: "forward", label: "To front of car" },
-										{ value: "backward", label: "To back of car" },
+										{ value: "link", label: t("Along road") },
+										{ value: "forward", label: t("To front of car") },
+										{ value: "backward", label: t("To back of car") },
 									]}
 								/>
 								<NumberInput
-									label="Deviation"
+									label={t("Deviation")}
 									value={settings.headingDeviation}
 									onChange={(v) => set("headingDeviation", v)}
 									min={0}
@@ -237,13 +238,13 @@ export function SettingsPanel({
 							</>
 						)}
 						<Check
-							label="Adjust pitch"
+							label={t("Adjust pitch")}
 							checked={settings.adjustPitch}
 							onChange={(v) => set("adjustPitch", v)}
 						/>
 						{settings.adjustPitch && (
 							<NumberInput
-								label="Pitch deviation"
+								label={t("Pitch deviation")}
 								value={settings.pitchDeviation}
 								onChange={(v) => set("pitchDeviation", v)}
 								min={-90}
@@ -252,13 +253,13 @@ export function SettingsPanel({
 							/>
 						)}
 						<Check
-							label="Adjust zoom"
+							label={t("Adjust zoom")}
 							checked={settings.adjustZoom}
 							onChange={(v) => set("adjustZoom", v)}
 						/>
 						{settings.adjustZoom && (
 							<NumberInput
-								label="Zoom level"
+								label={t("Zoom level")}
 								value={settings.zoomLevel}
 								onChange={(v) => set("zoomLevel", v)}
 								min={0}
@@ -268,7 +269,7 @@ export function SettingsPanel({
 							/>
 						)}
 						<Check
-							label="Choose random date in time range"
+							label={t("Choose random date in time range")}
 							checked={settings.randomInTimeline}
 							onChange={(v) => set("randomInTimeline", v)}
 						/>
@@ -276,50 +277,50 @@ export function SettingsPanel({
 				)}
 			</Section>
 
-			<Section title="General settings">
+			<Section title={t("General settings")}>
 				<NumberInput
-					label="Radius"
+					label={t("Radius")}
 					value={settings.radius}
 					onChange={(v) => set("radius", v)}
 					min={10}
 					max={1000000}
 				/>
 				<label className="generator-settings__number">
-					Sampling
+					{t("Sampling")}
 					<SegmentedControl
 						value={settings.samplingMode}
 						onChange={(v) => set("samplingMode", v as GeneratorSettings["samplingMode"])}
 						options={[
-							{ value: "random", label: "Random" },
-							{ value: "poisson", label: "Uniform" },
-							{ value: "blueline", label: "Coverage" },
-							{ value: "kernels", label: "Grow" },
+							{ value: "random", label: t("Random") },
+							{ value: "poisson", label: t("Uniform") },
+							{ value: "blueline", label: t("Coverage") },
+							{ value: "kernels", label: t("Grow") },
 						]}
 					/>
 				</label>
 				<NumberInput
-					label="Generators"
+					label={t("Generators")}
 					value={settings.numGenerators}
 					onChange={(v) => set("numGenerators", v)}
 					min={1}
 					max={10}
 				/>
 				<NumberInput
-					label="Speed"
+					label={t("Speed")}
 					value={settings.speed}
 					onChange={(v) => set("speed", v)}
 					min={1}
 					max={1000}
 				/>
 				<Check
-					label="Only check one country/polygon at a time"
+					label={t("Only check one country/polygon at a time")}
 					checked={settings.oneCountryAtATime}
 					onChange={(v) => set("oneCountryAtATime", v)}
 				/>
 				{!settings.selectMonths && (
 					<div className="generator-settings__date-range">
 						<label className="generator-settings__date-label">
-							From{" "}
+							{t("From")}{" "}
 							<DatePicker
 								mode="month"
 								value={settings.fromDate}
@@ -327,7 +328,7 @@ export function SettingsPanel({
 							/>
 						</label>
 						<label className="generator-settings__date-label">
-							To{" "}
+							{t("To")}{" "}
 							<DatePicker mode="month" value={settings.toDate} onChange={(v) => set("toDate", v)} />
 						</label>
 					</div>
@@ -335,7 +336,7 @@ export function SettingsPanel({
 				{!settings.rejectOfficial && (
 					<>
 						<Check
-							label="Filter by month"
+							label={t("Filter by month")}
 							checked={settings.selectMonths}
 							onChange={(v) => set("selectMonths", v)}
 						/>
@@ -343,7 +344,7 @@ export function SettingsPanel({
 							<div className="generator-settings__indent">
 								<div className="generator-settings__date-range">
 									<label className="generator-settings__date-label">
-										From month{" "}
+										{t("From month")}{" "}
 										<input
 											className="text-input"
 											style={{ width: "3rem" }}
@@ -363,7 +364,7 @@ export function SettingsPanel({
 								</div>
 								<div className="generator-settings__date-range">
 									<label className="generator-settings__date-label">
-										Between years{" "}
+										{t("Between years")}{" "}
 										<input
 											className="text-input"
 											style={{ width: "4rem" }}
@@ -388,7 +389,7 @@ export function SettingsPanel({
 				{!settings.rejectOfficial && (
 					<>
 						<Check
-							label="Filter by minimum distance from locations"
+							label={t("Filter by minimum distance from locations")}
 							checked={settings.findRegions}
 							onChange={(v) => set("findRegions", v)}
 						/>
@@ -404,7 +405,7 @@ export function SettingsPanel({
 					</>
 				)}
 				<Check
-					label="Skip near existing map locations"
+					label={t("Skip near existing map locations")}
 					checked={settings.skipExisting}
 					onChange={(v) => set("skipExisting", v)}
 				/>
@@ -418,14 +419,14 @@ export function SettingsPanel({
 					/>
 				)}
 				<Check
-					label="Check all dates"
+					label={t("Check all dates")}
 					checked={settings.checkAllDates}
 					onChange={(v) => set("checkAllDates", v)}
 				/>
 			</Section>
-			<Section title="Advanced filters" defaultOpen={false}>
+			<Section title={t("Advanced filters")} defaultOpen={false}>
 				<Check
-					label="Search in panorama description"
+					label={t("Search in panorama description")}
 					checked={settings.searchInDescription}
 					onChange={(v) => set("searchInDescription", v)}
 				/>
@@ -436,8 +437,8 @@ export function SettingsPanel({
 								value={settings.searchFilterType}
 								onChange={(v) => set("searchFilterType", v as "include" | "exclude")}
 								options={[
-									{ value: "include", label: "Include" },
-									{ value: "exclude", label: "Exclude" },
+									{ value: "include", label: t("Include") },
+									{ value: "exclude", label: t("Exclude") },
 								]}
 							/>
 							<NSelect
@@ -447,38 +448,38 @@ export function SettingsPanel({
 									set("searchMode", e.target.value as GeneratorSettings["searchMode"])
 								}
 							>
-								<option value="contains">Contains</option>
-								<option value="fullword">Full word</option>
-								<option value="startswith">Starts with</option>
-								<option value="endswith">Ends with</option>
-								<option value="sectionmatch">Section match</option>
+								<option value="contains">{t("Contains")}</option>
+								<option value="fullword">{t("Full word")}</option>
+								<option value="startswith">{t("Starts with")}</option>
+								<option value="endswith">{t("Ends with")}</option>
+								<option value="sectionmatch">{t("Section match")}</option>
 							</NSelect>
 						</div>
 						<input
 							className="text-input"
 							type="text"
-							placeholder="Comma-separated terms"
+							placeholder={t("Comma-separated terms")}
 							value={settings.searchTerms}
 							onChange={(e) => set("searchTerms", e.target.value)}
 						/>
 					</div>
 				)}
 				<Check
-					label="Filter by number of links"
+					label={t("Filter by number of links")}
 					checked={settings.filterByLinks}
 					onChange={(v) => set("filterByLinks", v)}
 				/>
 				{settings.filterByLinks && (
 					<div className="generator-settings__indent generator-settings__date-range">
 						<NumberInput
-							label="Min"
+							label={t("Min")}
 							value={settings.minLinks}
 							onChange={(v) => set("minLinks", v)}
 							min={0}
 							max={10}
 						/>
 						<NumberInput
-							label="Max"
+							label={t("Max")}
 							value={settings.maxLinks}
 							onChange={(v) => set("maxLinks", v)}
 							min={0}
@@ -488,12 +489,14 @@ export function SettingsPanel({
 				)}
 			</Section>
 
-			<Section title="Visualization" defaultOpen={false}>
+			<Section title={t("Visualization")} defaultOpen={false}>
 				<Check
-					label="Show search coverage"
+					label={t("Show search coverage")}
 					checked={settings.showSearchOverlay}
 					onChange={(v) => set("showSearchOverlay", v)}
-					title="Draw where the generator has searched, as a growing overlay. Clears when you stop."
+					title={t(
+						"Draw where the generator has searched, as a growing overlay. Clears when you stop.",
+					)}
 				/>
 			</Section>
 		</div>

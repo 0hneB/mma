@@ -68,15 +68,15 @@ function PluginSettings({ pluginId }: { pluginId: string }) {
 							className="plugin-card__setting"
 							checked={Boolean(value)}
 							onChange={(v) => update(v)}
-							label={def.label}
+							label={t(def.label)}
 						>
-							<span>{def.label}</span>
+							<span>{t(def.label)}</span>
 						</SwitchRow>
 					);
 				}
 				return (
 					<label key={def.key} className="plugin-card__setting">
-						<span>{def.label}</span>
+						<span>{t(def.label)}</span>
 						<TextInput
 							type={def.type === "number" ? "number" : "text"}
 							value={def.type === "number" ? Number(value ?? 0) : String(value ?? "")}
@@ -95,6 +95,7 @@ import { mdiAutoFix, mdiDownload, mdiFlaskOutline, mdiRefresh, mdiTrashCanOutlin
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Switch } from "@/components/primitives/Switch";
 import { SwitchRow } from "@/components/primitives/SwitchRow";
+import { t, msg } from "@/lib/i18n";
 
 /** One card's worth of state. Core plugins are just entries that ship installed and
  *  can't be uninstalled or updated independently of the app. */
@@ -125,13 +126,13 @@ const CARD_LABELS: {
 	{
 		key: "experimental",
 		icon: mdiFlaskOutline,
-		tooltip: "Experimental",
+		tooltip: msg("Experimental"),
 		applies: (e) => !!e.experimental,
 	},
 	{
 		key: "enrichment",
 		icon: mdiAutoFix,
-		tooltip: "Enrichment only: adds data fields, no panel of its own",
+		tooltip: msg("Enrichment only: adds data fields, no panel of its own"),
 		applies: (e) => e.installed && isBackgroundPlugin(e.id),
 	},
 ];
@@ -196,7 +197,7 @@ function PluginCard({
 							onClick={run(onInstall)}
 							disabled={busy || !!requiresApp}
 							title={requiresApp ? `Requires app v${requiresApp} or newer` : "Install"}
-							aria-label="Install"
+							aria-label={t("Install")}
 						>
 							<Icon path={mdiDownload} size={16} />
 						</button>
@@ -220,7 +221,7 @@ function PluginCard({
 										? `Update to v${entry.latestVersion}`
 										: "Update"
 							}
-							aria-label="Update"
+							aria-label={t("Update")}
 						>
 							<Icon path={mdiRefresh} size={16} />
 						</button>
@@ -230,8 +231,8 @@ function PluginCard({
 							className="plugin-card__action-btn plugin-card__action-btn--uninstall"
 							onClick={() => onUninstall(id)}
 							disabled={busy}
-							title="Uninstall"
-							aria-label="Uninstall"
+							title={t("Uninstall")}
+							aria-label={t("Uninstall")}
 						>
 							<Icon path={mdiTrashCanOutline} size={16} />
 						</button>
@@ -445,19 +446,19 @@ export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Plugins" className="plugin-marketplace">
+			<DialogContent title={t("Plugins")} className="plugin-marketplace">
 				<div className="plugin-marketplace__tabs">
 					<button
 						className={`plugin-marketplace__tab ${tab === "core" ? "plugin-marketplace__tab--active" : ""}`}
 						onClick={() => setTab("core")}
 					>
-						Core
+						{t("Core")}
 					</button>
 					<button
 						className={`plugin-marketplace__tab ${tab === "additional" ? "plugin-marketplace__tab--active" : ""}`}
 						onClick={() => setTab("additional")}
 					>
-						Additional
+						{t("Additional")}
 					</button>
 				</div>
 
@@ -493,10 +494,10 @@ export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 							))}
 						{fetchError && (
 							<div className="plugin-marketplace__empty">
-								Failed to load registry: {fetchError}
+								{t("Failed to load registry:")} {fetchError}
 								<br />
 								<Button onClick={fetchRegistry} style={{ marginTop: 8 }}>
-									Retry
+									{t("Retry")}
 								</Button>
 							</div>
 						)}
@@ -509,7 +510,9 @@ export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 							/>
 						))}
 						{registry && installedEntries.length === 0 && registryEntries.length === 0 && (
-							<div className="plugin-marketplace__empty">No additional plugins available.</div>
+							<div className="plugin-marketplace__empty">
+								{t("No additional plugins available.")}
+							</div>
 						)}
 					</div>
 				)}

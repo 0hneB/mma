@@ -213,9 +213,7 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 	private svOpacityExpr(): number | maplibregl.ExpressionSpecification {
 		const below = this.svSrc.opacity(BLOBBY_ZOOM_THRESHOLD);
 		const above = this.svSrc.opacity(BLOBBY_ZOOM_THRESHOLD + 1);
-		return below === above
-			? above
-			: ["step", ["zoom"], below, BLOBBY_ZOOM_THRESHOLD, above];
+		return below === above ? above : ["step", ["zoom"], below, BLOBBY_ZOOM_THRESHOLD, above];
 	}
 
 	getZoom() {

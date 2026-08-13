@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import "@/styles.css";
 import App from "@/App.tsx";
 import { initLogging, log } from "@/lib/util/log";
+import { initLocale } from "@/lib/i18n";
 import { initStore, flushSave } from "@/store/useMapStore";
 import { getMapList } from "@/store/mapList";
 import { initRouter } from "@/store/router";
@@ -35,6 +36,8 @@ async function boot() {
 
 	await initLogging();
 	mark("initLogging");
+	await initLocale(getSettings().language);
+	mark("initLocale");
 	await initStore();
 	mark("initStore");
 

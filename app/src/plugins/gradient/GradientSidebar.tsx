@@ -13,6 +13,7 @@ import { partition, useScope } from "@/store/scope";
 import { usePluginState } from "@/plugins/registry";
 import { useSetting } from "@/store/settings";
 import "./gradient.css";
+import { t } from "@/lib/i18n";
 
 interface GradientPreset {
 	name: string;
@@ -185,16 +186,16 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 	}, [fieldKey, projectionId, presetIdx, bucketCount, reversed, scopeCtl.scope]);
 
 	return (
-		<Sidebar title="Gradient" onBack={onClose} className="gradient-sidebar">
+		<Sidebar title={t("Gradient")} onBack={onClose} className="gradient-sidebar">
 			{fields.length === 0 ? (
-				<EmptyState>No extra fields on this map. Enrich locations first.</EmptyState>
+				<EmptyState>{t("No extra fields on this map. Enrich locations first.")}</EmptyState>
 			) : (
 				<>
-					<Field label="Apply to">
+					<Field label={t("Apply to")}>
 						<ScopeSelector ctl={scopeCtl} />
 					</Field>
 					<div className="gradient-sidebar__row">
-						<Field label="Field">
+						<Field label={t("Field")}>
 							<NSelect
 								value={fieldKey}
 								onChange={(e) => {
@@ -214,7 +215,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 								))}
 							</NSelect>
 						</Field>
-						<Field label="Group by">
+						<Field label={t("Group by")}>
 							<NSelect
 								value={projectionId}
 								disabled={projOptions.length <= 1}
@@ -231,7 +232,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 						</Field>
 					</div>
 
-					<Field label="Buckets">
+					<Field label={t("Buckets")}>
 						<SegmentedControl
 							value={bucketCount}
 							onChange={setBucketCount}
@@ -244,7 +245,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 						/>
 					</Field>
 
-					<Field label="Gradient">
+					<Field label={t("Gradient")}>
 						<div className="gradient-sidebar__presets">
 							{PRESETS.map((p, i) => (
 								<button
@@ -265,12 +266,13 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 							))}
 						</div>
 						<div className="gradient-sidebar__preview-labels">
-							<span>Low</span>
-							<span>High</span>
+							<span>{t("Low")}</span>
+							<span>{t("High")}</span>
 						</div>
 						<label className="gradient-sidebar__check">
 							<Checkbox checked={reversed} onChange={(e) => setReversed(e.target.checked)} />
-							Reverse
+
+							{t("Reverse")}
 						</label>
 					</Field>
 
@@ -280,7 +282,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 							onClick={applyGradient}
 							disabled={applying || !fieldKey}
 						>
-							Apply
+							{t("Apply")}
 						</button>
 						{lastResult != null && (
 							<span className="gradient-sidebar__result">

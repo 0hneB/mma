@@ -15,6 +15,7 @@ import type {
 } from "@/bindings.gen";
 import { buildSelection } from "@/store/selections";
 import { isBuiltinField, isWritableField } from "@/lib/data/fieldDefRegistry";
+import { t, msg } from "@/lib/i18n";
 
 /** When a move target already holds a value, which field's value survives. */
 export type MergeWinner = "from" | "to";
@@ -494,12 +495,12 @@ interface FieldProjection {
 }
 
 const TAG_PROJECTIONS: FieldProjection[] = [
-	{ id: "value", label: "Value", appliesTo: ["string", "enum", "number", "month"] },
-	{ id: "year", label: "Year", appliesTo: ["date", "month"], needsTz: true },
-	{ id: "yearMonth", label: "Year-month", appliesTo: ["date"], needsTz: true },
-	{ id: "day", label: "Exact day", appliesTo: ["date"], needsTz: true },
-	{ id: "monthOfYear", label: "Month of year", appliesTo: ["date", "month"], needsTz: true },
-	{ id: "hourOfDay", label: "Hour of day", appliesTo: ["date"], needsTz: true },
+	{ id: "value", label: msg("Value"), appliesTo: ["string", "enum", "number", "month"] },
+	{ id: "year", label: msg("Year"), appliesTo: ["date", "month"], needsTz: true },
+	{ id: "yearMonth", label: msg("Year-month"), appliesTo: ["date"], needsTz: true },
+	{ id: "day", label: msg("Exact day"), appliesTo: ["date"], needsTz: true },
+	{ id: "monthOfYear", label: msg("Month of year"), appliesTo: ["date", "month"], needsTz: true },
+	{ id: "hourOfDay", label: msg("Hour of day"), appliesTo: ["date"], needsTz: true },
 ];
 
 /** Projections valid for a field type, in display order (first = dialog default). */
@@ -520,7 +521,7 @@ export function partitionKeyOptions(
 ): { id: string; label: string }[] {
 	const projs = projectionsForType(type).map((p) => ({ id: p.id, label: p.label }));
 	const hasRange = type === "number" || (rangeForDates && type === "date");
-	return hasRange ? [{ id: RANGE_ID, label: "Range" }, ...projs] : projs;
+	return hasRange ? [{ id: RANGE_ID, label: t("Range") }, ...projs] : projs;
 }
 
 export function rewriteSelectionFields(

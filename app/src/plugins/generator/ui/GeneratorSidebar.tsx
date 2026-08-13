@@ -20,6 +20,7 @@ import { Sidebar, Section } from "@/components/primitives/Sidebar";
 import { searchCoverage } from "../searchCoverage";
 import { MONTHS, ymParse } from "@/lib/util/date";
 import "./generator.css";
+import { t } from "@/lib/i18n";
 
 const genStore = createPluginStorage("map-generator");
 
@@ -318,7 +319,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 	}
 
 	return (
-		<Sidebar title="Map Generator" onBack={handleClose} className="generator-sidebar">
+		<Sidebar title={t("Map Generator")} onBack={handleClose} className="generator-sidebar">
 			<Section title={`Regions (${polygonSelections.length})`}>
 				<RegionSelector
 					defaultTarget={settings.defaultTarget}
@@ -330,9 +331,9 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 
 			<SettingsPanel settings={settings} onChange={updateSettings} />
 
-			<Section title="Output">
+			<Section title={t("Output")}>
 				<label className="settings-popup__item settings-popup__select">
-					Tag as:
+					{t("Tag as:")}
 					<input
 						className="text-input"
 						type="text"
@@ -341,7 +342,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 							setTagName(e.target.value);
 							genStore.set("tagName", e.target.value);
 						}}
-						placeholder="None"
+						placeholder={t("None")}
 						disabled={running}
 					/>
 				</label>
@@ -361,7 +362,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 							onClick={handleStart}
 							disabled={polygonSelections.length === 0}
 						>
-							Start
+							{t("Start")}
 						</button>
 					) : (
 						<>
@@ -369,7 +370,7 @@ export function GeneratorSidebar({ onClose }: { onClose: () => void }) {
 								{paused ? "Resume" : "Pause"}
 							</button>
 							<button className="button" onClick={handleStop}>
-								Stop
+								{t("Stop")}
 							</button>
 						</>
 					)}

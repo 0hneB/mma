@@ -16,6 +16,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { mdiUndo, mdiRedo } from "@mdi/js";
 import { fmt } from "@/lib/util/format";
+import { t } from "@/lib/i18n";
 
 function LocationTotal() {
 	const locationCount = useMapState((s) => s.locationCount);
@@ -34,7 +35,7 @@ function CommitControls() {
 	return (
 		<>
 			<Button variant="primary" disabled={!hasDiff} onClick={() => setShowCommit(true)}>
-				Commit
+				{t("Commit")}
 			</Button>
 			{showCommit && <CommitDialog onClose={() => setShowCommit(false)} />}
 			{hasDiff && (
@@ -59,7 +60,7 @@ function UndoRedoControls() {
 					className="icon-button"
 					disabled={!canUndo}
 					style={{ color: canUndo ? undefined : "var(--text-3)" }}
-					aria-label="Undo"
+					aria-label={t("Undo")}
 					onClick={undo}
 				>
 					<Icon path={mdiUndo} />
@@ -71,7 +72,7 @@ function UndoRedoControls() {
 					className="icon-button"
 					disabled={!canRedo}
 					style={{ color: canRedo ? undefined : "var(--text-3)" }}
-					aria-label="Redo"
+					aria-label={t("Redo")}
 					onClick={redo}
 				>
 					<Icon path={mdiRedo} />
@@ -111,10 +112,10 @@ export function MapMetaBar() {
 			</span>
 			<span className="map-meta__spacer"></span>
 			<div className="map-meta__import">
-				<Button onClick={() => setShowSeen(true)}>Seen</Button>
-				<Button onClick={() => setShowHistory(true)}>History</Button>
-				<Button onClick={importFile}>Import file</Button>
-				<Button onClick={() => setShowExport(true)}>Export</Button>
+				<Button onClick={() => setShowSeen(true)}>{t("Seen")}</Button>
+				<Button onClick={() => setShowHistory(true)}>{t("History")}</Button>
+				<Button onClick={importFile}>{t("Import file")}</Button>
+				<Button onClick={() => setShowExport(true)}>{t("Export")}</Button>
 			</div>
 			{showExport && <ExportDialog onClose={() => setShowExport(false)} />}
 			{showHistory && <VersionHistory onClose={() => setShowHistory(false)} />}

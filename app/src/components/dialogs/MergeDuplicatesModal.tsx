@@ -6,6 +6,7 @@ import { toast } from "@/lib/util/toast";
 import { fmt } from "@/lib/util/format";
 import { log } from "@/lib/util/log";
 import { useAsync } from "@/lib/hooks/useAsync";
+import { t } from "@/lib/i18n";
 
 interface Props extends DialogProps {
 	distance: number;
@@ -52,27 +53,38 @@ export function MergeDuplicatesModal({ open, onOpenChange, distance }: Props) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent title="Merge duplicates" className="merge-duplicates">
+			<DialogContent title={t("Merge duplicates")} className="merge-duplicates">
 				{loading && (
 					<div className="merge-duplicates__loading">
 						<div className="merge-duplicates__spinner" />
 					</div>
 				)}
 				{nothing && (
-					<p className="merge-duplicates__status">No duplicate groups within {distance}m.</p>
+					<p className="merge-duplicates__status">
+						{t("No duplicate groups within {distance}m.", { distance })}
+					</p>
 				)}
 				{!loading && preview != null && preview.groups > 0 && (
 					<>
 						<p className="merge-duplicates__status">
-							{fmt.format(preview.groups)} group{preview.groups !== 1 ? "s" : ""} within {distance}
-							m. Merging removes {fmt.format(preview.mergedAway)} location
-							{preview.mergedAway !== 1 ? "s" : ""}, keeping one survivor each (tags combined).
-							Largest group: {fmt.format(preview.largest)}.
+							{t(
+								{ one: "{n} group within {distance}m.", other: "{n} groups within {distance}m." },
+								{ n: preview.groups, distance },
+							)}{" "}
+							{t(
+								{
+									one: "Merging removes {n} location, keeping one survivor each (tags combined).",
+									other:
+										"Merging removes {n} locations, keeping one survivor each (tags combined).",
+								},
+								{ n: preview.mergedAway },
+							)}{" "}
+							{t("Largest group: {n}.", { n: preview.largest })}
 						</p>
 						<div className="merge-duplicates__actions">
-							<Button onClick={() => onOpenChange(false)}>Cancel</Button>
+							<Button onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
 							<Button variant="primary" onClick={handleMerge} disabled={merging}>
-								{merging ? "Merging..." : "Merge"}
+								{merging ? t("Merging...") : t("Merge")}
 							</Button>
 						</div>
 					</>

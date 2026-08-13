@@ -48,6 +48,7 @@ import { useAsync } from "@/lib/hooks/useAsync";
 import { saveExportTempFile } from "@/lib/util/util";
 import { fmt } from "@/lib/util/format";
 import { toast } from "@/lib/util/toast";
+import { t } from "@/lib/i18n";
 
 const TITLES = {
 	validate: "Validate locations",
@@ -130,7 +131,7 @@ function ValidateSetup({ scopeCtl, onReady }: SetupProps) {
 						})
 					}
 				>
-					Start
+					{t("Start")}
 				</Button>
 			</div>
 		</div>
@@ -160,7 +161,9 @@ function EnrichSetup({ scopeCtl, locs, onReady }: SetupProps) {
 			<ScopeSelector ctl={scopeCtl} />
 			{enabledFields.length === 0 && (
 				<div className="bulk-operation__status" style={{ opacity: 0.8 }}>
-					No enrichment fields are enabled. Enable them in Map Settings under the Enrichment tab.
+					{t(
+						"No enrichment fields are enabled. Enable them in Map Settings under the Enrichment tab.",
+					)}
 				</div>
 			)}
 			{total > 0 && enabledFields.length > 0 && (
@@ -171,7 +174,7 @@ function EnrichSetup({ scopeCtl, locs, onReady }: SetupProps) {
 							const pct = Math.round((c.have / total) * 100);
 							return (
 								<tr key={c.key} className={missing > 0 ? "is-incomplete" : ""}>
-									<td className="bulk-operation__coverage-label">{c.label}</td>
+									<td className="bulk-operation__coverage-label">{t(c.label)}</td>
 									<td className="bulk-operation__coverage-bar">
 										<span className="bulk-operation__coverage-fill" style={{ width: `${pct}%` }} />
 									</td>
@@ -188,12 +191,19 @@ function EnrichSetup({ scopeCtl, locs, onReady }: SetupProps) {
 			)}
 			{noPano > 0 && (
 				<div className="bulk-operation__status">
-					{fmt.format(noPano)} without pano ID will be resolved from coordinates.
+					{t(
+						{
+							one: "{n} without pano ID will be resolved from coordinates.",
+							other: "{n} without pano ID will be resolved from coordinates.",
+						},
+						{ n: noPano },
+					)}
 				</div>
 			)}
 			<label className="bulk-operation__option">
 				<Checkbox checked={force} onChange={(e) => setForce(e.target.checked)} />
-				Re-enrich already enriched locations
+
+				{t("Re-enrich already enriched locations")}
 			</label>
 			<div className="bulk-operation__actions">
 				<Button
@@ -213,7 +223,7 @@ function EnrichSetup({ scopeCtl, locs, onReady }: SetupProps) {
 					}
 					disabled={enabledFields.length === 0 || (!force && !needsAny)}
 				>
-					Start
+					{t("Start")}
 				</Button>
 			</div>
 		</div>
@@ -230,15 +240,23 @@ function PinPanoSetup({ scopeCtl, locs, onReady }: SetupProps) {
 		<div className="bulk-operation">
 			<ScopeSelector ctl={scopeCtl} />
 			<div className="bulk-operation__status">
-				{fmt.format(unpinned)} locations not pinned to a pano ID.
+				{t(
+					{
+						one: "{n} location not pinned to a pano ID.",
+						other: "{n} locations not pinned to a pano ID.",
+					},
+					{ n: unpinned },
+				)}
 			</div>
 			<label className="bulk-operation__option">
 				<Checkbox checked={force} onChange={(e) => setForce(e.target.checked)} />
-				Re-pin already pinned locations
+
+				{t("Re-pin already pinned locations")}
 			</label>
 			<label className="bulk-operation__option">
 				<Checkbox checked={useLatest} onChange={(e) => setUseLatest(e.target.checked)} />
-				Use latest timeline coverage
+
+				{t("Use latest timeline coverage")}
 			</label>
 			<div className="bulk-operation__actions">
 				<Button
@@ -256,7 +274,7 @@ function PinPanoSetup({ scopeCtl, locs, onReady }: SetupProps) {
 					}
 					disabled={!force && !useLatest && unpinned === 0}
 				>
-					Start
+					{t("Start")}
 				</Button>
 			</div>
 		</div>
@@ -282,7 +300,7 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 		<div className="bulk-operation">
 			<ScopeSelector ctl={scopeCtl} />
 			{sortedKeys.length === 0 ? (
-				<div className="bulk-operation__status">No metadata fields on this map.</div>
+				<div className="bulk-operation__status">{t("No metadata fields on this map.")}</div>
 			) : (
 				<div className="bulk-operation__field-list">
 					{sortedKeys.map((key) => {
@@ -327,7 +345,8 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 					}}
 					disabled={selected.size === 0}
 				>
-					Clear {selected.size > 0 ? `${selected.size} field${selected.size !== 1 ? "s" : ""}` : ""}
+					{t("Clear")}{" "}
+					{selected.size > 0 ? `${selected.size} field${selected.size !== 1 ? "s" : ""}` : ""}
 				</Button>
 			</div>
 		</div>
@@ -365,7 +384,7 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 		<div className="bulk-operation">
 			<ScopeSelector ctl={scopeCtl} />
 			<label className="bulk-operation__option">
-				Field
+				{t("Field")}
 				<NSelect
 					value={creatingNew ? "__new__" : key}
 					onChange={(e) => {
@@ -378,29 +397,29 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 					}}
 				>
 					<option value="" disabled>
-						Select a field...
+						{t("Select a field...")}
 					</option>
 					{sortedKeys.map((k) => (
 						<option key={k} value={k}>
 							{fieldLabel(k)}
 						</option>
 					))}
-					<option value="__new__">New field...</option>
+					<option value="__new__">{t("New field...")}</option>
 				</NSelect>
 			</label>
 			{creatingNew && (
 				<label className="bulk-operation__option">
-					New field name
+					{t("New field name")}
 					<TextInput
 						value={newKey}
 						onChange={(e) => setNewKey(e.target.value)}
-						placeholder="field name"
+						placeholder={t("field name")}
 						autoFocus
 					/>
 				</label>
 			)}
 			<label className="bulk-operation__option">
-				Value
+				{t("Value")}
 				{isEnum ? (
 					<NSelect value={raw} onChange={(e) => setRaw(e.target.value)}>
 						<option value="" />
@@ -449,7 +468,7 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 						});
 					}}
 				>
-					Set field
+					{t("Set field")}
 				</Button>
 			</div>
 		</div>
@@ -469,7 +488,8 @@ function HeadingRoadSetup({ scopeCtl, onReady }: SetupProps) {
 						checked={direction === "forwards"}
 						onChange={() => setDirection("forwards")}
 					/>
-					Forwards (along driving direction)
+
+					{t("Forwards (along driving direction)")}
 				</label>
 				<label>
 					<Radio
@@ -477,7 +497,8 @@ function HeadingRoadSetup({ scopeCtl, onReady }: SetupProps) {
 						checked={direction === "backwards"}
 						onChange={() => setDirection("backwards")}
 					/>
-					Backwards
+
+					{t("Backwards")}
 				</label>
 			</div>
 			<div className="bulk-operation__actions">
@@ -490,7 +511,7 @@ function HeadingRoadSetup({ scopeCtl, onReady }: SetupProps) {
 						})
 					}
 				>
-					Start
+					{t("Start")}
 				</Button>
 			</div>
 		</div>
@@ -509,21 +530,27 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 			<ScopeSelector ctl={scopeCtl} />
 			{noPano > 0 && (
 				<div className="bulk-operation__status">
-					{fmt.format(noPano)} without pano ID will be resolved from coordinates.
+					{t(
+						{
+							one: "{n} without pano ID will be resolved from coordinates.",
+							other: "{n} without pano ID will be resolved from coordinates.",
+						},
+						{ n: noPano },
+					)}
 				</div>
 			)}
 			<label className="bulk-operation__option">
-				Mode
+				{t("Mode")}
 				<NSelect value={mode} onChange={(e) => setMode(e.target.value as PanoRenderMode)}>
-					<option value="equirectangular">Equirectangular (full panorama)</option>
-					<option value="perspective">Perspective (1920×1080)</option>
-					<option value="thumbnail">Thumbnail (1024×768)</option>
-					<option value="tile">Tile (512×512)</option>
+					<option value="equirectangular">{t("Equirectangular (full panorama)")}</option>
+					<option value="perspective">{t("Perspective (1920×1080)")}</option>
+					<option value="thumbnail">{t("Thumbnail (1024×768)")}</option>
+					<option value="tile">{t("Tile (512×512)")}</option>
 				</NSelect>
 			</label>
 			{mode !== "thumbnail" && (
 				<label className="bulk-operation__option">
-					Zoom level
+					{t("Zoom level")}
 					<NSelect
 						style={{ width: 100 }}
 						value={String(zoom)}
@@ -540,7 +567,7 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 			{mode === "tile" && (
 				<>
 					<label className="bulk-operation__option">
-						Tile X
+						{t("Tile X")}
 						<TextInput
 							type="number"
 							min={0}
@@ -551,7 +578,7 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 						/>
 					</label>
 					<label className="bulk-operation__option">
-						Tile Y
+						{t("Tile Y")}
 						<TextInput
 							type="number"
 							min={0}
@@ -592,7 +619,7 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 						});
 					}}
 				>
-					Start
+					{t("Start")}
 				</Button>
 			</div>
 		</div>
@@ -649,7 +676,7 @@ function DownloadDoneActions({
 						toast(`Selected ${fmt.format(result.failed.length)} failed locations`);
 					}}
 				>
-					Select failed
+					{t("Select failed")}
 				</Button>
 			)}
 		</>
@@ -666,7 +693,7 @@ function EnrichSummary({
 	if (result.length === 0) {
 		return (
 			<div className="enrich-summary">
-				<div>Nothing to process.</div>
+				<div>{t("Nothing to process.")}</div>
 			</div>
 		);
 	}
@@ -674,14 +701,15 @@ function EnrichSummary({
 		<div className="enrich-summary">
 			{result.map((r) => (
 				<div key={r.id}>
-					{r.label}: {fmt.format(r.success.length)} updated
+					{r.label}
+					{t(":")} {fmt.format(r.success.length)} updated
 					{r.failed.length > 0 && <>, {fmt.format(r.failed.length)} failed</>}
 					{r.failed.length > 0 && (
 						<Button
 							style={{ marginLeft: 8 }}
 							onClick={() => onSelect(r.failed, `${r.label} failed`)}
 						>
-							Select failed
+							{t("Select failed")}
 						</Button>
 					)}
 				</div>
@@ -798,13 +826,13 @@ function BulkProgress({
 			<div className="bulk-operation__actions">
 				{status === "running" ? (
 					<Button variant="destructive" onClick={() => controllerRef.current?.abort()}>
-						Cancel
+						{t("Cancel")}
 					</Button>
 				) : (
 					<>
 						{status === "done" && result.doneActions}
 						<Button variant="primary" onClick={onClose}>
-							Close
+							{t("Close")}
 						</Button>
 					</>
 				)}

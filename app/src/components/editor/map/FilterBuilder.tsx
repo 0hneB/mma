@@ -14,6 +14,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { mdiArrowRight, mdiArrowLeft } from "@mdi/js";
+import { t } from "@/lib/i18n";
 
 const ALL_OPS: FilterOp[] = ["eq", "neq", "gt", "lt", "gte", "lte", "between", "has", "nothas"];
 const EQUALITY_OPS: FilterOp[] = ["eq", "neq", "has", "nothas"];
@@ -480,12 +481,12 @@ export function FilterForm({
 				handleAdd();
 			}}
 		>
-			<label>Filter by metadata:</label>
+			<label>{t("Filter by metadata:")}</label>
 			<NSelect value={field} onChange={(e) => handleFieldChange(e.target.value)}>
-				{fields.length === 0 && <option value="">No metadata yet</option>}
+				{fields.length === 0 && <option value="">{t("No metadata yet")}</option>}
 				{fields.map((f) => (
 					<option key={f.key} value={f.key}>
-						{f.label}
+						{t(f.label)}
 					</option>
 				))}
 			</NSelect>
@@ -518,7 +519,7 @@ export function FilterForm({
 				<span className="extra-filter-builder__copy">
 					<button
 						type="button"
-						title="Copy to max"
+						title={t("Copy to max")}
 						disabled={!value}
 						onClick={() => setValue2(value)}
 					>
@@ -526,7 +527,7 @@ export function FilterForm({
 					</button>
 					<button
 						type="button"
-						title="Copy to min"
+						title={t("Copy to min")}
 						disabled={!value2}
 						onClick={() => setValue(value2)}
 					>
@@ -540,14 +541,14 @@ export function FilterForm({
 					op={op}
 					value={value2}
 					onChange={setValue2}
-					placeholder="Max"
+					placeholder={t("Max")}
 					anyYear={anyYear}
 					anyTime={anyTime}
 					tzLocal={tzLocal}
 				/>
 			)}
 			<Button type="submit">{submitLabel}</Button>
-			{onClose && <Button onClick={onClose}>Cancel</Button>}
+			{onClose && <Button onClick={onClose}>{t("Cancel")}</Button>}
 		</form>
 	);
 }

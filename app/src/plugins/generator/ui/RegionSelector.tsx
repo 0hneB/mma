@@ -5,6 +5,7 @@ import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import type { Selection } from "@/bindings.gen";
 import type { GeneratorRegionMeta } from "../engine/types";
+import { t } from "@/lib/i18n";
 
 function getPolygonName(sel: Selection): string {
 	if (sel.props.type !== "Polygon") return sel.key;
@@ -88,12 +89,13 @@ export function RegionSelector({
 		<div className="generator-regions">
 			{polygonSelections.length === 0 && (
 				<div className="generator-regions__hint">
-					Draw a polygon on the map or hold <kbd>Q</kbd> + click to select a country outline.
+					{t("Draw a polygon on the map or hold")} <kbd>{t("Q")}</kbd>{" "}
+					{t("+ click to select a country outline.")}
 				</div>
 			)}
 			<div className="generator-regions__controls">
 				<label className="generator-regions__target-label">
-					Locations per region:
+					{t("Locations per region:")}
 					<input
 						type="number"
 						className="text-input"
@@ -112,14 +114,14 @@ export function RegionSelector({
 						setCapDialogOpen(true);
 					}}
 				>
-					Change all caps
+					{t("Change all caps")}
 				</button>
 			</div>
 			<Dialog open={capDialogOpen} onOpenChange={setCapDialogOpen}>
-				<DialogContent title="Change all caps">
+				<DialogContent title={t("Change all caps")}>
 					<div className="generator-cap-dialog">
 						<label className="generator-regions__target-label">
-							Locations cap for all regions:
+							{t("Locations cap for all regions:")}
 							<TextInput
 								type="number"
 								min={1}
@@ -132,9 +134,9 @@ export function RegionSelector({
 						</label>
 						<div className="generator-cap-dialog__actions">
 							<Button variant="primary" onClick={confirmCap}>
-								Apply
+								{t("Apply")}
 							</Button>
-							<Button onClick={() => setCapDialogOpen(false)}>Cancel</Button>
+							<Button onClick={() => setCapDialogOpen(false)}>{t("Cancel")}</Button>
 						</div>
 					</div>
 				</DialogContent>

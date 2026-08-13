@@ -12,6 +12,7 @@ import type {
 	Labeled,
 } from "./engine";
 import "./disambiguate.css";
+import { t } from "@/lib/i18n";
 
 function rgb(c: [number, number, number]) {
 	return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
@@ -65,14 +66,14 @@ function GroupCell({
 					<span className="disambig__muted">(conc {g.concentration?.toFixed(2)})</span>
 				</span>
 			) : (
-				<span className="disambig__muted">no data</span>
+				<span className="disambig__muted">{t("no data")}</span>
 			);
 	} else if (field.comparison.type === "categorical") {
 		body =
 			g.top.length > 0 ? (
 				<span>{g.top.map((t) => `${t.label} ${Math.round(t.freq * 100)}%`).join(", ")}</span>
 			) : (
-				<span className="disambig__muted">no data</span>
+				<span className="disambig__muted">{t("no data")}</span>
 			);
 	} else {
 		body =
@@ -84,7 +85,7 @@ function GroupCell({
 					</span>
 				</span>
 			) : (
-				<span className="disambig__muted">no data</span>
+				<span className="disambig__muted">{t("no data")}</span>
 			);
 	}
 	return (
@@ -114,7 +115,7 @@ function FieldRow({
 				<span className="disambig__label">{field.label}</span>
 				<span className="disambig__badge">{badgeText(field)}</span>
 				{field.lowConfidence && (
-					<span className="disambig__badge disambig__badge--warn">low data</span>
+					<span className="disambig__badge disambig__badge--warn">{t("low data")}</span>
 				)}
 				<span className="disambig__score">{score !== null ? score.toFixed(2) : "-"}</span>
 			</div>
@@ -123,7 +124,9 @@ function FieldRow({
 			</div>
 			{field.coverageScore > 0.01 && (
 				<div className="disambig__muted">
-					presence differs across groups (coverage {field.coverageScore.toFixed(2)})
+					{t("presence differs across groups (coverage {score})", {
+						score: field.coverageScore.toFixed(2),
+					})}
 				</div>
 			)}
 			<div className="disambig__groups">
@@ -188,16 +191,18 @@ export function DisambiguateSidebar({ onClose }: { onClose: () => void }) {
 
 	if (selCount < 2) {
 		return (
-			<Sidebar title="Disambiguate selections" onBack={onClose} className="disambig">
-				<EmptyState>Select at least two groups to compare - tags, polygons, or filters.</EmptyState>
+			<Sidebar title={t("Disambiguate selections")} onBack={onClose} className="disambig">
+				<EmptyState>
+					{t("Select at least two groups to compare - tags, polygons, or filters.")}
+				</EmptyState>
 			</Sidebar>
 		);
 	}
 
 	return (
-		<Sidebar title="Disambiguate selections" onBack={onClose} className="disambig">
+		<Sidebar title={t("Disambiguate selections")} onBack={onClose} className="disambig">
 			{error && <div className="disambig__error">{error.message}</div>}
-			{!error && loading && <div className="disambig__muted">Analyzing&hellip;</div>}
+			{!error && loading && <div className="disambig__muted">{t("Analyzing\u2026")}</div>}
 			{!error && analysis && (
 				<>
 					<div className="disambig__summary disambig__muted">
@@ -211,7 +216,9 @@ export function DisambiguateSidebar({ onClose }: { onClose: () => void }) {
 							</span>
 						))}
 						{analysis.excludedOverlap > 0 && (
-							<span>&middot; {analysis.excludedOverlap} excluded (in multiple groups)</span>
+							<span>
+								&middot; {t("{n} excluded (in multiple groups)", { n: analysis.excludedOverlap })}
+							</span>
 						)}
 					</div>
 					<div className="disambig__list">

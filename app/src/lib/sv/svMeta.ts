@@ -46,8 +46,7 @@ const BADCAM_THRESHOLDS = new Map<string, (ym: string, lat: number) => boolean>(
 		"RO",
 		"SE",
 	].map(
-		(cc) =>
-			[cc, (ym: string) => ym > "2021-01"] as [string, (ym: string, lat: number) => boolean],
+		(cc) => [cc, (ym: string) => ym > "2021-01"] as [string, (ym: string, lat: number) => boolean],
 	),
 	["CY", () => true],
 	["ST", () => true],

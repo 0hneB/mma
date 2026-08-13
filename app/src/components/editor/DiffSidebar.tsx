@@ -3,6 +3,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { getCommitDiffPreview, endCommitDiffPreview } from "@/store/commitDiff";
 import { useEventValue } from "@/lib/events";
 import { fmt } from "@/lib/util/format";
+import { t } from "@/lib/i18n";
 
 /** Sidebar shown while viewing a commit diff on the map. The colored markers
  *  temporarily replace the regular markers; this panel labels them. The back
@@ -19,12 +20,12 @@ export function DiffSidebar() {
 					<button
 						className="diff-sidebar__back"
 						onClick={endCommitDiffPreview}
-						title="Back to map"
-						aria-label="Back to map"
+						title={t("Back to map")}
+						aria-label={t("Back to map")}
 					>
 						<Icon path={mdiArrowLeft} size={18} />
 					</button>
-					<h2 className="import-sidebar__title">Changes</h2>
+					<h2 className="import-sidebar__title">{t("Changes")}</h2>
 				</div>
 				<span className="import-sidebar__count mono">{diff.hash}</span>
 			</header>
@@ -33,17 +34,20 @@ export function DiffSidebar() {
 				<ul className="diff-legend">
 					<li>
 						<span className="diff-legend__dot" style={{ background: "rgb(34,197,94)" }} />
-						Added
+
+						{t("Added")}
 						<span className="diff-legend__count mono">{fmt.format(counts.added)}</span>
 					</li>
 					<li>
 						<span className="diff-legend__dot" style={{ background: "rgb(239,68,68)" }} />
-						Removed
+
+						{t("Removed")}
 						<span className="diff-legend__count mono">{fmt.format(counts.removed)}</span>
 					</li>
 					<li>
 						<span className="diff-legend__dot" style={{ background: "rgb(245,158,11)" }} />
-						Modified
+
+						{t("Modified")}
 						<span className="diff-legend__count mono">{fmt.format(counts.modified)}</span>
 					</li>
 				</ul>

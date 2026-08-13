@@ -4,6 +4,7 @@ import { ConnectionUser, SyncSidebar } from "@/lib/sync/ui/SyncSidebar";
 import { log } from "@/lib/util/log";
 import { errText } from "@/lib/util/util";
 import { controller, geoguessrProvider, PLUGIN_ID } from "./provider";
+import { t } from "@/lib/i18n";
 
 const CACHED_USER = "user";
 const kv = () => window.MMA.storage(PLUGIN_ID);
@@ -77,7 +78,7 @@ export function GeoGuessrSidebar({ onClose }: { onClose: () => void }) {
 			}
 			action={
 				<button className="button" onClick={() => void signOut()}>
-					Sign out
+					{t("Sign out")}
 				</button>
 			}
 		/>

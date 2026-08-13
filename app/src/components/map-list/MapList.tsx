@@ -44,6 +44,8 @@ import { ColorPicker } from "@/components/primitives/ColorPicker";
 import { labelColor, rgbToHex, hexToRgb, textColorFor } from "@/lib/util/color";
 import { toast, progressToast } from "@/lib/util/toast";
 import { parseMapQuery, mapMatchesQuery, toggleLabelInQuery } from "./mapQuery";
+import { t, msg } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 // --- What's new (latest release notes) ---
 
@@ -244,7 +246,7 @@ function WhatsNew() {
 		<li className="updates__item updates__item--new">
 			<span className="updates__circle" />
 			<time className="updates__time">
-				What's new
+				{t("What's new")}
 				{displayTag && (
 					<>
 						<span className="updates__version-sep">·</span>
@@ -341,7 +343,7 @@ function RenameForm({
 			</p>
 			<div className="edit-map-modal__actions">
 				<button type="submit" className="button button--primary">
-					Save
+					{t("Save")}
 				</button>
 			</div>
 		</form>
@@ -389,7 +391,7 @@ function MapEditForm({ id, name, labels }: { id: string; name: string; labels: s
 				/>
 			</p>
 			<div className="map-edit-labels">
-				<div className="map-edit-labels__label">Labels</div>
+				<div className="map-edit-labels__label">{t("Labels")}</div>
 				<div className="map-edit-labels__list">
 					{currentLabels.map((l) => {
 						const [r, g, b] = hexToRgb(labelColor(l, labelColors));
@@ -414,7 +416,7 @@ function MapEditForm({ id, name, labels }: { id: string; name: string; labels: s
 					<input
 						type="text"
 						className="map-edit-labels__input"
-						placeholder="Add label..."
+						placeholder={t("Add label...")}
 						value={labelInput}
 						onChange={(e) => setLabelInput(e.target.value)}
 						onKeyDown={(e) => {
@@ -431,7 +433,7 @@ function MapEditForm({ id, name, labels }: { id: string; name: string; labels: s
 			</div>
 			<div className="edit-map-modal__actions">
 				<button type="submit" className="button button--primary">
-					Save
+					{t("Save")}
 				</button>
 			</div>
 		</form>
@@ -519,7 +521,7 @@ const MapEntry = React.memo(function MapEntry({
 						key={l}
 						className="map-label map-label--inline"
 						style={{ backgroundColor: hex, color: textColorFor(hex), cursor: "pointer" }}
-						title="Filter by this label"
+						title={t("Filter by this label")}
 						onClick={() => onLabelClick(l)}
 					>
 						{l}
@@ -528,7 +530,7 @@ const MapEntry = React.memo(function MapEntry({
 			})}
 			<button
 				className="map-list__edit icon-button"
-				aria-label="Edit map"
+				aria-label={t("Edit map")}
 				onClick={() =>
 					onAction({ type: "edit", id: meta.id, name: meta.name, labels: meta.labels })
 				}
@@ -537,7 +539,7 @@ const MapEntry = React.memo(function MapEntry({
 			</button>
 			<button
 				className="map-list__edit icon-button"
-				aria-label="Delete map"
+				aria-label={t("Delete map")}
 				onClick={() => onAction({ type: "delete", id: meta.id, name: meta.name, labels: [] })}
 			>
 				<Icon path={mdiDelete} />
@@ -587,7 +589,7 @@ const FolderEntry = React.memo(function FolderEntry({
 						id={triggerId}
 						className="icon-button"
 						style={{ display: "inline-block" }}
-						aria-label="Open or close folder"
+						aria-label={t("Open or close folder")}
 					>
 						<Icon path={open ? mdiChevronDown : mdiChevronRight} />
 					</Collapsible.Trigger>
@@ -595,19 +597,23 @@ const FolderEntry = React.memo(function FolderEntry({
 						<strong>{name}</strong>
 						<span className="map-list__folder-count">
 							{" "}
-							· {fmt.format(maps.length)} maps · {fmt.format(count)} locations
+							·{" "}
+							{t("{maps} maps · {locations} locations", {
+								maps: fmt.format(maps.length),
+								locations: fmt.format(count),
+							})}
 						</span>
 					</label>
 					<button
 						className="map-list__edit icon-button"
-						aria-label="Rename folder"
+						aria-label={t("Rename folder")}
 						onClick={() => onFolderAction({ type: "rename-folder", name, mapCount: maps.length })}
 					>
 						<Icon path={mdiPencil} />
 					</button>
 					<button
 						className="map-list__edit icon-button"
-						aria-label="Delete folder"
+						aria-label={t("Delete folder")}
 						onClick={() => onFolderAction({ type: "delete-folder", name, mapCount: maps.length })}
 					>
 						<Icon path={mdiFolderRemove} />
@@ -711,19 +717,23 @@ function ImportPreviewModal({
 				if (!open) onClose();
 			}}
 		>
-			<DialogContent title="Import Maps" className="import-preview-modal">
+			<DialogContent title={t("Import Maps")} className="import-preview-modal">
 				<div className="import-preview__actions">
 					<button className="button" onClick={selectAll}>
-						All
+						{t("All")}
 					</button>
 					<button className="button" onClick={selectNone}>
-						None
+						{t("None")}
 					</button>
 					<button className="button" onClick={selectNew}>
-						New only
+						{t("New only")}
 					</button>
 					<span className="import-preview__summary">
-						{selectedCount} of {entries.length} selected ({fmt.format(totalLocs)} locations)
+						{t("{selected} of {total} selected ({locations} locations)", {
+							selected: selectedCount,
+							total: entries.length,
+							locations: fmt.format(totalLocs),
+						})}
 					</span>
 				</div>
 
@@ -763,7 +773,7 @@ function ImportPreviewModal({
 
 				<div className="import-preview__footer">
 					<button className="button" onClick={onClose}>
-						Cancel
+						{t("Cancel")}
 					</button>
 					<button
 						className="button button--primary"
@@ -773,7 +783,7 @@ function ImportPreviewModal({
 							onConfirm(indices);
 						}}
 					>
-						Import {selectedCount} map{selectedCount !== 1 ? "s" : ""}
+						{t("Import")} {selectedCount} map{selectedCount !== 1 ? "s" : ""}
 					</button>
 				</div>
 			</DialogContent>
@@ -948,10 +958,10 @@ export function BulkActions() {
 // --- Sorting ---
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-	{ value: "name", label: "Name" },
-	{ value: "opened", label: "Last opened" },
-	{ value: "created", label: "Date created" },
-	{ value: "amount", label: "Location count" },
+	{ value: "name", label: msg("Name") },
+	{ value: "opened", label: msg("Last opened") },
+	{ value: "created", label: msg("Date created") },
+	{ value: "amount", label: msg("Location count") },
 ];
 
 function sortMaps(maps: MapMeta[], mode: SortMode): MapMeta[] {
@@ -1120,7 +1130,7 @@ export function MapList() {
 		<div className="page-map-list">
 			<section>
 				<h2>
-					Your Maps{" "}
+					{t("Your Maps")}{" "}
 					<span style={{ color: "#fff8", fontWeight: "normal", fontSize: "0.75em" }}>
 						({fmt.format(maps.length)} maps,{" "}
 						{fmt.format(maps.reduce((a, m) => a + m.locationCount, 0))} locations)
@@ -1170,8 +1180,8 @@ export function MapList() {
 							}}
 							className="text-input"
 							type="text"
-							placeholder="Search maps..."
-							title={'Filter by name, or by label with label:name / label:"two words"'}
+							placeholder={t("Search maps...")}
+							title={t('Filter by name, or by label with label:name / label:"two words"')}
 							style={{ flexGrow: 1, paddingRight: hasFilter ? "1.75rem" : undefined }}
 							autoFocus
 						/>
@@ -1179,7 +1189,7 @@ export function MapList() {
 							<button
 								type="button"
 								className="icon-button"
-								aria-label="Clear search"
+								aria-label={t("Clear search")}
 								onClick={clearFilter}
 								style={{
 									position: "absolute",
@@ -1219,7 +1229,7 @@ export function MapList() {
 							}
 							setSyntheticFolders((prev) => (prev.includes(name) ? prev : [...prev, name]));
 						}}
-						aria-label="New folder"
+						aria-label={t("New folder")}
 					>
 						<Icon path={mdiFolder} />
 					</button>
@@ -1233,7 +1243,7 @@ export function MapList() {
 							}
 							createMap(name);
 						}}
-						aria-label="New map"
+						aria-label={t("New map")}
 					>
 						<Icon path={mdiPlus} />
 					</button>
@@ -1265,7 +1275,7 @@ export function MapList() {
 						/>
 					))}
 					{rootMaps.length === 0 && dragItem && (
-						<li className="map-list__entry">drop map here to move out of folder</li>
+						<li className="map-list__entry">{t("drop map here to move out of folder")}</li>
 					)}
 				</ul>
 			</section>
@@ -1273,12 +1283,16 @@ export function MapList() {
 				<ul className="updates__container">
 					<li className="updates__item updates__item--warning">
 						<span className="updates__circle" />
-						<time className="updates__time">Warning</time>
+						<time className="updates__time">{t("Warning")}</time>
 						<p>
-							This is a work in progress. Report bugs{" "}
-							<a target="_blank" href="https://github.com/ccmdi/mma/issues">
-								here
-							</a>
+							<Trans
+								msg="This is a work in progress. Report bugs {here}"
+								here={
+									<a target="_blank" href="https://github.com/ccmdi/mma/issues">
+										{t("here")}
+									</a>
+								}
+							/>
 							.
 						</p>
 					</li>
@@ -1331,10 +1345,10 @@ export function MapList() {
 						)}
 						{activeAction.type === "delete" && (
 							<>
-								<p>Delete "{activeAction.name || "(unnamed)"}"?</p>
+								<p>{t('Delete "{name}"?', { name: activeAction.name || t("(unnamed)") })}</p>
 								<div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
 									<button className="button" onClick={() => setActiveAction(null)}>
-										Cancel
+										{t("Cancel")}
 									</button>
 									<button
 										className="button button--destructive"
@@ -1343,7 +1357,7 @@ export function MapList() {
 											setActiveAction(null);
 										}}
 									>
-										Delete
+										{t("Delete")}
 									</button>
 								</div>
 							</>
@@ -1359,12 +1373,14 @@ export function MapList() {
 						{activeAction.type === "delete-folder" && (
 							<>
 								<p>
-									Delete folder "{activeAction.name}"? The {(activeAction as FolderAction).mapCount}{" "}
-									map(s) inside will be moved to the root.
+									{t('Delete folder "{name}"? The {n} map(s) inside will be moved to the root.', {
+										name: activeAction.name,
+										n: (activeAction as FolderAction).mapCount,
+									})}
 								</p>
 								<div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
 									<button className="button" onClick={() => setActiveAction(null)}>
-										Cancel
+										{t("Cancel")}
 									</button>
 									<button
 										className="button button--destructive"
@@ -1375,7 +1391,7 @@ export function MapList() {
 											await deleteFolder(name);
 										}}
 									>
-										Delete folder
+										{t("Delete folder")}
 									</button>
 								</div>
 							</>

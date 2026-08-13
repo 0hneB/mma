@@ -3,6 +3,7 @@ import { buildSelection } from "./selections";
 import { getSettings, setSetting } from "./settings";
 import { addSelections, getTag, getVisibleTags } from "./useMapStore";
 import { cmd } from "@/lib/commands";
+import { t } from "@/lib/i18n";
 
 export interface SavedSelectionItem {
 	props: SavedSelectionProps;
@@ -124,33 +125,43 @@ export async function resolveSavedSelectionIds(id: string): Promise<Set<number>>
 export function describeRule(props: SavedSelectionProps): string {
 	switch (props.type) {
 		case "Everything":
-			return "All";
+			return t("All");
 		case "Polygon":
-			return props.polygon.properties?.name || "Polygon";
+			return props.polygon.properties?.name || t("Polygon");
 		case "TagName":
-			return `Tag: ${props.tagName}`;
+			return t("Tag: {name}", { name: props.tagName });
 		case "Untagged":
-			return "Untagged";
+			return t("Untagged");
 		case "Unpanned":
-			return "Unpanned";
+			return t("Unpanned");
 		case "PanoIds":
-			return "Has Pano ID";
+			return t("Has Pano ID");
 		case "NotPanoIds":
-			return "No Pano ID";
+			return t("No Pano ID");
 		case "Uncommitted":
-			return "Uncommitted";
+			return t("Uncommitted");
 		case "Duplicates":
-			return `Dupes (${props.distance}m)`;
+			return t("Dupes ({distance}m)", { distance: props.distance });
 		case "Filter":
-			return `${props.field} ${props.op} ${String(props.value)}`;
+			return t("{field} {op} {value}", {
+				field: props.field,
+				op: props.op,
+				value: String(props.value),
+			});
 		case "TopK":
-			return `${props.ascending ? "Bottom" : "Top"} ${props.k} by ${props.field}`;
+			return t(props.ascending ? "Bottom {k} by {field}" : "Top {k} by {field}", {
+				k: props.k,
+				field: props.field,
+			});
+		// Boolean composites read as a formal expression, so only the operator tokens translate.
 		case "Intersection":
-			return props.selections.map(describeRule).join(" AND ");
+			return props.selections.map(describeRule).join(` ${t("AND")} `);
 		case "Union":
-			return props.selections.map(describeRule).join(" OR ");
+			return props.selections.map(describeRule).join(` ${t("OR")} `);
 		case "Invert":
-			return `NOT (${props.selections.map(describeRule).join(", ")})`;
+			return t("NOT ({selections})", {
+				selections: props.selections.map(describeRule).join(", "),
+			});
 	}
 	const unhandled: never = props;
 	return unhandled;
