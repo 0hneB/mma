@@ -27,7 +27,18 @@ import {
 } from "@/lib/util/hotkeys";
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import { mdiAlertCircleOutline, mdiFlaskOutline, mdiRefresh } from "@mdi/js";
+import {
+	mdiAlertCircleOutline,
+	mdiApplicationOutline,
+	mdiFlaskOutline,
+	mdiGoogleStreetView,
+	mdiKeyboardOutline,
+	mdiMapOutline,
+	mdiPencilOutline,
+	mdiPuzzleOutline,
+	mdiRefresh,
+	mdiWrenchOutline,
+} from "@mdi/js";
 import {
 	useSettings,
 	useSetting,
@@ -320,10 +331,13 @@ const GROUPS: HotkeyGroup[] = [
 	msg("Review"),
 ];
 
+/** The dialog-wide search drives the same filter as the local one, so shortcuts are reachable
+ *  from the rail search rather than only from this section's own box. */
 function KeyboardBody() {
+	const { query, searching, sectionMatched } = useSettingsSearch();
 	const [filter, setFilter] = useState("");
 	const [flash, setFlash] = useState<string | null>(null);
-	const lower = filter.toLowerCase();
+	const lower = searching && !sectionMatched ? query : filter.toLowerCase();
 	const allBindings = getAllBindings();
 
 	const jumpTo = useCallback((action: string) => {
@@ -335,16 +349,18 @@ function KeyboardBody() {
 	}, []);
 
 	return (
-		<Aux>
-			<div className="settings-hotkey-filter">
-				<TextInput
-					type="text"
-					placeholder={t("Filter shortcuts...")}
-					value={filter}
-					onChange={(e) => setFilter(e.target.value)}
-					style={{ width: "100%" }}
-				/>
-			</div>
+		<>
+			<Aux>
+				<div className="settings-hotkey-filter">
+					<TextInput
+						type="text"
+						placeholder={t("Filter shortcuts...")}
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						style={{ width: "100%" }}
+					/>
+				</div>
+			</Aux>
 			{GROUPS.map((group) => {
 				const defs = allBindings.filter(
 					(d) =>
@@ -380,10 +396,12 @@ function KeyboardBody() {
 					</div>
 				);
 			})}
-			<div style={{ marginTop: ".5rem" }}>
-				<Button onClick={resetAllBindings}>{t("Reset all to defaults")}</Button>
-			</div>
-		</Aux>
+			<Aux>
+				<div style={{ marginTop: ".5rem" }}>
+					<Button onClick={resetAllBindings}>{t("Reset all to defaults")}</Button>
+				</div>
+			</Aux>
+		</>
 	);
 }
 
@@ -420,9 +438,6 @@ function StreetViewBody() {
 					"The pano UI toggle also hides link arrows, the ground arrow, and the navigation X.",
 				)}
 			/>
-			<SettingRow setting="showRoadLabels" label={t("Show road labels")} />
-			<SettingRow setting="showCar" label={t("Show car")} />
-			<SettingRow setting="showCrosshair" label={t("Show crosshair")} />
 			<SettingRow
 				label={t("Default movement mode")}
 				control={<SettingSelect setting="defaultMovementMode" options={MOVEMENT_MODES} />}
@@ -439,6 +454,11 @@ function StreetViewBody() {
 					/>
 				}
 			/>
+
+			<GroupHeading>{t("Display")}</GroupHeading>
+			<SettingRow setting="showRoadLabels" label={t("Show road labels")} />
+			<SettingRow setting="showCar" label={t("Show car")} />
+			<SettingRow setting="showCrosshair" label={t("Show crosshair")} />
 			<SettingRow
 				label={t("Preview aspect ratio")}
 				control={<SettingSelect setting="previewAspectRatio" options={PREVIEW_ASPECT_RATIOS} />}
@@ -449,7 +469,7 @@ function StreetViewBody() {
 				<SettingRow key={key} setting={key} label={label} />
 			))}
 
-			<GroupHeading>{t("Fullscreen")}</GroupHeading>
+			<GroupHeading>{t("Fullscreen panorama")}</GroupHeading>
 			<SettingRow setting="showFullscreenMinimap" label={t("Show minimap in fullscreen")} />
 			<SettingRow
 				sub
@@ -490,17 +510,10 @@ function StreetViewBody() {
 	);
 }
 
-function MarkersBody() {
+function MapBody() {
 	const s = useSettings();
 	return (
 		<>
-			<GroupHeading>{t("Fullscreen")}</GroupHeading>
-			<SettingRow setting="showFullscreenMapMeta" label={t("Show map meta bar in fullscreen")} />
-			<SettingRow
-				setting="showFullscreenMiniLocationPreview"
-				label={t("Show mini location preview in fullscreen")}
-			/>
-
 			<GroupHeading>{t("Navigation")}</GroupHeading>
 			<SettingRow
 				label={t("Pan speed")}
@@ -545,13 +558,9 @@ function MarkersBody() {
 					/>
 				}
 			/>
-
 			<SettingRow
-				label={t("Layer opacity toggle")}
-				description={t(
-					"What the Street View and marker opacity hotkeys restore a hidden layer to.",
-				)}
-				control={<SettingSelect setting="opacityToggleMode" options={OPACITY_TOGGLE_MODES} />}
+				setting="followActiveInReview"
+				label={t("Center map on active location during review")}
 			/>
 
 			<GroupHeading>{t("Markers")}</GroupHeading>
@@ -586,8 +595,11 @@ function MarkersBody() {
 				}
 			/>
 			<SettingRow
-				setting="followActiveInReview"
-				label={t("Center map on active location during review")}
+				label={t("Layer opacity toggle")}
+				description={t(
+					"What the Street View and marker opacity hotkeys restore a hidden layer to.",
+				)}
+				control={<SettingSelect setting="opacityToggleMode" options={OPACITY_TOGGLE_MODES} />}
 			/>
 
 			<GroupHeading>{t("Panorama dots")}</GroupHeading>
@@ -632,6 +644,13 @@ function MarkersBody() {
 			/>
 
 			<BorderDetailGroup />
+
+			<GroupHeading>{t("Fullscreen map")}</GroupHeading>
+			<SettingRow setting="showFullscreenMapMeta" label={t("Show map meta bar in fullscreen")} />
+			<SettingRow
+				setting="showFullscreenMiniLocationPreview"
+				label={t("Show mini location preview in fullscreen")}
+			/>
 		</>
 	);
 }
@@ -706,16 +725,16 @@ function BorderDetailGroup() {
 	};
 
 	const statusLabel = (level: "medium" | "heavy") => {
-		if (downloading === level) return " (downloading...)";
+		if (downloading === level) return ` ${t("(downloading...)")}`;
 		const ready = level === "medium" ? mediumReady : heavyReady;
 		if (ready === null) return "";
-		return ready ? "" : " (will download)";
+		return ready ? "" : ` ${t("(will download)")}`;
 	};
 
 	const subdivisionStatus = () => {
-		if (downloading === "adm1") return " (downloading...)";
+		if (downloading === "adm1") return ` ${t("(downloading...)")}`;
 		if (adm1Ready === null) return "";
-		return adm1Ready ? "" : " (~45MB, will download)";
+		return adm1Ready ? "" : ` ${t("(~45MB, will download)")}`;
 	};
 
 	return (
@@ -832,7 +851,7 @@ function EditingBody() {
 						max={TAG_SUGGESTION_LIMITS.length - 1}
 						step={1}
 						onChange={(v) => setSetting("tagSuggestionLimit", TAG_SUGGESTION_LIMITS[v])}
-						format={() => (s.tagSuggestionLimit === 0 ? "All" : String(s.tagSuggestionLimit))}
+						format={() => (s.tagSuggestionLimit === 0 ? t("All") : String(s.tagSuggestionLimit))}
 					/>
 				}
 			/>
@@ -1220,17 +1239,25 @@ function AdvancedBody() {
 type Section = {
 	id: string;
 	title: string;
+	icon: string;
 	Body: () => ReactNode;
 };
 
+/** Editing surfaces first, then input, then app-level concerns. Section 0 is also the landing
+ *  section, so the heaviest page (Keyboard) deliberately isn't it. */
 const SECTIONS: Section[] = [
-	{ id: "keyboard", title: msg("Keyboard"), Body: KeyboardBody },
-	{ id: "streetview", title: msg("Street View"), Body: StreetViewBody },
-	{ id: "map", title: msg("Map"), Body: MarkersBody },
-	{ id: "editing", title: msg("Editing"), Body: EditingBody },
-	{ id: "application", title: msg("Application"), Body: ApplicationBody },
-	{ id: "integrations", title: msg("Integrations"), Body: IntegrationsBody },
-	{ id: "advanced", title: msg("Advanced"), Body: AdvancedBody },
+	{ id: "streetview", title: msg("Street View"), icon: mdiGoogleStreetView, Body: StreetViewBody },
+	{ id: "map", title: msg("Map"), icon: mdiMapOutline, Body: MapBody },
+	{ id: "editing", title: msg("Editing"), icon: mdiPencilOutline, Body: EditingBody },
+	{ id: "keyboard", title: msg("Keyboard"), icon: mdiKeyboardOutline, Body: KeyboardBody },
+	{
+		id: "application",
+		title: msg("Application"),
+		icon: mdiApplicationOutline,
+		Body: ApplicationBody,
+	},
+	{ id: "integrations", title: msg("Integrations"), icon: mdiPuzzleOutline, Body: IntegrationsBody },
+	{ id: "advanced", title: msg("Advanced"), icon: mdiWrenchOutline, Body: AdvancedBody },
 ];
 
 function SectionShell({
@@ -1302,7 +1329,8 @@ export function SettingsPage({ open, onOpenChange }: DialogProps) {
 									setQuery("");
 								}}
 							>
-								{s.title}
+								<Icon path={s.icon} size={16} className="settings-nav-item__icon" />
+								{t(s.title)}
 							</button>
 						))}
 					</div>

@@ -4694,24 +4694,38 @@ body {
 	gap: 2px;
 }
 .settings-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
 	text-align: left;
-	padding: 0.45rem 0.6rem;
+	padding: 0.5rem 0.65rem;
 	border: none;
 	border-radius: var(--radius-2);
 	background: none;
 	color: var(--text-2);
-	font-size: 0.9rem;
+	font-size: 0.95rem;
 	cursor: pointer;
 	transition:
 		color 0.12s,
 		background 0.12s;
 }
+.settings-nav-item__icon {
+	flex-shrink: 0;
+	color: var(--text-3);
+	transition: color 0.12s;
+}
 .settings-nav-item:hover {
 	background: var(--surface-2);
 	color: var(--text-1);
 }
+.settings-nav-item:hover .settings-nav-item__icon {
+	color: var(--text-2);
+}
 .settings-nav-item--active {
 	background: var(--accent-muted);
+	color: var(--accent);
+}
+.settings-nav-item--active .settings-nav-item__icon {
 	color: var(--accent);
 }
 .settings-content {
@@ -4740,8 +4754,11 @@ body {
 	letter-spacing: 0.04em;
 	color: var(--text-2);
 }
-/* A matched section keeps at least one row or auxiliary block; drop the rest. */
-.settings-content--search .settings-section:not(:has(.setting-row)):not(:has(.settings-aux)) {
+/* A matched section keeps at least one row, hotkey table, or auxiliary block; drop the rest. */
+.settings-content--search
+	.settings-section:not(:has(.setting-row)):not(:has(.settings-aux)):not(
+		:has(.settings-hotkey-table)
+	) {
 	display: none;
 }
 .settings-group {
@@ -4780,11 +4797,21 @@ body {
 	justify-content: space-between;
 	gap: 1rem;
 	min-height: 2.5rem;
-	padding: 0.35rem 0;
+	margin-inline: -0.5rem;
+	padding: 0.35rem 0.5rem;
 	border-bottom: 1px solid var(--border-subtle);
+	border-radius: var(--radius-2);
 }
+/* The whole row toggles, so it needs a hover to read as a target -- a control row doesn't. */
 .setting-row--boolean {
 	cursor: pointer;
+}
+.setting-row--boolean:not([aria-disabled="true"]):hover {
+	background: var(--surface-2);
+}
+/* A group's last row would otherwise leave a rule floating in the gap above the next heading. */
+.setting-row:has(+ .settings-group) {
+	border-bottom-color: transparent;
 }
 .setting-row[aria-disabled="true"] {
 	opacity: 0.5;
