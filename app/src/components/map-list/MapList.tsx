@@ -683,8 +683,14 @@ async function applyFolderFiles(paths: string[], maps: MapMeta[]) {
 	}
 
 	const parts = [];
-	if (applied > 0) parts.push(`${applied} map${applied > 1 ? "s" : ""} assigned to folders`);
-	if (skipped > 0) parts.push(`${skipped} not found locally`);
+	if (applied > 0)
+		parts.push(
+			t(
+				{ one: "{n} map assigned to folders", other: "{n} maps assigned to folders" },
+				{ n: applied },
+			),
+		);
+	if (skipped > 0) parts.push(t("{n} not found locally", { n: skipped }));
 	if (parts.length > 0) toast(parts.join(", "));
 }
 
@@ -783,7 +789,7 @@ function ImportPreviewModal({
 							onConfirm(indices);
 						}}
 					>
-						{t("Import")} {selectedCount} map{selectedCount !== 1 ? "s" : ""}
+						{t({ one: "Import {n} map", other: "Import {n} maps" }, { n: selectedCount })}
 					</button>
 				</div>
 			</DialogContent>
@@ -1377,10 +1383,14 @@ export function MapList() {
 						{activeAction.type === "delete-folder" && (
 							<>
 								<p>
-									{t('Delete folder "{name}"? The {n} map(s) inside will be moved to the root.', {
-										name: activeAction.name,
-										n: (activeAction as FolderAction).mapCount,
-									})}
+									{t(
+										{
+											one: 'Delete folder "{name}"? The {n} map inside will be moved to the root.',
+											other:
+												'Delete folder "{name}"? The {n} maps inside will be moved to the root.',
+										},
+										{ name: activeAction.name, n: (activeAction as FolderAction).mapCount },
+									)}
 								</p>
 								<div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
 									<button className="button" onClick={() => setActiveAction(null)}>

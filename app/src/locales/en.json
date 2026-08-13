@@ -72,6 +72,10 @@
 	"Apply saved selection": "Apply saved selection",
 	"Apply saved selection...": "Apply saved selection...",
 	"Apply to": "Apply to",
+	"Apply to {n} tags inside": {
+		"one": "Apply to {n} tag inside",
+		"other": "Apply to {n} tags inside"
+	},
 	"Arctic": "Arctic",
 	"Are you sure?": "Are you sure?",
 	"Array": "Array",
@@ -137,6 +141,10 @@
 	"Clear metadata fields": "Clear metadata fields",
 	"Clear search": "Clear search",
 	"Clear time (whole day)": "Clear time (whole day)",
+	"Clear {n} fields": {
+		"one": "Clear {n} field",
+		"other": "Clear {n} fields"
+	},
 	"Cleared fields from {n} locations.": {
 		"one": "Cleared fields from {n} location.",
 		"other": "Cleared fields from {n} locations."
@@ -237,7 +245,10 @@
 	"Delete all duplicate locations, except the selected ones": "Delete all duplicate locations, except the selected ones",
 	"Delete field": "Delete field",
 	"Delete folder": "Delete folder",
-	"Delete folder \"{name}\"? The {n} map(s) inside will be moved to the root.": "Delete folder \"{name}\"? The {n} map(s) inside will be moved to the root.",
+	"Delete folder \"{name}\"? The {n} maps inside will be moved to the root.": {
+		"one": "Delete folder \"{name}\"? The {n} map inside will be moved to the root.",
+		"other": "Delete folder \"{name}\"? The {n} maps inside will be moved to the root."
+	},
 	"Delete location": "Delete location",
 	"Delete map": "Delete map",
 	"Delete selected": "Delete selected",
@@ -463,6 +474,10 @@
 	"Import complete": "Import complete",
 	"Import file": "Import file",
 	"Import maps": "Import maps",
+	"Import {n} maps": {
+		"one": "Import {n} map",
+		"other": "Import {n} maps"
+	},
 	"Imported {imported}, {failed} failed": "Imported {imported}, {failed} failed",
 	"Importing maps...": "Importing maps...",
 	"Importing...": "Importing...",
@@ -804,10 +819,18 @@
 		"one": "Rename {from} to {to} across {n} location. This cannot be undone.",
 		"other": "Rename {from} to {to} across {n} locations. This cannot be undone."
 	},
+	"Rename {n} tags inside": {
+		"one": "Rename {n} tag inside",
+		"other": "Rename {n} tags inside"
+	},
 	"Rename:": "Rename:",
 	"Rendering (live)": "Rendering (live)",
 	"Replace": "Replace",
 	"Replace with...": "Replace with...",
+	"Replace {n} tags": {
+		"one": "Replace {n} tag",
+		"other": "Replace {n} tags"
+	},
 	"Requires app v{version} or newer": "Requires app v{version} or newer",
 	"Reset": "Reset",
 	"Reset all to defaults": "Reset all to defaults",
@@ -1127,6 +1150,10 @@
 	"Zoom out": "Zoom out",
 	"Zoom to bounds": "Zoom to bounds",
 	"Zoom to selected locations": "Zoom to selected locations",
+	"across {n} countries": {
+		"one": "across {n} country",
+		"other": "across {n} countries"
+	},
 	"between": "between",
 	"between (any date)": "between (any date)",
 	"between (any year)": "between (any year)",
@@ -1153,6 +1180,10 @@
 	"zoom {zoom}": "zoom {zoom}",
 	"{combo} conflicts with \"{label}\" (Alt is the slow modifier for navigation)": "{combo} conflicts with \"{label}\" (Alt is the slow modifier for navigation)",
 	"{combo} is bound to {labels}": "{combo} is bound to {labels}",
+	"{count} locations": {
+		"one": "{count} location",
+		"other": "{count} locations"
+	},
 	"{done} / {total} reviewed ({pct}%)": "{done} / {total} reviewed ({pct}%)",
 	"{field} {op} {value}": "{field} {op} {value}",
 	"{field}: local {local} · remote {remote}": "{field}: local {local} · remote {remote}",
@@ -1180,6 +1211,11 @@
 		"one": "{n} location not pinned to a pano ID.",
 		"other": "{n} locations not pinned to a pano ID."
 	},
+	"{n} maps assigned to folders": {
+		"one": "{n} map assigned to folders",
+		"other": "{n} maps assigned to folders"
+	},
+	"{n} not found locally": "{n} not found locally",
 	"{n} skipped (missing source fields).": "{n} skipped (missing source fields).",
 	"{n} tags will be affected:": {
 		"one": "{n} tag will be affected:",

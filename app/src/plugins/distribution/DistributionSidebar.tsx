@@ -117,8 +117,8 @@ export function DistributionSidebar({ onClose }: { onClose: () => void }) {
 				]}
 			/>
 			<div className="distribution-sidebar__summary">
-				{total} location{total !== 1 ? "s" : ""} across {entries.length} countr
-				{entries.length !== 1 ? "ies" : "y"}
+				{t({ one: "{n} location", other: "{n} locations" }, { n: total })}{" "}
+				{t({ one: "across {n} country", other: "across {n} countries" }, { n: entries.length })}
 				{unknown > 0 && (
 					<span className="distribution-sidebar__unknown">
 						{" "}

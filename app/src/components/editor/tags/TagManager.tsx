@@ -610,8 +610,10 @@ function EditTagDialog({
 						{cascade && (
 							<label className="edit-tag-modal__cascade">
 								<Checkbox checked={cascadeOn} onChange={(e) => setCascadeOn(e.target.checked)} />
-								{t("Rename")} {cascade.descendantCount} tag
-								{cascade.descendantCount === 1 ? "" : "s"} inside
+								{t(
+									{ one: "Rename {n} tag inside", other: "Rename {n} tags inside" },
+									{ n: cascade.descendantCount },
+								)}
 							</label>
 						)}
 					</div>
@@ -642,8 +644,10 @@ function EditTagDialog({
 									onClose();
 								}}
 							>
-								{t("Apply to")} {cascade.descendantCount} tag
-								{cascade.descendantCount === 1 ? "" : "s"} inside
+								{t(
+									{ one: "Apply to {n} tag inside", other: "Apply to {n} tags inside" },
+									{ n: cascade.descendantCount },
+								)}
 							</Button>
 						)}
 					</div>
@@ -745,7 +749,10 @@ function VirtualTagDialog({
 								className="edit-tag-modal__apply-color"
 								onClick={() => onApplyColor(hexValue)}
 							>
-								{t("Apply to")} {descendantCount} tag{descendantCount === 1 ? "" : "s"} inside
+								{t(
+									{ one: "Apply to {n} tag inside", other: "Apply to {n} tags inside" },
+									{ n: descendantCount },
+								)}
 							</Button>
 						)}
 					</div>
@@ -799,9 +806,7 @@ function NewFolderDialog({
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
 			<DialogContent
-				title={
-					parentPath ? t('New folder in "{parent}"', { parent: parentPath }) : t("New folder")
-				}
+				title={parentPath ? t('New folder in "{parent}"', { parent: parentPath }) : t("New folder")}
 			>
 				<form
 					onSubmit={(e) => {

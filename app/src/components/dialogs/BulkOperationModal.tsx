@@ -362,8 +362,9 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 					}}
 					disabled={selected.size === 0}
 				>
-					{t("Clear")}{" "}
-					{selected.size > 0 ? `${selected.size} field${selected.size !== 1 ? "s" : ""}` : ""}
+					{selected.size > 0
+						? t({ one: "Clear {n} field", other: "Clear {n} fields" }, { n: selected.size })
+						: t("Clear")}
 				</Button>
 			</div>
 		</div>

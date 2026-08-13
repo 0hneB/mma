@@ -12,6 +12,7 @@ import { TagPill } from "@/components/primitives/TagPill";
 import { tagColorFor, errText, toggleInSet } from "@/lib/util/util";
 import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
 import { t } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 const FIELD_PREFS_KEY = "import-field-prefs";
 const AUTOCOMMIT_ACK_KEY = "import-autocommit-ack";
@@ -83,8 +84,11 @@ export function ImportSidebar() {
 			<header className="import-sidebar__header">
 				<h2 className="import-sidebar__title">{t("Import")}</h2>
 				<span className="import-sidebar__count">
-					<span className="mono">{fmt.format(preview.locationCount)}</span> location
-					{preview.locationCount !== 1 ? "s" : ""}
+					<Trans
+						msg={{ one: "{count} location", other: "{count} locations" }}
+						n={preview.locationCount}
+						count={<span className="mono">{fmt.format(preview.locationCount)}</span>}
+					/>
 				</span>
 			</header>
 
