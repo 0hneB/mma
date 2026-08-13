@@ -240,11 +240,9 @@ export const SelectionRow = memo(function SelectionRow({
 			}
 		};
 
+		const ac = new AbortController();
 		const onUp = () => {
-			window.removeEventListener("mousemove", onMove);
-			window.removeEventListener("mouseup", onUp);
-			window.removeEventListener("keydown", onKey);
-			window.removeEventListener("keyup", onKeyUp);
+			ac.abort();
 			if (started) {
 				activeDrag = null;
 				notifyDragListeners();
@@ -270,10 +268,11 @@ export const SelectionRow = memo(function SelectionRow({
 			}
 		};
 
-		window.addEventListener("mousemove", onMove);
-		window.addEventListener("mouseup", onUp);
-		window.addEventListener("keydown", onKey);
-		window.addEventListener("keyup", onKeyUp);
+		const { signal } = ac;
+		window.addEventListener("mousemove", onMove, { signal });
+		window.addEventListener("mouseup", onUp, { signal });
+		window.addEventListener("keydown", onKey, { signal });
+		window.addEventListener("keyup", onKeyUp, { signal });
 	};
 
 	const handleMouseMove = (e: React.MouseEvent) => {

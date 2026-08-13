@@ -130,22 +130,16 @@ function TooltipHost() {
 		};
 		const hideAll = () => setShown(null);
 
-		document.addEventListener("pointerover", show);
-		document.addEventListener("pointerout", hide);
-		document.addEventListener("focusin", show);
-		document.addEventListener("focusout", hide);
-		document.addEventListener("pointerdown", hideAll, true);
-		window.addEventListener("scroll", hideAll, true);
-		window.addEventListener("blur", hideAll);
-		return () => {
-			document.removeEventListener("pointerover", show);
-			document.removeEventListener("pointerout", hide);
-			document.removeEventListener("focusin", show);
-			document.removeEventListener("focusout", hide);
-			document.removeEventListener("pointerdown", hideAll, true);
-			window.removeEventListener("scroll", hideAll, true);
-			window.removeEventListener("blur", hideAll);
-		};
+		const ac = new AbortController();
+		const { signal } = ac;
+		document.addEventListener("pointerover", show, { signal });
+		document.addEventListener("pointerout", hide, { signal });
+		document.addEventListener("focusin", show, { signal });
+		document.addEventListener("focusout", hide, { signal });
+		document.addEventListener("pointerdown", hideAll, { capture: true, signal });
+		window.addEventListener("scroll", hideAll, { capture: true, signal });
+		window.addEventListener("blur", hideAll, { signal });
+		return () => ac.abort();
 	}, []);
 
 	useLayoutEffect(() => {

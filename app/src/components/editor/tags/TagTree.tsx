@@ -273,6 +273,7 @@ export function TagTreeView({
 			setDragPaths(block);
 			setDragLeaf((prev) => (prev ? { ...prev, extra: block.size - 1 } : prev));
 		};
+		const ac = new AbortController();
 		const onMove = (me: MouseEvent) => {
 			if (!started && (Math.abs(me.clientX - startX) > 4 || Math.abs(me.clientY - startY) > 4)) {
 				started = true;
@@ -301,8 +302,7 @@ export function TagTreeView({
 			}
 		};
 		const onUp = () => {
-			window.removeEventListener("mousemove", onMove);
-			window.removeEventListener("mouseup", onUp);
+			ac.abort();
 			document.body.style.userSelect = "";
 			document.body.classList.remove("mm-tag-dragging");
 			const dropT = dropTargetRef.current;
@@ -340,8 +340,8 @@ export function TagTreeView({
 			}
 			clear();
 		};
-		window.addEventListener("mousemove", onMove);
-		window.addEventListener("mouseup", onUp);
+		window.addEventListener("mousemove", onMove, { signal: ac.signal });
+		window.addEventListener("mouseup", onUp, { signal: ac.signal });
 	});
 
 	const handleDragMouseMove = useStableHandler(

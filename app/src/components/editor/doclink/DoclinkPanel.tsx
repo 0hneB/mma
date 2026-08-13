@@ -156,12 +156,10 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 				if (!rect) return;
 				onWidthChange(Math.round(clamp(rect.right - ev.clientX, WIDTH_RANGE)));
 			};
-			const onUp = () => {
-				el.removeEventListener("pointermove", onMove);
-				el.removeEventListener("pointerup", onUp);
-			};
-			el.addEventListener("pointermove", onMove);
-			el.addEventListener("pointerup", onUp);
+			const ac = new AbortController();
+			const onUp = () => ac.abort();
+			el.addEventListener("pointermove", onMove, { signal: ac.signal });
+			el.addEventListener("pointerup", onUp, { signal: ac.signal });
 		},
 		[onWidthChange],
 	);

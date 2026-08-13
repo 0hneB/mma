@@ -176,9 +176,9 @@ function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) 
 					embedEl.style.height = `${panoEl.offsetHeight}px`;
 				}
 			};
+			const ac = new AbortController();
 			const onUp = (ev: PointerEvent) => {
-				el.removeEventListener("pointermove", onMove);
-				el.removeEventListener("pointerup", onUp);
+				ac.abort();
 				if (embedEl) {
 					embedEl.style.width = "";
 					embedEl.style.height = "";
@@ -189,8 +189,8 @@ function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) 
 				const pct = ((ev.clientX - rect.left - gap / 2) / available) * 100;
 				onSplitChange(clamp(pct, SPLITHANDLE_RANGE));
 			};
-			el.addEventListener("pointermove", onMove);
-			el.addEventListener("pointerup", onUp);
+			el.addEventListener("pointermove", onMove, { signal: ac.signal });
+			el.addEventListener("pointerup", onUp, { signal: ac.signal });
 		},
 		[onSplitChange],
 	);
@@ -306,14 +306,12 @@ export function MapEditor() {
 			setShowMapCursor(false);
 		}
 
-		document.addEventListener("keydown", onKeyDown, true);
-		document.addEventListener("keyup", onKeyUp, true);
-		window.addEventListener("blur", onBlur);
-		return () => {
-			document.removeEventListener("keydown", onKeyDown, true);
-			document.removeEventListener("keyup", onKeyUp, true);
-			window.removeEventListener("blur", onBlur);
-		};
+		const ac = new AbortController();
+		const { signal } = ac;
+		document.addEventListener("keydown", onKeyDown, { capture: true, signal });
+		document.addEventListener("keyup", onKeyUp, { capture: true, signal });
+		window.addEventListener("blur", onBlur, { signal });
+		return () => ac.abort();
 	}, []);
 
 	if (!map) return null;

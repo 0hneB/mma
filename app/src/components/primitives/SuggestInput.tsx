@@ -75,12 +75,10 @@ export function SuggestInput<T>({
 		if (!portal || !open) return;
 		const update = () => setAnchor(containerRef.current?.getBoundingClientRect() ?? null);
 		update();
-		window.addEventListener("resize", update);
-		window.addEventListener("scroll", update, true);
-		return () => {
-			window.removeEventListener("resize", update);
-			window.removeEventListener("scroll", update, true);
-		};
+		const ac = new AbortController();
+		window.addEventListener("resize", update, { signal: ac.signal });
+		window.addEventListener("scroll", update, { capture: true, signal: ac.signal });
+		return () => ac.abort();
 	}, [portal, open]);
 
 	useEffect(() => {

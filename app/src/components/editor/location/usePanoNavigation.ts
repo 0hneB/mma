@@ -116,13 +116,13 @@ export function usePanoNavigation(appSettings: AppSettings) {
 			nav.held.clear();
 		}
 
-		document.addEventListener("keydown", onKeyDown, true);
-		document.addEventListener("keyup", onKeyUp, true);
-		window.addEventListener("blur", onBlur);
+		const ac = new AbortController();
+		const { signal } = ac;
+		document.addEventListener("keydown", onKeyDown, { capture: true, signal });
+		document.addEventListener("keyup", onKeyUp, { capture: true, signal });
+		window.addEventListener("blur", onBlur, { signal });
 		return () => {
-			document.removeEventListener("keydown", onKeyDown, true);
-			document.removeEventListener("keyup", onKeyUp, true);
-			window.removeEventListener("blur", onBlur);
+			ac.abort();
 			if (nav.rafId) cancelAnimationFrame(nav.rafId);
 			nav.held.clear();
 		};
