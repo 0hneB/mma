@@ -8,7 +8,7 @@ import { msg } from "@/lib/i18n";
 registerPlugin({
 	id: "geoguessr",
 	name: "GeoGuessr",
-	description: msg("Bidirectional sync with Geoguessr maps"),
+	description: msg("Bidirectional sync with GeoGuessr maps"),
 	icon: mdiMapMarker,
 	experimental: true,
 	sidebar: GeoGuessrSidebar,

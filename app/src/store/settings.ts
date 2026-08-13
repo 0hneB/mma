@@ -6,10 +6,16 @@ import type { TagSortMode } from "@/types";
 import type { PinnedEntry } from "./commandDefs";
 import type { RGB } from "@/lib/util/color";
 
-/** `en-XA` is the generated pseudolocale -- accented and ~40% longer, so unextracted strings and
+/** Language names stay in their own language, the way every language picker does it -- a reader
+ *  looking for their own has to recognise it without already reading English.
+ *  `en-XA` is the generated pseudolocale: accented and ~40% longer, so unextracted strings and
  *  layout overflow are visible without a translator. Offered in dev builds only. */
 export const LANGUAGES = {
-	en: msg("English"),
+	en: "English",
+	de: "Deutsch",
+	fr: "Français",
+	ru: "Русский",
+	"zh-Hans": "简体中文",
 	"en-XA": msg("Pseudolocale"),
 } as const;
 
