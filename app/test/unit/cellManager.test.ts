@@ -4,36 +4,9 @@ import {
 	CellManager,
 	decodeSelectionBitmask,
 	type SelEntry,
-	type SelColor,
 } from "@/lib/render/CellManager";
-import type { RenderDelta, RenderEntry } from "@/bindings.gen";
-
-function entry(
-	cell: string,
-	id: number,
-	lng: number,
-	lat: number,
-	heading = 0,
-	sel: SelColor = null,
-): RenderEntry {
-	return { cell, id, lng, lat, heading, sel, movedFrom: null };
-}
-
-/** A `SelColor`: the paint a delta entry carries. `idx` is the drawing selection's
- *  position in the selection list, which is what the overlay orders by. */
-function paint(color: [number, number, number], idx = 0): SelColor {
-	return { idx, color };
-}
-
-/** A render delta with everything defaulted, so a case names only what it exercises. */
-function delta(parts: Partial<RenderDelta> = {}): RenderDelta {
-	return { added: [], updated: [], removed: [], fullReset: false, ...parts };
-}
-
-/** A coordinate-free patch: the shape a pure membership change arrives as. */
-function selPatch(cell: string, cellIndex: number, sel: SelColor) {
-	return { cell, cellIndex, lng: null, lat: null, heading: null, sel };
-}
+import type { RenderDelta } from "@/bindings.gen";
+import { delta, entry, paint, selPatch } from "./fixtures/renderFixtures";
 
 /** A dense-bitmask SelEntry, the shape applySelectionBitmasks consumes. */
 const maskSel = (mask: Uint8Array): SelEntry => ({ kind: "mask", mask });
