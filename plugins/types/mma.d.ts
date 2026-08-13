@@ -1,6 +1,9 @@
 /// <reference types="google.maps" />
 /// <reference path="./google-maps.d.ts" />
 
+import * as _tauri_apps_api_window from '@tauri-apps/api/window';
+import * as _tauri_apps_api_webview from '@tauri-apps/api/webview';
+import * as __TAURI_EVENT from '@tauri-apps/api/event';
 import { ComponentType, SetStateAction, ReactNode } from 'react';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import { invoke } from '@tauri-apps/api/core';
@@ -8,52 +11,6 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { Layer, PickingInfo } from '@deck.gl/core';
 import maplibregl from 'maplibre-gl';
-
-export interface PluginSettingDef {
-    key: string;
-    label: string;
-    type: "boolean" | "string" | "number";
-    default: unknown;
-}
-export interface Plugin {
-    id: string;
-    name: string;
-    description?: string;
-    icon: string;
-    comingSoon?: boolean;
-    core?: boolean;
-    experimental?: boolean;
-    settings?: PluginSettingDef[];
-    /** Keep the sidebar mounted (hidden) when the user leaves plugin mode.
-     *  Only for plugins whose state can't be serialized (e.g. an iframe). */
-    keepAlive?: boolean;
-    activate(): void | (() => void);
-    modal?: ComponentType<{
-        onClose: () => void;
-    }>;
-    sidebar?: ComponentType<{
-        onClose: () => void;
-    }>;
-    locationPanel?: ComponentType;
-}
-export type PluginBehavior = Partial<Plugin> & {
-    activate(): void | (() => void);
-};
-/** Register a plugin. `activate` runs when a map opens; its returned cleanup runs on map close. */
-declare function registerPlugin(plugin: Plugin | PluginBehavior): void;
-export interface PluginStorage {
-    get<T = unknown>(key: string, fallback?: T): T;
-    set(key: string, value: unknown): void;
-    remove(key: string): void;
-    keys(): string[];
-}
-/** Persistent key-value storage namespaced to a plugin. Survives restarts. */
-declare function createPluginStorage(id: string): PluginStorage;
-/** useState persisted through the plugin's namespaced store. UI state saved this
- *  way survives sidebar unmount and app restart. Values are global, not per-map —
- *  callers must fall back gracefully when a stored value doesn't resolve against
- *  the current map (e.g. a field key or saved-selection id). */
-declare function usePluginState<T>(pluginId: string, key: string, initial: T | (() => T)): readonly [T, (action: SetStateAction<T>) => void];
 
 /** Commands */
 declare const commands: {
@@ -467,6 +424,228 @@ declare const commands: {
     /**  Subdivision weights for a country (JSON text, same shape as `vali subdivisions`). */
     valiSubdivisions: (country: string) => Promise<string>;
 };
+/** Events */
+declare const events: {
+    bulkExportProgress: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<ExportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ExportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ExportProgress) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<ExportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ExportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ExportProgress) => Promise<void>;
+    };
+    bulkImportProgress: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<ImportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ImportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ImportProgress) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<ImportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ImportProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ImportProgress) => Promise<void>;
+    };
+    sidecarDone: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarDone>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarDone>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarDone) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarDone>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarDone>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarDone) => Promise<void>;
+    };
+    sidecarInstallProgress: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarProgress) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarProgress) => Promise<void>;
+    };
+    sidecarLine: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarLine>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarLine>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarLine) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarLine>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarLine>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarLine) => Promise<void>;
+    };
+    sidecarLog: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarLog>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarLog>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarLog) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<SidecarLog>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<SidecarLog>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: SidecarLog) => Promise<void>;
+    };
+    storeExternalMutation: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<ExternalMutation>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ExternalMutation>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ExternalMutation) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<ExternalMutation>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ExternalMutation>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ExternalMutation) => Promise<void>;
+    };
+    valiProgress: ((target: _tauri_apps_api_webview.Webview | _tauri_apps_api_window.Window) => {
+        listen: (cb: __TAURI_EVENT.EventCallback<ValiProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ValiProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ValiProgress) => Promise<void>;
+    }) & {
+        listen: (cb: __TAURI_EVENT.EventCallback<ValiProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        once: (cb: __TAURI_EVENT.EventCallback<ValiProgress>) => Promise<__TAURI_EVENT.UnlistenFn>;
+        emit: (payload: ValiProgress) => Promise<void>;
+    };
+};
+declare const BUILTIN_FIELDS: readonly [{
+    readonly key: "lat";
+    readonly label: "Latitude";
+    readonly type: "number";
+    readonly kind: "identity";
+    readonly comparison: null;
+}, {
+    readonly key: "lng";
+    readonly label: "Longitude";
+    readonly type: "number";
+    readonly kind: "identity";
+    readonly comparison: null;
+}, {
+    readonly key: "heading";
+    readonly label: "Heading";
+    readonly type: "number";
+    readonly kind: "writable";
+    readonly comparison: {
+        readonly type: "circular";
+        readonly period: 360;
+    };
+}, {
+    readonly key: "pitch";
+    readonly label: "Pitch";
+    readonly type: "number";
+    readonly kind: "writable";
+    readonly comparison: null;
+}, {
+    readonly key: "zoom";
+    readonly label: "Zoom";
+    readonly type: "number";
+    readonly kind: "writable";
+    readonly comparison: null;
+}, {
+    readonly key: "id";
+    readonly label: "ID";
+    readonly type: "number";
+    readonly kind: "identity";
+    readonly comparison: null;
+}, {
+    readonly key: "createdAt";
+    readonly label: "Created";
+    readonly type: "date";
+    readonly kind: null;
+    readonly comparison: null;
+}, {
+    readonly key: "modifiedAt";
+    readonly label: "Modified";
+    readonly type: "date";
+    readonly kind: null;
+    readonly comparison: null;
+}, {
+    readonly key: "tagCount";
+    readonly label: "Tag count";
+    readonly type: "number";
+    readonly kind: "virtual";
+    readonly comparison: null;
+}];
+declare const KNOWN_FIELDS: readonly [{
+    readonly key: "altitude";
+    readonly type: "number";
+    readonly label: "Altitude";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: false;
+}, {
+    readonly key: "countryCode";
+    readonly type: "string";
+    readonly label: "Country code";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: false;
+}, {
+    readonly key: "cameraType";
+    readonly type: "enum";
+    readonly label: "Camera type";
+    readonly values: readonly ["gen1", "gen2", "gen4", "badcam", "tripod", "trekker"];
+    readonly labels: readonly [readonly ["gen1", "Gen 1"], readonly ["gen2", "Gen 2/3"], readonly ["gen4", "Gen 4"], readonly ["badcam", "Bad cam"], readonly ["tripod", "Tripod"], readonly ["trekker", "Trekker"]];
+    readonly circularPeriod: null;
+    readonly defaultOff: false;
+}, {
+    readonly key: "panoType";
+    readonly type: "enum";
+    readonly label: "Pano type";
+    readonly values: readonly ["2", "3", "10"];
+    readonly labels: readonly [readonly ["2", "Official"], readonly ["3", "Unknown"], readonly ["10", "User uploaded"]];
+    readonly circularPeriod: null;
+    readonly defaultOff: false;
+}, {
+    readonly key: "imageDate";
+    readonly type: "month";
+    readonly label: "Image date";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: false;
+}, {
+    readonly key: "datetime";
+    readonly type: "date";
+    readonly label: "Exact date";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: true;
+}, {
+    readonly key: "timezone";
+    readonly type: "enum";
+    readonly label: "Timezone";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: true;
+}, {
+    readonly key: "drivingDirection";
+    readonly type: "number";
+    readonly label: "Driving direction";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: 360;
+    readonly defaultOff: true;
+}, {
+    readonly key: "uploaderName";
+    readonly type: "string";
+    readonly label: "Uploader";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: true;
+}, {
+    readonly key: "coverageDates";
+    readonly type: "array";
+    readonly label: "Coverage dates";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: true;
+}, {
+    readonly key: "subdivision";
+    readonly type: "string";
+    readonly label: "Subdivision";
+    readonly values: readonly [];
+    readonly labels: readonly [];
+    readonly circularPeriod: null;
+    readonly defaultOff: true;
+}];
 type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker";
 /**
  *  A swap-removal from a render cell. JS must move the last element into `cell_index`
@@ -612,6 +791,19 @@ type ExportOpts = {
     extraFieldsJson: string | null;
 };
 /**
+ *  Progress event emitted per-map during bulk export, consumed by the frontend
+ *  to drive a progress indicator.
+ */
+type ExportProgress = {
+    current: number;
+    total: number;
+    mapName: string;
+};
+/**  A mutation another window made to a map this window may have open, routed by `map_id`. */
+type ExternalMutation = {
+    mapId: string;
+} & MutationResult;
+/**
  *  Schema definition for a single `Location.extra` field. Stored in the map's
  *  `extra.fields` JSON. For enum types, `values` lists valid options and `labels`
  *  provides display names.
@@ -678,6 +870,15 @@ type ImportPreviewEntry = {
     locationCount: number;
     tagCount: number;
     warnings: string[];
+};
+/**
+ *  Progress event emitted per-map during bulk import, consumed by the frontend
+ *  to drive a progress indicator.
+ */
+type ImportProgress = {
+    current: number;
+    total: number;
+    mapName: string;
 };
 /**  Result returned per map after a successful bulk import. */
 type ImportedMapInfo = {
@@ -946,14 +1147,16 @@ type PartitionBucket = {
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
 type PluginManifest_Deserialize = {
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    main: string;
-    version: string;
-    experimental: boolean;
-    sidecar: PluginSidecar_Deserialize | null;
+    id?: string;
+    name?: string;
+    description?: string;
+    icon?: string;
+    main?: string;
+    version?: string;
+    experimental?: boolean;
+    comingSoon?: boolean;
+    minAppVersion?: string | null;
+    sidecar?: PluginSidecar_Deserialize | null;
 };
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
 type PluginManifest = {
@@ -964,6 +1167,8 @@ type PluginManifest = {
     main: string;
     version: string;
     experimental?: boolean;
+    comingSoon?: boolean;
+    minAppVersion?: string | null;
     sidecar?: PluginSidecar | null;
 };
 /**  A plugin's declared sidecar binary (downloaded from GitHub Releases on install). */
@@ -1299,6 +1504,24 @@ type SideCounts = {
     update: number;
     delete: number;
 };
+type SidecarDone = {
+    reqId: number;
+    error: string | null;
+};
+type SidecarLine = {
+    reqId: number;
+    line: string;
+};
+/**  Same shape as [`SidecarLine`]; a distinct type because one type carries one channel. */
+type SidecarLog = {
+    reqId: number;
+    line: string;
+};
+type SidecarProgress = {
+    pluginId: string;
+    downloaded: number;
+    total: number;
+};
 type SpacedPickResult = {
     ids: number[];
     distanceM: number;
@@ -1426,6 +1649,27 @@ type ValiLocation = {
     pitch?: number | null;
     panoId?: string | null;
     tags: string[];
+};
+type ValiProgress = {
+    kind: "workItems";
+    total: number;
+} | {
+    kind: "workItemDone";
+    countryCode: string;
+    subdivisionCode: string | null;
+    done: number;
+    total: number;
+} | {
+    kind: "countryDownloadStarted";
+    countryCode: string;
+    files: number;
+    bytes: number;
+    updates: boolean;
+} | {
+    kind: "fileDownloaded";
+    countryCode: string;
+    name: string;
+    bytes: number;
 };
 /**
  *  Per-map config for a virtual tag-tree node — a folder node with no underlying
@@ -1855,7 +2099,7 @@ declare const COMMANDS: {
         group: "Map";
         defaultBinding: string;
         aliases: string[];
-        execute: () => Promise<string>;
+        execute: () => void;
         enabled: () => boolean;
     };
     import: {
@@ -2192,39 +2436,20 @@ export interface SavedSelection {
     items: SavedSelectionItem[];
     createdAt: number;
 }
-export type SavedSelectionProps = {
-    type: "Everything";
-} | {
-    type: "Polygon";
-    polygon: PolygonGeometry;
-    includeInformational: boolean;
-} | {
+/** Selection types bound to the open map (raw location ids, review sessions): a rule
+ *  built from them would be a frozen snapshot, so they are never saved. Everything else
+ *  is saveable as-is. */
+declare const MAP_LOCAL_TYPES: readonly ["Locations", "Manual", "ValidationState", "Reviewed"];
+export type MapLocalType = (typeof MAP_LOCAL_TYPES)[number];
+export type MapLocalProps = Extract<SelectionProps, {
+    type: MapLocalType;
+}>;
+export type PortableProps = Exclude<SelectionProps, MapLocalProps>;
+export type SavedSelectionProps = Exclude<PortableProps, {
+    type: "Tag" | "Intersection" | "Union" | "Invert";
+}> | {
     type: "TagName";
     tagName: string;
-} | {
-    type: "Untagged";
-} | {
-    type: "Unpanned";
-} | {
-    type: "PanoIds";
-} | {
-    type: "NotPanoIds";
-} | {
-    type: "Uncommitted";
-} | {
-    type: "Duplicates";
-    distance: number;
-} | {
-    type: "Filter";
-    field: string;
-    op: FilterOp;
-    value: unknown;
-    value2?: unknown;
-} | {
-    type: "TopK";
-    field: string;
-    k: number;
-    ascending: boolean;
 } | {
     type: "Intersection";
     selections: SavedSelectionProps[];
@@ -2688,6 +2913,52 @@ declare namespace review {
 }
 
 export type Cmd = typeof commands;
+
+export interface PluginSettingDef {
+    key: string;
+    label: string;
+    type: "boolean" | "string" | "number";
+    default: unknown;
+}
+export interface Plugin {
+    id: string;
+    name: string;
+    description?: string;
+    icon: string;
+    comingSoon?: boolean;
+    core?: boolean;
+    experimental?: boolean;
+    settings?: PluginSettingDef[];
+    /** Keep the sidebar mounted (hidden) when the user leaves plugin mode.
+     *  Only for plugins whose state can't be serialized (e.g. an iframe). */
+    keepAlive?: boolean;
+    activate(): void | (() => void);
+    modal?: ComponentType<{
+        onClose: () => void;
+    }>;
+    sidebar?: ComponentType<{
+        onClose: () => void;
+    }>;
+    locationPanel?: ComponentType;
+}
+export type PluginBehavior = Partial<Plugin> & {
+    activate(): void | (() => void);
+};
+/** Register a plugin. `activate` runs when a map opens; its returned cleanup runs on map close. */
+declare function registerPlugin(plugin: Plugin | PluginBehavior): void;
+export interface PluginStorage {
+    get<T = unknown>(key: string, fallback?: T): T;
+    set(key: string, value: unknown): void;
+    remove(key: string): void;
+    keys(): string[];
+}
+/** Persistent key-value storage namespaced to a plugin. Survives restarts. */
+declare function createPluginStorage(id: string): PluginStorage;
+/** useState persisted through the plugin's namespaced store. UI state saved this
+ *  way survives sidebar unmount and app restart. Values are global, not per-map —
+ *  callers must fall back gracefully when a stored value doesn't resolve against
+ *  the current map (e.g. a field key or saved-selection id). */
+declare function usePluginState<T>(pluginId: string, key: string, initial: T | (() => T)): readonly [T, (action: SetStateAction<T>) => void];
 
 /** Standard right-hand sidebar chrome (title, back button, scrollable body). Use for plugin sidebars. */
 declare function Sidebar({ title, onBack, actions, className, flush, children, }: {
@@ -3255,5 +3526,5 @@ declare global {
     const MMA: MMA;
 }
 
-export { MMA as MMAApi, PanoType, commands };
-export type { CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExtraFieldDef, ExtraFieldType, FieldCount, FilterOp, FirstSyncMode, GeoResult, GgUser, ImportPreviewEntry, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SpacedPickResult, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiLocation, ValiLocation_Deserialize, VirtualTag };
+export { BUILTIN_FIELDS, KNOWN_FIELDS, MMA as MMAApi, PanoType, commands, events };
+export type { CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExportProgress, ExternalMutation, ExtraFieldDef, ExtraFieldType, FieldCount, FilterOp, FirstSyncMode, GeoResult, GgUser, ImportPreviewEntry, ImportProgress, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SidecarDone, SidecarLine, SidecarLog, SidecarProgress, SpacedPickResult, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiLocation, ValiLocation_Deserialize, ValiProgress, VirtualTag };
