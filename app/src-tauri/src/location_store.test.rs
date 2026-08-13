@@ -1838,10 +1838,11 @@ fn render_buffer_with_selection_overlay() {
 }
 
 #[test]
-fn render_buffer_orders_the_overlay_by_selection() {
+fn render_buffer_ships_selection_index_per_entry() {
     // Ids alternate between the two selections, so batch order and selection order
-    // disagree. The overlay draws in buffer order with every marker at z=0, so the
-    // second selection's markers have to come out last or they stack at random.
+    // disagree. The buffer ships entries in emission order, each tagged with the
+    // selection that draws it; JS sorts by that tag in `CellManager.load`, which is
+    // where the z-order between overlapping markers is decided.
     let locs: Vec<_> = (1..=4).map(|id| loc(id, 10.0, 20.0)).collect();
     let mut store = setup_store_with(&locs);
     store.bake_overlay();
@@ -1879,8 +1880,8 @@ fn render_buffer_orders_the_overlay_by_selection() {
     };
     let sel: Vec<u32> = (0..n).map(|i| read(sel_at, i)).collect();
     let ids: Vec<u32> = (0..n).map(|i| read(ids_at, i)).collect();
-    assert_eq!(sel, vec![0, 0, 1, 1], "entries grouped by selection index");
-    assert_eq!(ids, vec![1, 3, 2, 4], "stable within a selection");
+    assert_eq!(ids, vec![1, 2, 3, 4], "emission order");
+    assert_eq!(sel, vec![0, 1, 0, 1], "each entry tagged with its drawing selection");
 }
 
 #[test]

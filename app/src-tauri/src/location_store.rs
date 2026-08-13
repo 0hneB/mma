@@ -3293,8 +3293,8 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
     let mut cells: [Option<CellOut>; 32] = [NONE; 32];
 
     // Selection overlay: selected entries rendered as a separate colored layer. `sel_idx`
-    // is the drawing selection's index, both to order the entries below and so JS can keep
-    // them ordered as later edits add and drop entries.
+    // is the drawing selection's index, which JS orders the entries by on load and keeps
+    // them ordered by as later edits add and drop entries.
     struct SelOverlay {
         ids: Vec<u32>,
         positions: Vec<f32>,
@@ -3362,42 +3362,6 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         }
     }
 
-    // Order the overlay by selection index, so a later selection's markers overdraw an
-    // earlier one's. Emitting in batch-row order instead would let two overlapping markers
-    // settle their z by whichever row came first in the batch. Counting sort — the key is a
-    // small dense integer, and it is stable, so rows within one selection keep batch order.
-    let num_sels = store.selections.resolved.len();
-    if num_sels > 1 && sel_ov.ids.len() > 1 {
-        let n = sel_ov.ids.len();
-        let mut at = vec![0u32; num_sels + 1];
-        for &si in &sel_ov.sel_idx {
-            at[si as usize + 1] += 1;
-        }
-        for i in 1..at.len() {
-            at[i] += at[i - 1];
-        }
-        let mut sorted = SelOverlay {
-            ids: vec![0; n],
-            positions: vec![0.0; n * 2],
-            colors: vec![0; n * 4],
-            angles: vec![0.0; n],
-            sel_idx: vec![0; n],
-        };
-        for src in 0..n {
-            let si = sel_ov.sel_idx[src] as usize;
-            let dst = at[si] as usize;
-            at[si] += 1;
-            sorted.positions[dst * 2] = sel_ov.positions[src * 2];
-            sorted.positions[dst * 2 + 1] = sel_ov.positions[src * 2 + 1];
-            sorted.colors[dst * 4..dst * 4 + 4]
-                .copy_from_slice(&sel_ov.colors[src * 4..src * 4 + 4]);
-            sorted.angles[dst] = sel_ov.angles[src];
-            sorted.ids[dst] = sel_ov.ids[src];
-            sorted.sel_idx[dst] = si as u32;
-        }
-        sel_ov = sorted;
-    }
-
     // Rebuild per-cell render tracking
     store.render.cells = [const { None }; 32];
     store.render.id_to_cell_idx.clear();
@@ -3460,7 +3424,8 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
         buf.extend_from_slice(bytemuck::cast_slice(&out.angles));
     }
 
-    // Selection overlay, already ordered by selection index:
+    // Selection overlay, in emission order. `selIdx` is the z key: JS sorts by it on load,
+    // the same way it does after every delta, so the ordering lives in one implementation.
     // [u32 count][f32[] positions][u8[] colors][f32[] angles][u32[] ids][u32[] selIdx]
     let sel_count = sel_ov.ids.len() as u32;
     buf.extend_from_slice(&sel_count.to_le_bytes());

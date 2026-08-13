@@ -358,6 +358,50 @@ describe("CellManager", () => {
 		expect(mgr.selectedIds().has(7)).toBe(true);
 	});
 
+	it("initFromBinary orders the selection overlay by selection index", () => {
+		// Rust emits overlay entries in row order tagged with the drawing selection; the
+		// z-order between two selections' markers is decided here, on load.
+		const ids = [1, 2, 3, 4];
+		const sels = [0, 1, 0, 1];
+		const n = ids.length;
+		const buf = new ArrayBuffer(4 + 4 + n * (8 + 4 + 4 + 4 + 4));
+		const dv = new DataView(buf);
+		dv.setUint32(0, 0, true); // 0 cells
+		dv.setUint32(4, n, true);
+		let off = 8;
+		for (let i = 0; i < n; i++) {
+			dv.setFloat32(off, ids[i], true); // lng doubles as an entry marker
+			dv.setFloat32(off + 4, 0, true);
+			off += 8;
+		}
+		for (let i = 0; i < n; i++) {
+			dv.setUint8(off, ids[i]);
+			dv.setUint8(off + 3, 255);
+			off += 4;
+		}
+		off += n * 4; // angles, all zero
+		for (const id of ids) {
+			dv.setUint32(off, id, true);
+			off += 4;
+		}
+		for (const s of sels) {
+			dv.setUint32(off, s, true);
+			off += 4;
+		}
+
+		mgr.initFromBinary(buf);
+		expect(Array.from(mgr.overlay.sel.subarray(0, n))).toEqual([0, 0, 1, 1]);
+		expect(Array.from(mgr.overlay.ids.subarray(0, n))).toEqual([1, 3, 2, 4]);
+		// The other arrays move with their entry, and `slot` still points at each id.
+		expect(Array.from(mgr.overlay.positions.subarray(0, n * 2))).toEqual([
+			1, 0, 3, 0, 2, 0, 4, 0,
+		]);
+		expect(Array.from(mgr.overlay.colors.subarray(0, n * 4))).toEqual([
+			1, 0, 0, 255, 3, 0, 0, 255, 2, 0, 0, 255, 4, 0, 0, 255,
+		]);
+		for (const id of ids) expect(mgr.overlay.has(id)).toBe(true);
+	});
+
 	it("initFromBinary clears previous state", () => {
 		mgr.applyDelta(delta({ added: [entry("x", 1, 1, 1)] }));
 		expect(mgr.totalCount).toBe(1);
