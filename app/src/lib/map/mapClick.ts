@@ -1,6 +1,6 @@
 import type { PickingInfo } from "@deck.gl/core";
 import type { CellManager } from "@/lib/render/CellManager";
-import type { MapHost } from "@/lib/map/host";
+import { boundsOfCoords, type MapHost } from "@/lib/map/host";
 import { LOCATION_LAYER_ID } from "@/lib/render/buildSceneLayers";
 import { cmd } from "@/lib/commands";
 import { lookupStreetView } from "@/lib/sv/lookup";
@@ -67,14 +67,7 @@ export async function addParsedLocations(parsed: ParsedLocation[]) {
 	);
 	await addLocations(locs);
 	setActiveLocation(locs[locs.length - 1].id);
-	const lats = locs.map((l) => l.lat);
-	const lngs = locs.map((l) => l.lng);
-	zoomToPasted({
-		west: Math.min(...lngs),
-		south: Math.min(...lats),
-		east: Math.max(...lngs),
-		north: Math.max(...lats),
-	});
+	zoomToPasted(boundsOfCoords(locs));
 }
 
 // ---------------------------------------------------------------------------

@@ -7,8 +7,10 @@ import { selectionDisplayName, buildSelection } from "@/store/selections";
 import { savedToSelectionProps, describeRule, type SavedSelection } from "@/store/savedSelections";
 import { Sidebar, Field, EmptyState, SegmentedControl } from "@/components/primitives/Sidebar";
 import type { ExtraFieldDef } from "@/bindings.gen";
-import { fieldLabel, getFieldDef } from "@/lib/data/fieldDefRegistry";
+import { getFieldDef } from "@/lib/data/fieldDefRegistry";
 import { fieldValue } from "@/lib/data/fieldOps";
+import { useExtraFieldKeys } from "@/components/editor/map/FilterBuilder";
+import { useMapState } from "@/store/useMapStore";
 import { binNumeric, compareNatural } from "@/lib/util/util";
 import { usePluginState } from "@/plugins/registry";
 import {
@@ -206,13 +208,11 @@ async function computePivot(
 	return { rows: pivotRows, columns, columnLabels, columnTotals, numericDistinct, columnProps };
 }
 
-function buildPivotFields(knownKeys: ReadonlySet<string>): FieldEntry[] {
-	const result: FieldEntry[] = [{ key: TAGS_FIELD_KEY, label: "Tags", def: { type: "enum" } }];
-	for (const key of knownKeys) {
-		const def = getFieldDef(key);
-		if (def) result.push({ key, label: fieldLabel(key), def });
-	}
-	return result;
+const TAGS_FIELD: FieldEntry = { key: TAGS_FIELD_KEY, label: "Tags", def: { type: "enum" } };
+
+// Fields the map actually carries, with a known definition.
+function pivotFields(all: FieldEntry[], knownKeys: ReadonlySet<string>): FieldEntry[] {
+	return [TAGS_FIELD, ...all.filter((f) => knownKeys.has(f.key) && getFieldDef(f.key))];
 }
 
 function defaultPivotField(fields: FieldEntry[]): string {
@@ -221,17 +221,17 @@ function defaultPivotField(fields: FieldEntry[]): string {
 
 export function PivotSidebar({ onClose }: { onClose: () => void }) {
 	const [rowSourceRaw, setRowSource] = usePluginState<RowSource>("pivot", "rowSource", "active");
-	const [fieldKeyRaw, setFieldKey] = usePluginState<string>("pivot", "fieldKey", () =>
-		defaultPivotField(buildPivotFields(MMA.getMapState().knownFieldKeys)),
-	);
+	// Empty resolves to nothing, so the effective field falls back to the default below.
+	const [fieldKeyRaw, setFieldKey] = usePluginState<string>("pivot", "fieldKey", "");
 	const [bucketCount, setBucketCount] = usePluginState<number | null>("pivot", "bucketCount", 10);
 	const [valueMode, setValueMode] = usePluginState<ValueMode>("pivot", "valueMode", "count");
 	const [includeNa, setIncludeNa] = usePluginState<boolean>("pivot", "includeNa", true);
 	const [data, setData] = useState<PivotData | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	const knownKeys = MMA.getMapState().knownFieldKeys;
-	const fields = useMemo(() => buildPivotFields(knownKeys), [knownKeys]);
+	const allFields = useExtraFieldKeys();
+	const knownKeys = useMapState((s) => s.knownFieldKeys);
+	const fields = useMemo(() => pivotFields(allFields, knownKeys), [allFields, knownKeys]);
 
 	const savedSelections: SavedSelection[] = MMA.getSettings().savedSelections;
 

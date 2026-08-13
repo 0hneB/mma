@@ -5,6 +5,7 @@ import { useMapState } from "@/store/useMapStore";
 import { cmd } from "@/lib/commands";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { distMeters } from "@/lib/geo/geo";
+import { boundsOfCoords } from "@/lib/map/host";
 
 // --- Formatting utilities ---
 
@@ -64,13 +65,10 @@ export function padBbox(bbox: Bbox): Bbox {
 }
 
 export function locationsBbox(locations: LatLng[]): Bbox {
-	const bbox: Bbox = [Infinity, Infinity, -Infinity, -Infinity];
-	for (const l of locations) {
-		if (l.lng < bbox[0]) bbox[0] = l.lng;
-		if (l.lat < bbox[1]) bbox[1] = l.lat;
-		if (l.lng > bbox[2]) bbox[2] = l.lng;
-		if (l.lat > bbox[3]) bbox[3] = l.lat;
-	}
+	const b = boundsOfCoords(locations);
+	const bbox: Bbox = b
+		? [b.west, b.south, b.east, b.north]
+		: [Infinity, Infinity, -Infinity, -Infinity];
 	return padBbox(bbox);
 }
 

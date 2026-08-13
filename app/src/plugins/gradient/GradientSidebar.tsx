@@ -4,8 +4,9 @@ import { NSelect } from "@/components/primitives/NSelect";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { ScopeSelector } from "@/components/primitives/ScopeSelector";
 import type { ExtraFieldType, KeySpec, DatePart } from "@/bindings.gen";
-import { getFieldDef, fieldLabel } from "@/lib/data/fieldDefRegistry";
-import type { FieldEntry } from "@/components/editor/map/FilterBuilder";
+import { getFieldDef } from "@/lib/data/fieldDefRegistry";
+import { useExtraFieldKeys, type FieldEntry } from "@/components/editor/map/FilterBuilder";
+import { useMapState } from "@/store/useMapStore";
 import { partitionKeyOptions, RANGE_ID } from "@/lib/data/fieldOps";
 import { isNumericField, colorPartition } from "./gradientMath";
 import { partition, useScope } from "@/store/scope";
@@ -79,21 +80,16 @@ function defaultProjection(type: ExtraFieldType): string {
 		: (gradientOptions(type)[0]?.id ?? "value");
 }
 
-function buildGradientFields(knownKeys: ReadonlySet<string>): FieldEntry[] {
-	const result: FieldEntry[] = [];
-	for (const key of knownKeys) {
-		const def = getFieldDef(key);
-		if (
-			!def ||
-			isNumericField(def) ||
-			def.type === "enum" ||
-			def.type === "string" ||
-			def.type === "month"
-		) {
-			if (def) result.push({ key, label: fieldLabel(key), def });
-		}
-	}
-	return result;
+// Fields the map actually carries that a gradient can project.
+function gradientFields(all: FieldEntry[], knownKeys: ReadonlySet<string>): FieldEntry[] {
+	return all.filter((f) => {
+		if (!knownKeys.has(f.key)) return false;
+		const def = getFieldDef(f.key);
+		return (
+			!!def &&
+			(isNumericField(def) || def.type === "enum" || def.type === "string" || def.type === "month")
+		);
+	});
 }
 
 function defaultGradientField(fields: FieldEntry[]): string {
@@ -101,9 +97,8 @@ function defaultGradientField(fields: FieldEntry[]): string {
 }
 
 export function GradientSidebar({ onClose }: { onClose: () => void }) {
-	const [fieldKeyRaw, setFieldKey] = usePluginState<string>("gradient", "fieldKey", () =>
-		defaultGradientField(buildGradientFields(MMA.getMapState().knownFieldKeys)),
-	);
+	// Empty resolves to nothing, so the effective field falls back to the default below.
+	const [fieldKeyRaw, setFieldKey] = usePluginState<string>("gradient", "fieldKey", "");
 	const [projectionIdRaw, setProjectionId] = usePluginState("gradient", "projectionId", RANGE_ID);
 	const [presetIdxRaw, setPresetIdx] = usePluginState("gradient", "presetIdx", 0);
 	const [bucketCount, setBucketCount] = usePluginState("gradient", "bucketCount", 10);
@@ -115,8 +110,9 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 
 	const map = MMA.getMapState().map;
 
-	const knownKeys = MMA.getMapState().knownFieldKeys;
-	const fields = useMemo(() => buildGradientFields(knownKeys), [knownKeys]);
+	const allFields = useExtraFieldKeys();
+	const knownKeys = useMapState((s) => s.knownFieldKeys);
+	const fields = useMemo(() => gradientFields(allFields, knownKeys), [allFields, knownKeys]);
 
 	// Persisted values are global; fall back when they don't resolve on this map.
 	const fieldKey = fields.some((f) => f.key === fieldKeyRaw)
