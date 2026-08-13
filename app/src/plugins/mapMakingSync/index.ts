@@ -2,6 +2,7 @@ const { registerPlugin } = window.MMA;
 import { mapMakingApp } from "@/components/primitives/Icon";
 import { SyncSidebar } from "./SyncSidebar";
 import { controller } from "./controller";
+import { activateSyncPlugin } from "@/lib/sync/controller";
 
 registerPlugin({
 	id: "map-making-sync",
@@ -10,19 +11,5 @@ registerPlugin({
 	icon: mapMakingApp,
 	experimental: true,
 	sidebar: SyncSidebar,
-	activate() {
-		const M = window.MMA;
-		// Resume the live loop when a linked map is (re)opened and live was left on.
-		const resume = () => {
-			if (controller.getLink() && controller.livePref()) controller.startLive();
-		};
-		resume();
-		const offOpen = M.on("map:open", resume);
-		const offClose = M.on("map:close", () => controller.pauseLive());
-		return () => {
-			offOpen();
-			offClose();
-			controller.pauseLive();
-		};
-	},
+	activate: () => activateSyncPlugin(controller),
 });

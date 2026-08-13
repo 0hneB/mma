@@ -41,6 +41,23 @@ export interface SyncController {
 	stopLive(): void;
 }
 
+/** Plugin `activate()` for a sync plugin: resume the live loop when a linked map is
+ *  (re)opened and live was left on, and pause it on close. */
+export function activateSyncPlugin(controller: SyncController): () => void {
+	const M = window.MMA;
+	const resume = () => {
+		if (controller.getLink() && controller.livePref()) controller.startLive();
+	};
+	resume();
+	const offOpen = M.on("map:open", resume);
+	const offClose = M.on("map:close", () => controller.pauseLive());
+	return () => {
+		offOpen();
+		offClose();
+		controller.pauseLive();
+	};
+}
+
 /**
  * Per-provider sync controller: owns the link, the in-flight guard and the live loop for
  * whichever map is currently open. Everything provider-specific arrives via {@link SyncProvider}.
