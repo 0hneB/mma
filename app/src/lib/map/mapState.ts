@@ -2,17 +2,13 @@ import type { Bounds } from "@/types";
 import { type MapHost } from "@/lib/map/host";
 
 let mapHost: MapHost | null = null;
-let hostReadyResolve: ((host: MapHost) => void) | null = null;
-let hostReadyPromise: Promise<MapHost> | null = null;
+let hostReady: PromiseWithResolvers<MapHost> | null = null;
 
 export function setMapHost(host: MapHost | null) {
 	mapHost = host;
-	if (host && hostReadyResolve) {
-		hostReadyResolve(host);
-		hostReadyResolve = null;
-	}
-	if (!host) {
-		hostReadyPromise = null;
+	if (host) {
+		hostReady?.resolve(host);
+		hostReady = null;
 	}
 }
 
@@ -28,12 +24,8 @@ export function getMapHost(): MapHost | null {
  */
 export function waitForMapHost(): Promise<MapHost> {
 	if (mapHost) return Promise.resolve(mapHost);
-	if (!hostReadyPromise) {
-		hostReadyPromise = new Promise((resolve) => {
-			hostReadyResolve = resolve;
-		});
-	}
-	return hostReadyPromise;
+	hostReady ??= Promise.withResolvers<MapHost>();
+	return hostReady.promise;
 }
 
 /** Expand any axis narrower than `2 * minExtent` (degrees) to that span, centered.
