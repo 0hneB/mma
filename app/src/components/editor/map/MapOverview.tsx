@@ -30,7 +30,7 @@ import { Checkbox } from "@/components/primitives/Checkbox";
 import { TextInput } from "@/components/primitives/TextInput";
 import { PluginToolbar } from "@/plugins/PluginPanels";
 import { fmt } from "@/lib/util/format";
-import { useDialog, openDialog } from "@/store/dialogBus";
+import { useDialog, useDialogState, openDialog } from "@/store/dialogBus";
 import { SelectionRow } from "./SelectionRow";
 import { PinnedToolbar } from "./PinnedToolbar";
 import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectionDialogs";
@@ -281,20 +281,13 @@ export function MapOverview({ hidden }: { hidden?: boolean }) {
 	const [topKField, setTopKField] = useState("");
 	const [topKCount, setTopKCount] = useState(10);
 	const [topKAscending, setTopKAscending] = useState(false);
-	const [showTagFindReplace, setShowTagFindReplace] = useState(false);
-	const [showMergeDuplicates, setShowMergeDuplicates] = useState(false);
-	const [showReviews, setShowReviews] = useState(false);
-	const [showApplyFieldAsTags, setShowApplyFieldAsTags] = useState(false);
-	const [showSaveSelections, setShowSaveSelections] = useState(false);
-	const [showApplySaved, setShowApplySaved] = useState(false);
+	const [showTagFindReplace, setShowTagFindReplace] = useDialogState("tag-find-replace");
+	const [showMergeDuplicates, setShowMergeDuplicates] = useDialogState("merge-duplicates");
+	const [showReviews, setShowReviews] = useDialogState("review-sessions");
+	const [showApplyFieldAsTags, setShowApplyFieldAsTags] = useDialogState("apply-field-as-tags");
+	const [showSaveSelections, setShowSaveSelections] = useDialogState("save-selections");
+	const [showApplySaved, setShowApplySaved] = useDialogState("apply-saved-selection");
 	const [saveSelName, setSaveSelName] = useState("");
-
-	useDialog("tag-find-replace", () => setShowTagFindReplace(true));
-	useDialog("apply-field-as-tags", () => setShowApplyFieldAsTags(true));
-	useDialog("merge-duplicates", () => setShowMergeDuplicates(true));
-	useDialog("save-selections", () => setShowSaveSelections(true));
-	useDialog("apply-saved-selection", () => setShowApplySaved(true));
-	useDialog("review-sessions", () => setShowReviews(true));
 
 	useDialog("review-selected", () => {
 		const { selectedLocationIds, selections } = getMapState();

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, createContext, useContext } from "react";
-import { useDialog } from "@/store/dialogBus";
+import { useDialog, useDialogState } from "@/store/dialogBus";
 import { Command } from "cmdk";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
@@ -217,11 +217,9 @@ function PaletteContent({ onChangeOpen }: { onChangeOpen: (v: boolean) => void }
 }
 
 export function CommandPalette() {
-	const [open, setOpen] = useState(false);
+	const [open, setOpen] = useDialogState("command-palette");
 	const [bulkOp, setBulkOp] = useState<BulkOperation | null>(null);
 	useHotkey(useBinding("openCommandPalette"), () => setOpen((v) => !v));
-
-	useDialog("command-palette", () => setOpen(true));
 
 	useDialog("bulk-op", (op) => setBulkOp(op as BulkOperation));
 

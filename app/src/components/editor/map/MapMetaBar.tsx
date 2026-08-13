@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useDialog } from "@/store/dialogBus";
+import { useDialog, useDialogState } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useMapState, undo, redo } from "@/store/useMapStore";
 import { CommitDialog } from "@/components/dialogs/CommitDialog";
@@ -83,13 +83,12 @@ function UndoRedoControls() {
 
 export function MapMetaBar() {
 	const map = useMapState((s) => s.map);
-	const [showExport, setShowExport] = useState(false);
-	const [showHistory, setShowHistory] = useState(false);
-	const [showSeen, setShowSeen] = useState(false);
-	const [showCopyToMap, setShowCopyToMap] = useState(false);
+	const [showExport, setShowExport] = useDialogState("export");
+	const [showHistory, setShowHistory] = useDialogState("history");
+	const [showSeen, setShowSeen] = useDialogState("seen");
+	const [showCopyToMap, setShowCopyToMap] = useDialogState("copy-to-map");
 	const [quickCopyId, setQuickCopyId] = useState<number | null>(null);
 
-	useDialog("export", () => setShowExport(true));
 	const importFile = useCallback(async () => {
 		const path = await openFileDialog({
 			multiple: false,
@@ -99,9 +98,6 @@ export function MapMetaBar() {
 		await beginImportFromPath(path);
 	}, []);
 	useDialog("import", importFile);
-	useDialog("history", () => setShowHistory(true));
-	useDialog("seen", () => setShowSeen(true));
-	useDialog("copy-to-map", () => setShowCopyToMap(true));
 	useDialog("quick-copy-to-map", (id) => setQuickCopyId(id));
 
 	if (!map) return null;
