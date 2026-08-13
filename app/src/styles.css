@@ -2816,6 +2816,50 @@ input[type="range"]:disabled {
 	align-items: center;
 	gap: 0.375rem;
 }
+.manage-fields-table__type {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+}
+.manage-fields-table__values {
+	background: none;
+	border: none;
+	color: var(--stone-7);
+	cursor: pointer;
+	font-size: 0.8em;
+	padding: 0.125rem 0.25rem;
+	white-space: nowrap;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+.manage-fields-table__values:hover {
+	color: var(--stone-9);
+}
+.enum-values {
+	width: min(30rem, 92vw);
+}
+.enum-values__row {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	margin-bottom: 0.375rem;
+	min-width: 0;
+}
+.enum-values__row .text-input {
+	flex: 1;
+	width: 100%;
+	min-width: 0;
+	height: 28px;
+	line-height: 28px;
+}
+.enum-values__row .text-input:first-child {
+	font-family: monospace;
+}
+.enum-values__add {
+	display: flex;
+	gap: 0.5rem;
+	margin-top: 0.5rem;
+}
 .extra-filter-builder {
 	display: flex;
 	align-items: center;

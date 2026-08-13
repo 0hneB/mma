@@ -20,7 +20,7 @@ import {
 } from "@/store/useMapStore";
 import { useMapSetting } from "@/store/useMapSetting";
 import type { ExtraFieldDef } from "@/bindings.gen";
-import type { MergeWinner } from "@/lib/data/fieldOps";
+import { collectEnumCandidates, type MergeWinner } from "@/lib/data/fieldOps";
 import { mdiClose, mdiDatabasePlusOutline, mdiInformationOutline } from "@mdi/js";
 
 type Comparison = NonNullable<ExtraFieldDef["comparison"]>;
@@ -68,6 +68,8 @@ interface FieldRow {
 	label: string;
 	type: ExtraFieldDef["type"];
 	comparison: ExtraFieldDef["comparison"];
+	values: string[] | null;
+	labels: Record<string, string> | null;
 	/** Field exists on this map (renameable, deletable, def-editable). */
 	present: boolean;
 	/** Field can be written by enrichment (has an Enrich checkbox). */
@@ -88,6 +90,8 @@ function buildRows(): FieldRow[] {
 			label: present ? fieldLabel(key) : (def?.label ?? enrichable.get(key)?.label ?? key),
 			type: def?.type ?? "string",
 			comparison: def?.comparison ?? null,
+			values: def?.values ?? null,
+			labels: def?.labels ?? null,
 			present,
 			enrichable: enrichable.has(key),
 		};
@@ -176,6 +180,11 @@ function FieldsTable({
 	const [deleteKey, setDeleteKey] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [periodPrompt, setPeriodPrompt] = useState<{ key: string; value: string } | null>(null);
+	const [enumPrompt, setEnumPrompt] = useState<{
+		key: string;
+		rows: { value: string; label: string }[];
+		candidates: string[];
+	} | null>(null);
 	const [coverage, setCoverage] = useState<Map<string, number>>(new Map());
 	const [editingKey, setEditingKey] = useState<string | null>(null);
 	const [coverageEpoch, setCoverageEpoch] = useState(0);
@@ -210,9 +219,8 @@ function FieldsTable({
 		const fields: Record<string, ExtraFieldDef> = {};
 		for (const row of next.filter((r) => r.present)) {
 			const entry: ExtraFieldDef = { type: row.type, label: row.label };
-			const existing = getFieldDef(row.key);
-			if (existing?.values) entry.values = existing.values;
-			if (existing?.labels) entry.labels = existing.labels;
+			if (row.values) entry.values = row.values;
+			if (row.labels) entry.labels = row.labels;
 			if (row.comparison) entry.comparison = row.comparison;
 			fields[row.key] = entry;
 		}
@@ -255,6 +263,51 @@ function FieldsTable({
 			true,
 		);
 		setPeriodPrompt(null);
+	};
+
+	const openEnumValues = async (row: FieldRow) => {
+		const valueRows = (row.values ?? []).map((v) => ({ value: v, label: row.labels?.[v] ?? "" }));
+		if (valueRows.length === 0) valueRows.push({ value: "", label: "" });
+		setEnumPrompt({ key: row.key, rows: valueRows, candidates: [] });
+		const locs = await fetchAllLocations();
+		const candidates = collectEnumCandidates(locs, row.key, row.values ?? []);
+		setEnumPrompt((p) => (p && p.key === row.key ? { ...p, candidates } : p));
+	};
+
+	const setEnumRow = (i: number, patch: Partial<{ value: string; label: string }>) =>
+		setEnumPrompt((p) =>
+			p ? { ...p, rows: p.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) } : p,
+		);
+
+	const addCandidates = () =>
+		setEnumPrompt((p) => {
+			if (!p) return p;
+			const present = new Set(p.rows.map((r) => r.value.trim()));
+			const fresh = p.candidates.filter((v) => !present.has(v));
+			const kept = p.rows.filter((r) => r.value.trim() !== "" || r.label.trim() !== "");
+			return { ...p, rows: [...kept, ...fresh.map((v) => ({ value: v, label: "" }))], candidates: [] };
+		});
+
+	const confirmEnumValues = () => {
+		if (!enumPrompt) return;
+		const values: string[] = [];
+		const labels: Record<string, string> = {};
+		for (const r of enumPrompt.rows) {
+			const v = r.value.trim();
+			if (!v || values.includes(v)) continue;
+			values.push(v);
+			const l = r.label.trim();
+			if (l) labels[v] = l;
+		}
+		updateRow(
+			enumPrompt.key,
+			{
+				values: values.length > 0 ? values : null,
+				labels: Object.keys(labels).length > 0 ? labels : null,
+			},
+			true,
+		);
+		setEnumPrompt(null);
 	};
 
 	const proposeRename = async (row: FieldRow) => {
@@ -375,19 +428,31 @@ function FieldsTable({
 								/>
 							</td>
 							<td>
-								<NSelect
-									value={row.type}
-									disabled={!row.present}
-									onChange={(e) =>
-										updateRow(row.key, { type: e.target.value as ExtraFieldDef["type"] }, true)
-									}
-								>
-									{FIELD_TYPES.map((t) => (
-										<option key={t} value={t}>
-											{TYPE_LABELS[t]}
-										</option>
-									))}
-								</NSelect>
+								<div className="manage-fields-table__type">
+									<NSelect
+										value={row.type}
+										disabled={!row.present}
+										onChange={(e) =>
+											updateRow(row.key, { type: e.target.value as ExtraFieldDef["type"] }, true)
+										}
+									>
+										{FIELD_TYPES.map((t) => (
+											<option key={t} value={t}>
+												{TYPE_LABELS[t]}
+											</option>
+										))}
+									</NSelect>
+									{row.type === "enum" && row.present && (
+										<button
+											className="manage-fields-table__values"
+											type="button"
+											title="Edit allowed values"
+											onClick={() => openEnumValues(row)}
+										>
+											{row.values?.length ? `Values (${row.values.length})` : "Values..."}
+										</button>
+									)}
+								</div>
 							</td>
 							<td>
 								<NSelect
@@ -504,6 +569,63 @@ function FieldsTable({
 						<Button disabled={busy} onClick={() => setDeleteKey(null)}>
 							Cancel
 						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={enumPrompt !== null} onOpenChange={(open) => !open && setEnumPrompt(null)}>
+				<DialogContent title="Enum values" className="enum-values">
+					<p className="period-prompt__help">
+						Allowed values for <code>{enumPrompt?.key}</code>. Labels are optional display names;
+						filters, pivots and bulk edits offer these values in this order.
+					</p>
+					{enumPrompt?.rows.map((r, i) => (
+						<div className="enum-values__row" key={i}>
+							<TextInput
+								value={r.value}
+								placeholder="value"
+								onChange={(e) => setEnumRow(i, { value: e.target.value })}
+							/>
+							<TextInput
+								value={r.label}
+								placeholder="label"
+								onChange={(e) => setEnumRow(i, { label: e.target.value })}
+							/>
+							<button
+								className="manage-fields-table__delete"
+								type="button"
+								title="Remove value"
+								onClick={() =>
+									setEnumPrompt((p) =>
+										p ? { ...p, rows: p.rows.filter((_, j) => j !== i) } : p,
+									)
+								}
+							>
+								<Icon path={mdiClose} size={18} />
+							</button>
+						</div>
+					))}
+					<div className="enum-values__add">
+						<Button
+							onClick={() =>
+								setEnumPrompt((p) =>
+									p ? { ...p, rows: [...p.rows, { value: "", label: "" }] } : p,
+								)
+							}
+						>
+							Add value
+						</Button>
+						{enumPrompt && enumPrompt.candidates.length > 0 && (
+							<Button onClick={addCandidates}>
+								Add {enumPrompt.candidates.length} found in data
+							</Button>
+						)}
+					</div>
+					<div className="period-prompt__actions">
+						<Button variant="primary" onClick={confirmEnumValues}>
+							Save
+						</Button>
+						<Button onClick={() => setEnumPrompt(null)}>Cancel</Button>
 					</div>
 				</DialogContent>
 			</Dialog>

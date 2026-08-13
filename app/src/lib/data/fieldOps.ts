@@ -231,6 +231,25 @@ export function fieldValue(loc: Location, key: string): unknown {
 	return isBuiltinField(key) ? (loc as unknown as Record<string, unknown>)[key] : loc.extra?.[key];
 }
 
+/** Distinct values of field `key` across `locs` that are not already in `existing`,
+ *  sorted. Non-string scalars are stringified to match enum `values` (always strings);
+ *  objects/arrays are skipped. */
+export function collectEnumCandidates(
+	locs: readonly Location[],
+	key: string,
+	existing: readonly string[],
+): string[] {
+	const have = new Set(existing);
+	const found = new Set<string>();
+	for (const loc of locs) {
+		const v = fieldValue(loc, key);
+		if (v == null || typeof v === "object") continue;
+		const s = String(v);
+		if (s !== "" && !have.has(s)) found.add(s);
+	}
+	return [...found].sort();
+}
+
 /** Every `extra` key present on any of `locs`. */
 export function extraKeysOf(locs: readonly Location[]): Set<string> {
 	const keys = new Set<string>();
