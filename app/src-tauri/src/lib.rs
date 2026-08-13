@@ -196,8 +196,35 @@ struct PluginSidecar {
     sha256: Option<String>,
 }
 
+/// Manifest form of a sidecar: the digest is keyed per platform (`sha256-{platform_tag}`).
+#[derive(serde::Deserialize)]
+struct RawSidecar {
+    name: String,
+    version: String,
+    #[serde(flatten)]
+    digests: std::collections::HashMap<String, serde_json::Value>,
+}
+
+impl<'de> serde::Deserialize<'de> for PluginSidecar {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let raw = RawSidecar::deserialize(d)?;
+        let sha256 = sidecar::platform_tag().ok().and_then(|p| {
+            raw.digests
+                .get(&format!("sha256-{p}"))?
+                .as_str()
+                .map(str::to_string)
+        });
+        Ok(PluginSidecar {
+            name: raw.name,
+            version: raw.version,
+            sha256,
+        })
+    }
+}
+
 /// Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`.
-#[derive(serde::Serialize, specta::Type)]
+#[derive(serde::Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase", default)]
 struct PluginManifest {
     id: String,
     name: String,
@@ -207,22 +234,29 @@ struct PluginManifest {
     version: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     experimental: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    coming_soon: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    min_app_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     sidecar: Option<PluginSidecar>,
 }
 
-/// Parse the optional `sidecar` object out of a manifest JSON value.
-fn parse_sidecar(val: &serde_json::Value) -> Option<PluginSidecar> {
-    let spec = sidecar::SidecarSpec::from_manifest(val).ok()?;
-    let sha256 = sidecar::platform_tag()
-        .ok()
-        .and_then(|p| spec.sha256(p))
-        .map(str::to_string);
-    Some(PluginSidecar {
-        version: spec.version.clone()?,
-        name: spec.name,
-        sha256,
-    })
+impl Default for PluginManifest {
+    fn default() -> Self {
+        PluginManifest {
+            id: String::new(),
+            name: String::new(),
+            description: String::new(),
+            icon: String::new(),
+            main: "index.js".to_string(),
+            version: String::new(),
+            experimental: false,
+            coming_soon: false,
+            min_app_version: None,
+            sidecar: None,
+        }
+    }
 }
 
 /// Plugin ids, sidecar names, and sidecar commands all end up in paths, argv, or URL
@@ -266,57 +300,18 @@ fn list_user_plugins() -> Vec<PluginManifest> {
         }
         let manifest_path = path.join("manifest.json");
         if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                let folder_name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                let id = val
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or(folder_name.clone());
-                let name = val
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or(folder_name);
-                let description = val
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let icon = val
-                    .get("icon")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let main = val
-                    .get("main")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("index.js")
-                    .to_string();
-                let version = val
-                    .get("version")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let experimental = val
-                    .get("experimental")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-                let sidecar = parse_sidecar(&val);
-                plugins.push(PluginManifest {
-                    id,
-                    name,
-                    description,
-                    icon,
-                    main,
-                    version,
-                    experimental,
-                    sidecar,
-                });
+            match serde_json::from_str::<PluginManifest>(&content) {
+                Ok(mut manifest) => {
+                    let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+                    if manifest.id.is_empty() {
+                        manifest.id = folder_name.to_string();
+                    }
+                    if manifest.name.is_empty() {
+                        manifest.name = folder_name.to_string();
+                    }
+                    plugins.push(manifest);
+                }
+                Err(e) => log::warn!("Invalid manifest {}: {e}", manifest_path.display()),
             }
         }
     }
@@ -348,12 +343,9 @@ fn install_plugin(id: String) -> AppResult<PluginManifest> {
         .bytes()?;
     std::fs::write(dir.join("manifest.json"), &manifest_bytes)?;
 
-    let val: serde_json::Value = serde_json::from_slice(&manifest_bytes)
+    let mut manifest: PluginManifest = serde_json::from_slice(&manifest_bytes)
         .map_err(|e| format!("Invalid manifest JSON: {e}"))?;
-    let main = val
-        .get("main")
-        .and_then(|v| v.as_str())
-        .unwrap_or("index.js");
+    let main = manifest.main.clone();
     if main.contains("..") || main.contains('/') || main.contains('\\') {
         return Err(AppError(format!("Invalid main field in manifest: {main}")));
     }
@@ -365,44 +357,13 @@ fn install_plugin(id: String) -> AppResult<PluginManifest> {
         .and_then(|r| r.error_for_status())
         .map_err(|e| format!("Failed to fetch {main}: {e}"))?
         .bytes()?;
-    std::fs::write(dir.join(main), &main_bytes)?;
+    std::fs::write(dir.join(&main), &main_bytes)?;
 
-    let name = val
-        .get("name")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&id)
-        .to_string();
-    let description = val
-        .get("description")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let icon = val
-        .get("icon")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let version = val
-        .get("version")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let experimental = val
-        .get("experimental")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    let sidecar = parse_sidecar(&val);
-
-    Ok(PluginManifest {
-        id,
-        name,
-        description,
-        icon,
-        main: main.to_string(),
-        version,
-        experimental,
-        sidecar,
-    })
+    if manifest.name.is_empty() {
+        manifest.name = id.clone();
+    }
+    manifest.id = id;
+    Ok(manifest)
 }
 
 /// Remove a plugin by deleting its directory from the local plugins folder.

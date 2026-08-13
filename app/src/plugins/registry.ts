@@ -3,6 +3,7 @@ import { emit as emitEvent } from "@/lib/events";
 import { runAsPlugin, disposePlugin } from "@/plugins/scope";
 import { cmpVersion } from "@/lib/util/util";
 import { cmd } from "@/lib/commands";
+import type { PluginManifest } from "@/bindings.gen";
 
 export interface PluginSettingDef {
 	key: string;
@@ -29,24 +30,6 @@ export interface Plugin {
 	locationPanel?: ComponentType;
 }
 
-export interface PluginSidecarRef {
-	name: string;
-	version: string;
-	sha256?: string | null;
-}
-
-export interface PluginManifest {
-	id: string;
-	name: string;
-	description: string;
-	icon: string;
-	main: string;
-	version: string;
-	minAppVersion?: string;
-	experimental?: boolean;
-	sidecar?: PluginSidecarRef | null;
-}
-
 export type PluginBehavior = Partial<Plugin> & {
 	activate(): void | (() => void);
 };
@@ -54,7 +37,10 @@ export type PluginBehavior = Partial<Plugin> & {
 // The registry serves only the latest build of each plugin, so a stale app offered a
 // fresh plugin has exactly two options: take it or keep what it has. `minAppVersion`
 // lets the plugin declare when "take it" would break.
-export function isPluginCompatible(minAppVersion: string | undefined, appVersion: string): boolean {
+export function isPluginCompatible(
+	minAppVersion: string | null | undefined,
+	appVersion: string,
+): boolean {
 	return !minAppVersion || cmpVersion(appVersion, minAppVersion) >= 0;
 }
 

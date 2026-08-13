@@ -896,14 +896,16 @@ export type PartitionBucket = {
 
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
 export type PluginManifest_Deserialize = {
-	id: string,
-	name: string,
-	description: string,
-	icon: string,
-	main: string,
-	version: string,
-	experimental: boolean,
-	sidecar: PluginSidecar_Deserialize | null,
+	id?: string,
+	name?: string,
+	description?: string,
+	icon?: string,
+	main?: string,
+	version?: string,
+	experimental?: boolean,
+	comingSoon?: boolean,
+	minAppVersion?: string | null,
+	sidecar?: PluginSidecar_Deserialize | null,
 };
 
 /**  Metadata for a user-installed plugin, read from `plugins/{id}/manifest.json`. */
@@ -915,6 +917,8 @@ export type PluginManifest = {
 	main: string,
 	version: string,
 	experimental?: boolean,
+	comingSoon?: boolean,
+	minAppVersion?: string | null,
 	sidecar?: PluginSidecar | null,
 };
 

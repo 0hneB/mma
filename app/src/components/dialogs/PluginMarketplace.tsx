@@ -17,7 +17,7 @@ import {
 	isPluginCompatible,
 	isBackgroundPlugin,
 } from "@/plugins/registry";
-import type { PluginManifest, PluginSidecarRef } from "@/plugins/registry";
+import type { PluginManifest } from "@/bindings.gen";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
 import { cmd } from "@/lib/commands";
 import { listen } from "@tauri-apps/api/event";
@@ -26,19 +26,6 @@ import { log } from "@/lib/util/log";
 const REGISTRY_URL = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins/registry.json";
 
 declare const __APP_VERSION__: string;
-
-interface RegistryEntry {
-	id: string;
-	name: string;
-	description: string;
-	icon: string;
-	version: string;
-	main: string;
-	comingSoon?: boolean;
-	experimental?: boolean;
-	minAppVersion?: string;
-	sidecar?: PluginSidecarRef | null;
-}
 
 // Download a plugin's sidecar (if declared), reporting progress via onProgress. Shared by
 // install + update so both paths fetch the binary the same way.
@@ -64,7 +51,7 @@ async function installSidecar(
 
 type Tab = "core" | "additional";
 
-let registryCache: RegistryEntry[] | null = null;
+let registryCache: PluginManifest[] | null = null;
 
 function PluginSettings({ pluginId }: { pluginId: string }) {
 	const plugin = getPlugin(pluginId);
@@ -128,7 +115,7 @@ interface PluginEntry {
 	latestVersion?: string;
 	comingSoon?: boolean;
 	experimental?: boolean;
-	requiresApp?: string;
+	requiresApp?: string | null;
 }
 
 /** Small hover-explained markers on a card. Each either derives from the loaded
@@ -268,7 +255,7 @@ export function PluginMarketplace({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const [tab, setTab] = useState<Tab>("core");
-	const [registry, setRegistry] = useState<RegistryEntry[] | null>(registryCache);
+	const [registry, setRegistry] = useState<PluginManifest[] | null>(registryCache);
 	const [fetchError, setFetchError] = useState<string | null>(null);
 	const [installedManifests, setInstalledManifests] = useState<PluginManifest[]>([]);
 	const [sidecarVersions, setSidecarVersions] = useState<Record<string, string | null>>({});
@@ -314,7 +301,7 @@ export function PluginMarketplace({
 				if (!r.ok) throw new Error(`HTTP ${r.status}`);
 				return r.json();
 			})
-			.then((data: RegistryEntry[]) => {
+			.then((data: PluginManifest[]) => {
 				registryCache = data;
 				setRegistry(data);
 			})
