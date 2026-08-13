@@ -18,6 +18,7 @@ export function SearchControl({
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState<PlaceResult[]>([]);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const acRef = useRef<AbortController>(undefined);
 
 	const search = useCallback((q: string) => {
 		if (q.length < 3) {
@@ -25,11 +26,15 @@ export function SearchControl({
 			return;
 		}
 		clearTimeout(timerRef.current);
+		// Debouncing alone can't order responses: two queries typed 300ms apart both go out
+		// and Nominatim may answer them out of order.
+		acRef.current?.abort();
+		const ac = (acRef.current = new AbortController());
 		timerRef.current = setTimeout(async () => {
 			try {
 				const res = await fetch(
 					`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
-					{ headers: { "Accept-Language": "en" } },
+					{ headers: { "Accept-Language": "en" }, signal: ac.signal },
 				);
 				if (!res.ok) return;
 				const data = await res.json();
