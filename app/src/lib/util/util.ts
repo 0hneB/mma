@@ -16,6 +16,26 @@ export function mmaBufUrl(path: string): string {
 	return schemeBase("mma-buf") + path.replace(/\\/g, "/");
 }
 
+/** Message for an unknown thrown value. */
+export function errText(e: unknown): string {
+	return e instanceof Error ? e.message : String(e);
+}
+
+/** Copy of `set` with `value` toggled, or forced on/off by `on`. */
+export function toggleInSet<T>(set: ReadonlySet<T>, value: T, on?: boolean): Set<T> {
+	const next = new Set(set);
+	if (on ?? !next.has(value)) next.add(value);
+	else next.delete(value);
+	return next;
+}
+
+/** Split into consecutive slices of at most `n` items. */
+export function chunk<T>(arr: readonly T[], n: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+	return out;
+}
+
 /** Compare two dotted version strings (e.g. "0.6.1"). Returns >0 if a > b. */
 export function cmpVersion(a: string, b: string): number {
 	const pa = a.split(".").map(Number);

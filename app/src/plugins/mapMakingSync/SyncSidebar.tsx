@@ -5,6 +5,7 @@ import { ConnectionUser, SyncSidebar as SharedSyncSidebar } from "@/lib/sync/ui/
 import type { Remote } from "./map-making-web-api";
 import * as auth from "./controller";
 import { controller } from "./controller";
+import { errText } from "@/lib/util/util";
 
 /** The shared sync sidebar, with map-making.app's API-key auth plugged into it. */
 export function SyncSidebar({ onClose }: { onClose: () => void }) {
@@ -25,7 +26,7 @@ export function SyncSidebar({ onClose }: { onClose: () => void }) {
 			auth.setApiKey(keyDraft);
 			setUser(user);
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(errText(e));
 			setUser(null);
 		} finally {
 			setBusy(false);

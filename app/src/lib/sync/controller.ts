@@ -1,4 +1,5 @@
 import { LOCATION_DATA_EVENTS, TAG_DATA_EVENTS } from "@/lib/events";
+import { errText } from "@/lib/util/util";
 import { reconcile, type FirstSyncMode, type ReconcileOptions, type SyncOutcome } from "./engine";
 import { createMappingBackend } from "./mappingBackend";
 import { createScheduler, type Scheduler, type SyncStatus } from "./scheduler";
@@ -191,7 +192,7 @@ export function createSyncController(provider: SyncProvider, pluginId: string): 
 						liveError = null;
 					} catch (e) {
 						// Rust marks auth failures with an "auth: " prefix; show it clean.
-						liveError = (e instanceof Error ? e.message : String(e)).replace(/^auth: /, "");
+						liveError = errText(e).replace(/^auth: /, "");
 						// A dead credential never heals by retrying; stop the loop, keep the pref.
 						if (provider.isAuthError?.(e)) pauseLive();
 						throw e;

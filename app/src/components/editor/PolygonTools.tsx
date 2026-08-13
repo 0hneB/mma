@@ -6,6 +6,7 @@ import { addClickInterceptor } from "@/lib/map/mapState";
 import { latLngToWorld } from "@/lib/geo/mercator";
 import { densifyRing, unwrapLng } from "@/lib/geo/geo";
 import { POLYGON_CLOSE_VERTEX_PX } from "@/lib/render/buildSceneLayers";
+import { clamp } from "@/types/util";
 
 type DrawMode = "polygon" | "rectangle" | "freehand" | null;
 
@@ -14,7 +15,7 @@ function perpDist(p: number[], a: number[], b: number[]): number {
 	const dy = b[1] - a[1];
 	const lenSq = dx * dx + dy * dy;
 	if (lenSq === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-	const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
+	const t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq, 0, 1);
 	return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
 }
 

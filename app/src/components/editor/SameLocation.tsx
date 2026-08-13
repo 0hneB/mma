@@ -12,6 +12,7 @@ import { svThumbnailUrl } from "@/lib/sv/lookup";
 import { TagPill } from "@/components/primitives/TagPill";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { toggleInSet } from "@/lib/util/util";
 
 function DuplicateItem({
 	location,
@@ -81,12 +82,7 @@ export default function SameLocation() {
 	);
 
 	const toggleSelect = useCallback((loc: Location, checked: boolean) => {
-		setSelected((prev) => {
-			const next = new Set(prev);
-			if (checked) next.add(loc.id);
-			else next.delete(loc.id);
-			return next;
-		});
+		setSelected((prev) => toggleInSet(prev, loc.id, checked));
 	}, []);
 
 	const deleteSingle = useCallback(

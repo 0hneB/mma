@@ -9,7 +9,7 @@ import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { TagPill } from "@/components/primitives/TagPill";
-import { tagColorFor } from "@/lib/util/util";
+import { tagColorFor, errText, toggleInSet } from "@/lib/util/util";
 
 const FIELD_PREFS_KEY = "import-field-prefs";
 const AUTOCOMMIT_ACK_KEY = "import-autocommit-ack";
@@ -45,9 +45,7 @@ export function ImportSidebar() {
 
 	const toggleField = (key: string) => {
 		setDroppedFields((prev) => {
-			const next = new Set(prev);
-			if (next.has(key)) next.delete(key);
-			else next.add(key);
+			const next = toggleInSet(prev, key);
 			localStorage.setItem(FIELD_PREFS_KEY, JSON.stringify([...next]));
 			return next;
 		});
@@ -77,7 +75,7 @@ export function ImportSidebar() {
 			t.end({ imported: r?.importedCount ?? 0 });
 		} catch (e: unknown) {
 			log.error("[import] failed:", e);
-			setError(e instanceof Error ? e.message : String(e));
+			setError(errText(e));
 			setImporting(false);
 		}
 	};

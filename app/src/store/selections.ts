@@ -6,7 +6,7 @@ import { getVisibleTags, getTag } from "@/store/useMapStore";
 import { hslToRgb } from "@/lib/util/color";
 import { getFieldDef } from "@/lib/data/fieldDefRegistry";
 import { localDateTime, utcDateTime } from "@/lib/util/format";
-import { isVariant, unionTuple, type Variant } from "@/types/util";
+import { clamp, isVariant, unionTuple, type Variant } from "@/types/util";
 import { pointInPolygon } from "@/lib/geo/geo";
 import { getSettings } from "@/store/settings";
 import { shortestUniqueSuffixes } from "@/components/editor/tags/tagTreeRange";
@@ -78,7 +78,7 @@ export function isolateGhostKeys(
  *  `n` is floored and clamped to `[0, ids.length]` (so over-large counts return all ids).
  *  Uses a partial Fisher–Yates shuffle, so the result contains no duplicates and `ids` is not mutated. */
 export function sampleIds(ids: number[], n: number): number[] {
-	const k = Math.max(0, Math.min(Math.floor(n), ids.length));
+	const k = clamp(Math.floor(n), 0, ids.length);
 	const pool = ids.slice();
 	for (let i = 0; i < k; i += 1) {
 		const j = i + Math.floor(Math.random() * (pool.length - i));

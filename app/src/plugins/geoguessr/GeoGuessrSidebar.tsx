@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { mdiMapMarker } from "@mdi/js";
 import { ConnectionUser, SyncSidebar } from "@/lib/sync/ui/SyncSidebar";
 import { log } from "@/lib/util/log";
+import { errText } from "@/lib/util/util";
 import { controller, geoguessrProvider, PLUGIN_ID } from "./provider";
 
 const CACHED_USER = "user";
@@ -55,7 +56,7 @@ export function GeoGuessrSidebar({ onClose }: { onClose: () => void }) {
 			await window.MMA.cmd.geoguessrLogin();
 			await refresh();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(errText(e));
 		} finally {
 			setBusy(false);
 		}

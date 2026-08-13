@@ -17,6 +17,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";
 import { textColorFor, rgbToHex } from "@/lib/util/color";
 import { fmt } from "@/lib/util/format";
+import { toggleInSet } from "@/lib/util/util";
 import { toggleTagSelections } from "@/store/useMapStore";
 import { useStableHandler } from "@/lib/hooks/useStableHandler";
 import { useSetting } from "@/store/settings";
@@ -149,9 +150,7 @@ export function TagTreeView({
 
 	const toggleExpanded = useCallback((path: string) => {
 		setExpandedPaths((prev) => {
-			const next = new Set(prev);
-			if (next.has(path)) next.delete(path);
-			else next.add(path);
+			const next = toggleInSet(prev, path);
 			saveExpanded(next);
 			return next;
 		});

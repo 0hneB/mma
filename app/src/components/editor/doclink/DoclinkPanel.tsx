@@ -103,7 +103,7 @@ export function DoclinkPanel({ width, onWidthChange, onClose }: DoclinkPanelProp
 
 	const selTag = tags.find((t) => t.id === sel?.tagId);
 	const links = selTag?.doclinks ?? [];
-	const idx = Math.min(Math.max(sel?.idx ?? 0, 0), Math.max(0, links.length - 1));
+	const idx = clamp(sel?.idx ?? 0, 0, Math.max(0, links.length - 1));
 	const url: string | undefined = links[idx];
 	const docRef = url ? parseDoclink(url) : null;
 

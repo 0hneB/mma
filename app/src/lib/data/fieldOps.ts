@@ -4,6 +4,7 @@
  * rewrites; the store orchestrates IPC, definitions, and persistence. Side-effect-free.
  */
 
+import { clamp } from "@/types/util";
 import type {
 	Location,
 	ExtraFieldType,
@@ -104,7 +105,7 @@ type FieldExpr =
 
 const EXPR_FNS: Record<string, { arity: number; apply: (args: number[]) => number }> = {
 	mod: { arity: 2, apply: ([x, n]) => ((x % n) + n) % n },
-	clamp: { arity: 3, apply: ([x, lo, hi]) => Math.min(hi, Math.max(lo, x)) },
+	clamp: { arity: 3, apply: ([x, lo, hi]) => clamp(x, lo, hi) },
 	abs: { arity: 1, apply: ([x]) => Math.abs(x) },
 	min: { arity: 2, apply: ([a, b]) => Math.min(a, b) },
 	max: { arity: 2, apply: ([a, b]) => Math.max(a, b) },

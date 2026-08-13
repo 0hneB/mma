@@ -14,6 +14,7 @@ import { Button } from "@/components/primitives/Button";
 import { useDialog } from "@/store/dialogBus";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { ContextMenu } from "@base-ui-components/react/context-menu";
+import { toggleInSet } from "@/lib/util/util";
 
 export interface PanelDef {
 	render: (onClose: () => void) => ReactNode;
@@ -36,12 +37,7 @@ export function PinnedToolbar({
 
 	useDialog("inline-panel", (id) => {
 		if (panels[id])
-			setOpenPanels((prev) => {
-				const next = new Set(prev);
-				if (next.has(id)) next.delete(id);
-				else next.add(id);
-				return next;
-			});
+			setOpenPanels((prev) => toggleInSet(prev, id));
 	});
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- enabled() reads arbitrary external state; no dep list covers it
@@ -61,12 +57,7 @@ export function PinnedToolbar({
 
 	if (pinned.length === 0 && !right) return null;
 	const togglePanel = (id: string) =>
-		setOpenPanels((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
+		setOpenPanels((prev) => toggleInSet(prev, id));
 
 	const handleDragStart = (i: number, e: React.MouseEvent) => {
 		if (e.button !== 0) return;
@@ -235,13 +226,7 @@ export function PinnedToolbar({
 				})
 				.map(([id, panel]) => (
 					<div key={id} className="selection-manager__panel" hidden={!openPanels.has(id)}>
-						{panel.render(() =>
-							setOpenPanels((prev) => {
-								const next = new Set(prev);
-								next.delete(id);
-								return next;
-							}),
-						)}
+						{panel.render(() => setOpenPanels((prev) => toggleInSet(prev, id, false)))}
 					</div>
 				))}
 		</div>

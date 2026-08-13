@@ -10,6 +10,7 @@ import type { SyncController } from "../controller";
 import type { SyncOutcome } from "../engine";
 import type { RemoteMapSummary } from "../provider";
 import type { SyncStatus } from "../scheduler";
+import { errText } from "@/lib/util/util";
 
 type Side = "local" | "remote";
 
@@ -28,10 +29,6 @@ export interface SyncSidebarProps {
 	listMaps: () => Promise<RemoteMapSummary[]>;
 	/** Provider mark for the header's open-in-browser button (shown when linked). */
 	brand?: { path: string; color: string };
-}
-
-function errText(e: unknown): string {
-	return e instanceof Error ? e.message : String(e);
 }
 
 /** Compact signed-in row for the Connection section: avatar (or initial), name, action. */

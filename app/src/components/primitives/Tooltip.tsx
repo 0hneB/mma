@@ -1,6 +1,7 @@
 import { cloneElement, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactElement } from "react";
+import { clamp } from "@/types/util";
 
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
@@ -69,7 +70,7 @@ function place(trigger: DOMRect, tip: DOMRect, side: Side, align: Align) {
 				: align === "end"
 					? trigger.right - tip.width
 					: trigger.left + trigger.width / 2 - tip.width / 2;
-		x = Math.min(Math.max(x, MARGIN), vw - tip.width - MARGIN);
+		x = clamp(x, MARGIN, vw - tip.width - MARGIN);
 	} else {
 		x = resolved === "left" ? trigger.left - tip.width - OFFSET : trigger.right + OFFSET;
 		y =
@@ -78,11 +79,11 @@ function place(trigger: DOMRect, tip: DOMRect, side: Side, align: Align) {
 				: align === "end"
 					? trigger.bottom - tip.height
 					: trigger.top + trigger.height / 2 - tip.height / 2;
-		y = Math.min(Math.max(y, MARGIN), vh - tip.height - MARGIN);
+		y = clamp(y, MARGIN, vh - tip.height - MARGIN);
 	}
 
 	const arrowX = vertical
-		? Math.min(Math.max(trigger.left + trigger.width / 2 - x, ARROW_W), tip.width - ARROW_W)
+		? clamp(trigger.left + trigger.width / 2 - x, ARROW_W, tip.width - ARROW_W)
 		: resolved === "left"
 			? tip.width
 			: -ARROW_H;
@@ -90,7 +91,7 @@ function place(trigger: DOMRect, tip: DOMRect, side: Side, align: Align) {
 		? resolved === "top"
 			? tip.height
 			: -ARROW_H
-		: Math.min(Math.max(trigger.top + trigger.height / 2 - y, ARROW_W), tip.height - ARROW_W);
+		: clamp(trigger.top + trigger.height / 2 - y, ARROW_W, tip.height - ARROW_W);
 
 	return { x, y, resolved, arrowX, arrowY, vertical };
 }

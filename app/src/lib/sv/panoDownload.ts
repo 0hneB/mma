@@ -5,6 +5,7 @@ import { fetchSvMetadata, fetchSvMetadataBatched } from "@/lib/sv/svMeta";
 import type { PanoData } from "@/lib/sv/svRunner";
 import { runConcurrent } from "@/lib/util/concurrent";
 import { toast } from "@/lib/util/toast";
+import { clamp } from "@/types/util";
 import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
 
 export type PanoRenderMode = "equirectangular" | "perspective" | "thumbnail" | "tile";
@@ -28,7 +29,7 @@ export function panoTileLayout(
 	let height: number;
 	if (worldSize?.width && worldSize?.height) {
 		const maxZoom = Math.ceil(Math.log2(worldSize.width / SV_TILE));
-		z = Math.min(Math.max(zoom, 0), maxZoom);
+		z = clamp(zoom, 0, maxZoom);
 		const scale = 2 ** (maxZoom - z);
 		width = Math.round(worldSize.width / scale);
 		height = Math.round(worldSize.height / scale);

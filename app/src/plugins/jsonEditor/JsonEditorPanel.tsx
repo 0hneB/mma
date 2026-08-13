@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import type { Location, Tag } from "@/bindings.gen";
 import { createTags } from "@/store/useMapStore";
 import { locDate } from "@/lib/util/format";
+import { errText } from "@/lib/util/util";
 
 function tagIdsToNames(tagIds: number[], tags: Record<string, Tag>): string[] {
 	return tagIds.map((id) => tags[id]?.name ?? String(id));
@@ -57,7 +58,7 @@ export function JsonEditorPanel() {
 			MMA.updateLocations([{ id: active.id, patch: parsed }]);
 			setSaved(true);
 		} catch (e: unknown) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(errText(e));
 			setSaved(false);
 		}
 	};

@@ -18,15 +18,8 @@ import { distMeters, lerpLng, unionBounds } from "@/lib/geo/geo";
 import { searchCoverage } from "../searchCoverage";
 import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
+import { chunk } from "@/lib/util/util";
 import type { Bounds, LatLng } from "@/types";
-
-function chunk<T>(arr: T[], n: number): T[][] {
-	const result: T[][] = [];
-	for (let i = 0; i < arr.length; i += n) {
-		result.push(arr.slice(i, i + n));
-	}
-	return result;
-}
 
 export class GenerationEngine {
 	private settings: GeneratorSettings;
