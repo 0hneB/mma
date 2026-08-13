@@ -830,10 +830,8 @@ fn builtin_fields_resolve_on_every_path() {
         .collect();
     l.extra = crate::types::RawExtra::from_map(&shadow);
 
-    let batch = locations_to_batch(std::slice::from_ref(&l));
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let view = make_view(Some(&batch), &dead, &patches, &[]);
+    let fx = Fx::batch(locations_to_batch(std::slice::from_ref(&l)));
+    let view = fx.view();
     let base_row = RowRef {
         inner: RowInner::Base(&view, 0),
     };
@@ -1437,8 +1435,6 @@ fn duplicates_bitmask_matches_flattened_groups() {
 // rounding on borderline pairs can't flake the assert.
 #[test]
 fn duplicates_match_brute_force_at_high_latitude() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let mut rng = fastrand::Rng::with_seed(42);
     for &lat0 in &[70.0f64, 78.0] {
         let adds: Vec<Location> = (0..300)
@@ -1449,12 +1445,13 @@ fn duplicates_match_brute_force_at_high_latitude() {
             })
             .collect();
         let d = 100.0;
-        let view = make_view(None, &dead, &patches, &adds);
-        let ids: HashSet<u32> = resolve(&view, &SelectionProps::Duplicates { distance: d })
+        let fx = Fx::adds(adds);
+        let ids: HashSet<u32> = resolve(&fx.view(), &SelectionProps::Duplicates { distance: d })
             .into_iter()
             .collect();
-        for a in &adds {
-            let nn = adds
+        for a in &fx.adds {
+            let nn = fx
+                .adds
                 .iter()
                 .filter(|b| b.id != a.id)
                 .map(|b| haversine_m(a.lat, a.lng, b.lat, b.lng))
@@ -1472,15 +1469,12 @@ fn duplicates_match_brute_force_at_high_latitude() {
 // detected; the third point is ~1km away on the same side and must not be.
 #[test]
 fn duplicates_detected_across_antimeridian() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
-    let adds = vec![
+    let fx = Fx::adds(vec![
         loc(1, -17.8, 179.9995),
         loc(2, -17.8, -179.9995),
         loc(3, -17.8, 179.99),
-    ];
-    let view = make_view(None, &dead, &patches, &adds);
-    let ids = resolve(&view, &SelectionProps::Duplicates { distance: 150.0 });
+    ]);
+    let ids = resolve(&fx.view(), &SelectionProps::Duplicates { distance: 150.0 });
     assert_eq!(ids, vec![1, 2]);
 }
 
@@ -1749,14 +1743,11 @@ fn extra_filter_scans_base_batch_top_level_only() {
 // so filtering it by name matches instead of silently returning nothing.
 #[test]
 fn extra_filter_matches_ascii_escaped_field_name() {
-    let dead = HashSet::new();
-    let patches = HashMap::new();
     let bs = '\\';
     let mut l1 = loc(1, 0.0, 0.0);
     l1.extra = crate::types::RawExtra::from_string(format!("{{\"caf{bs}u00e9\":\"noir\"}}"));
-    let batch = locations_to_batch(&[l1]);
-    let adds: Vec<Location> = vec![];
-    let view = make_view(Some(&batch), &dead, &patches, &adds);
+    let fx = Fx::batch(locations_to_batch(&[l1]));
+    let view = fx.view();
 
     assert_eq!(
         resolve(
