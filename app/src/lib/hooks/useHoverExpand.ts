@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useDomEvent } from "./useDomEvent";
 
+/** Short edge of the display the `base` sizes are authored against. */
+const BASELINE_SHORT_EDGE = 1080;
+
+/** An expanded panel dimension: a px floor that grows with the viewport's short edge.
+ *  `base` is the size at scale 1 on a baseline display. */
+export function panelSize(base: number, scale: number): string {
+	const vmin = ((base / BASELINE_SHORT_EDGE) * scale * 100).toFixed(2);
+	return `max(${Math.round(base * scale)}px, ${vmin}vmin)`;
+}
+
 /**
  * Hover-to-expand panel state. A drag that starts inside the panel holds it open until the
  * release, which then decides: still inside stays open, outside closes after the usual

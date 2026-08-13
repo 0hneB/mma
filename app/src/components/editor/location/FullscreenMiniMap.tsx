@@ -14,14 +14,13 @@ import {
 	type DeckOverlayHandle,
 } from "@/lib/map/host";
 import { usePanoViewer } from "./PanoViewerContext";
-import { useHoverExpand } from "@/lib/hooks/useHoverExpand";
+import { useHoverExpand, panelSize } from "@/lib/hooks/useHoverExpand";
 import { t } from "@/lib/i18n";
 
 const MINIMAP_SCALE = range([0.5, 2]);
 const MINIMAP_SCALE_STEP = 0.25;
 const MINIMAP_BASE_W = 800;
 const MINIMAP_BASE_H = 600;
-const BASELINE_SHORT_EDGE = 1080;
 
 // Singleton host + overlay reused across mounts (opening/closing the pano viewer),
 // rebuilt only when the basemap kind changes.
@@ -129,12 +128,9 @@ export function FullscreenMiniMap() {
 		setSetting("fullscreenMinimapScale", Math.round(clamped * 100) / 100);
 	};
 
-	const sizeVar = (base: number) =>
-		`max(${Math.round(base * scale)}px, ${((base / BASELINE_SHORT_EDGE) * scale * 100).toFixed(2)}vmin)`;
-
 	const sizeVars = {
-		"--fs-minimap-w": sizeVar(MINIMAP_BASE_W),
-		"--fs-minimap-h": sizeVar(MINIMAP_BASE_H),
+		"--fs-minimap-w": panelSize(MINIMAP_BASE_W, scale),
+		"--fs-minimap-h": panelSize(MINIMAP_BASE_H, scale),
 	} as React.CSSProperties;
 
 	return (

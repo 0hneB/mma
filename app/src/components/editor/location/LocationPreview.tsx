@@ -26,6 +26,7 @@ import {
 	useMapState,
 	updateLocations,
 	getMapState,
+	tagIdsToNames,
 	removeLocations,
 	addLocations,
 	createTags,
@@ -83,13 +84,8 @@ import { singletonPano, singletonDiv, getPanorama, applyResolved } from "@/lib/s
 import { PanoDatePicker } from "./PanoDatePicker";
 import { usePanoNavigation } from "./usePanoNavigation";
 import { useLocationHotkeys } from "./useLocationHotkeys";
+import { Flag } from "@/components/primitives/Flag";
 import { t } from "@/lib/i18n";
-
-/** Tags are staged by name, not ID, because some tags do not exist yet. */
-function idsToNames(ids: number[]): string[] {
-	const tags = getMapState().tags;
-	return ids.map((id) => tags[id]?.name).filter((n): n is string => n != null);
-}
 
 /** Pending-tag chips + add form + suggestion pills. Memoized and self-subscribed
  *  so pano-switch churn in the parent doesn't re-render every pill. */
@@ -225,7 +221,7 @@ export function LocationPreview() {
 		selectedPanoId,
 	} = usePanoViewer();
 	const isFullscreen = usePanoFullscreen();
-	const [pendingTags, setPendingTags] = useState<string[]>(() => idsToNames(location?.tags ?? []));
+	const [pendingTags, setPendingTags] = useState<string[]>(() => tagIdsToNames(location?.tags ?? []));
 	const visibleTags = useMapState(getVisibleTags);
 	const [panoGeo, setPanoGeo] = useState<GeoDisplay | null>(null);
 	const geocodeProvider = useSetting("geocodeProvider");
@@ -234,7 +230,7 @@ export function LocationPreview() {
 	const getGeoResult = useEffectEvent(() => geoResult);
 	useEffect(() => {
 		setPendingTags((prev) => {
-			const next = idsToNames(location?.tags ?? []);
+			const next = tagIdsToNames(location?.tags ?? []);
 			return prev.length === next.length && prev.every((n, i) => n === next[i]) ? prev : next;
 		});
 		setPanoGeo(null);
@@ -767,13 +763,7 @@ function GeoSummary({ geo, provider }: { geo: GeoDisplay | null; provider: Geoco
 			{geo.countryCode && (
 				<Tooltip content={t(GEOCODE_PROVIDER_LABELS[provider])}>
 					<span>
-						<img
-							height={15}
-							width={20}
-							src={`/flags/${geo.countryCode.toUpperCase()}.svg`}
-							alt={geo.countryCode}
-							style={{ borderRadius: "2px", verticalAlign: "middle" }}
-						/>
+						<Flag code={geo.countryCode} />
 					</span>
 				</Tooltip>
 			)}

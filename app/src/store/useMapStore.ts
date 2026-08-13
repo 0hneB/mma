@@ -158,6 +158,12 @@ export function getTag(id: number): Tag | undefined {
 	return state.tags[id];
 }
 
+/** Tag names for the given ids, skipping any that no longer resolve. Tags are staged by
+ *  name rather than id, because a staged tag may not exist yet. */
+export function tagIdsToNames(ids: number[]): string[] {
+	return ids.map((id) => state.tags[id]?.name).filter((n): n is string => n != null);
+}
+
 // --- Autosave ---
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 let inflightPersist: Promise<void> | null = null;

@@ -5768,6 +5768,10 @@ body {
 	gap: 1px;
 	font-size: 0.75rem;
 }
+.seen-entry__flag {
+	margin-right: 4px;
+}
+
 .seen-entry__location {
 	color: #ccc;
 	overflow: hidden;

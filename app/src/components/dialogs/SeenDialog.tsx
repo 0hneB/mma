@@ -4,6 +4,7 @@ import { Dialog, DialogContent, type DialogProps } from "@/components/primitives
 import { NSelect } from "@/components/primitives/NSelect";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
+import { Flag } from "@/components/primitives/Flag";
 import {
 	getSeenEntries,
 	getSeenCount,
@@ -46,15 +47,7 @@ function SeenEntryCard({
 			</div>
 			<div className="seen-entry__info">
 				<span className="seen-entry__location">
-					{entry.countryCode && (
-						<img
-							height={12}
-							width={16}
-							src={`/flags/${entry.countryCode.toUpperCase()}.svg`}
-							alt={entry.countryCode}
-							style={{ borderRadius: "2px", verticalAlign: "middle", marginRight: 4 }}
-						/>
-					)}
+					<Flag code={entry.countryCode} height={12} className="seen-entry__flag" />
 					{entry.address || `${entry.lat.toFixed(4)}, ${entry.lng.toFixed(4)}`}
 				</span>
 				<span className="seen-entry__time mono">{formatDateTime(entry.enteredAt)}</span>
