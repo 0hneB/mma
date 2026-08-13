@@ -47,12 +47,8 @@ function sanitize(el: Element) {
 		// Export HTML wraps every link in a google.com/url?q=... redirect.
 		const href = node.getAttribute("href");
 		if (href?.startsWith("https://www.google.com/url?")) {
-			try {
-				const q = new URL(href).searchParams.get("q");
-				if (q) node.setAttribute("href", q);
-			} catch {
-				/* keep the wrapped href */
-			}
+			const q = URL.parse(href)?.searchParams.get("q");
+			if (q) node.setAttribute("href", q);
 		}
 		// mobilebasic images send CORP: same-site, which blocks plain cross-origin
 		// <img> loads; they also send ACAO: *, so a CORS-mode load is permitted.
@@ -183,11 +179,7 @@ function resolveHref(href: string | null, ref: DocRef): string | undefined {
 		return `https://docs.google.com/document/d/${ref.docId}/edit${raw}`;
 	}
 	if (raw.startsWith("https://www.google.com/url?")) {
-		try {
-			return new URL(raw).searchParams.get("q") ?? raw;
-		} catch {
-			return raw;
-		}
+		return URL.parse(raw)?.searchParams.get("q") ?? raw;
 	}
 	return raw;
 }
@@ -344,13 +336,8 @@ export const gdocProvider: DocProvider = {
 	id: "gdoc",
 
 	match(url: string): DocRef | null {
-		let u: URL;
-		try {
-			u = new URL(url);
-		} catch {
-			return null;
-		}
-		if (u.hostname !== "docs.google.com") return null;
+		const u = URL.parse(url);
+		if (!u || u.hostname !== "docs.google.com") return null;
 		const m = u.pathname.match(DOC_PATH);
 		if (!m) return null;
 		return { provider: "gdoc", docId: m[1], anchor: parseAnchor(u.hash), url };

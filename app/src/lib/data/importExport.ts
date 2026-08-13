@@ -206,12 +206,8 @@ export function parsedLocationsToImportJson(locs: ParsedLocation[], name: string
 }
 
 export async function parseMapsUrl(input: string): Promise<ParsedLocation | null> {
-	let url: URL;
-	try {
-		url = new URL(input.trim());
-	} catch {
-		return null;
-	}
+	let url = URL.parse(input.trim());
+	if (!url) return null;
 
 	try {
 		if (url.hostname === "goo.gl" && url.pathname.startsWith("/maps/")) {
