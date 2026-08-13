@@ -130,24 +130,6 @@ function useFileDrop() {
 const SPLITHANDLE_RANGE = range([15, 85]);
 
 function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) {
-	const handleRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const handle = handleRef.current;
-		const grid = handle?.parentElement;
-		if (!grid || !handle) return;
-		const embed = grid.querySelector(".map-embed");
-		if (!embed) return;
-		const sync = () => {
-			const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-			handle.style.left = `${embed.getBoundingClientRect().right - grid.getBoundingClientRect().left + gap / 2}px`;
-		};
-		const obs = new ResizeObserver(sync);
-		obs.observe(embed);
-		sync();
-		return () => obs.disconnect();
-	}, []);
-
 	const onPointerDown = useCallback(
 		(e: React.PointerEvent) => {
 			e.preventDefault();
@@ -197,7 +179,6 @@ function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) 
 
 	return (
 		<div
-			ref={handleRef}
 			className="split-handle"
 			onPointerDown={onPointerDown}
 			onDoubleClick={() => onSplitChange(50)}
