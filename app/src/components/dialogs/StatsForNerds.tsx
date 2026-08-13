@@ -3,7 +3,7 @@ import { cmd } from "@/lib/commands";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { useDomEvent } from "@/lib/hooks/useDomEvent";
 import { google } from "@/lib/sv/opensv";
-import { fmt } from "@/lib/util/format";
+import { fmt, localeFormat } from "@/lib/util/format";
 import { getMapState } from "@/store/useMapStore";
 import {
 	startFrameMeter,
@@ -63,14 +63,11 @@ async function gatherStats(): Promise<Stats> {
 		: "N/A";
 
 	const secs = Math.floor(performance.now() / 1000);
-	const mins = Math.floor(secs / 60);
-	const hrs = Math.floor(mins / 60);
-	const uptime =
-		hrs > 0
-			? `${hrs}h ${mins % 60}m ${secs % 60}s`
-			: mins > 0
-				? `${mins}m ${secs % 60}s`
-				: `${secs}s`;
+	const uptime = uptimeFmt.format({
+		hours: Math.floor(secs / 3600),
+		minutes: Math.floor(secs / 60) % 60,
+		seconds: secs % 60,
+	});
 
 	let webglRenderer = "unknown";
 	try {
@@ -115,6 +112,9 @@ interface LiveStats {
 	scene: RenderStats | null;
 }
 
+const uptimeFmt = localeFormat<Partial<Record<Intl.DurationFormatUnit, number>>>(
+	(l) => new Intl.DurationFormat(l, { style: "narrow" }),
+);
 const fmtInt = (n: number) => fmt.format(Math.round(n));
 const fmtMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
