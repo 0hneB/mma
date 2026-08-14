@@ -392,6 +392,11 @@ declare const commands: {
     valiCancel: () => Promise<void>;
     /**  Subdivision weights for a country (JSON text, same shape as `vali subdivisions`). */
     valiSubdivisions: (country: string) => Promise<string>;
+    /**
+     *  Country codes Vali has coverage data for, i.e. the set `vali download` iterates
+     *  when no country is given. Display names are the caller's job.
+     */
+    valiCountries: () => Promise<string[]>;
 };
 /** Events */
 declare const events: {

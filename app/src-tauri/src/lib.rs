@@ -695,6 +695,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             plugins::vali_download,
             plugins::vali_cancel,
             plugins::vali_subdivisions,
+            plugins::vali_countries,
         ])
         .events(tauri_specta::collect_events![
             sidecar::SidecarProgress,

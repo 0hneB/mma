@@ -1,10 +1,15 @@
-import { useRef, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { useRef, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { mdiCloudDownloadOutline } from "@mdi/js";
 import { cmd } from "@/lib/commands";
 import type { ValiLocation } from "@/bindings.gen";
 import { createLocation, LocationFlag } from "@/types";
 import { createTags } from "@/store/useMapStore";
 import { Sidebar } from "@/components/primitives/Sidebar";
+import { Icon } from "@/components/primitives/Icon";
+import { Tooltip } from "@/components/primitives/Tooltip";
+import { ValiDownloadDialog } from "./ValiDownloadDialog";
 import { log } from "@/lib/util/log";
 import "./vali.css";
 import { t } from "@/lib/i18n";
@@ -40,19 +45,45 @@ async function importLocations(valiLocs: ValiLocation[], tagName: string): Promi
 	return locations.length;
 }
 
+/** Vali serialises work behind a single cancel token, so a generate and a download must never
+ *  overlap -- the second start would leave the first uncancellable. */
+export type ValiBusy = "generate" | "download" | null;
+
+export function valiMessageAction(
+	type: unknown,
+	busy: ValiBusy,
+): "cancel" | "generate" | "reject" | "ignore" {
+	if (type === "vali:cancel") return "cancel";
+	if (type !== "vali:generate") return "ignore";
+	if (busy === null) return "generate";
+	return busy === "download" ? "reject" : "ignore";
+}
+
 export function ValiSidebar({ onClose }: { onClose: () => void }) {
 	const iframeRef = useRef<HTMLIFrameElement>(null);
-	const runningRef = useRef(false);
+	const [downloadOpen, setDownloadOpen] = useState(false);
+	// The ref answers the message handler synchronously; the state only drives the button.
+	const busyRef = useRef<ValiBusy>(null);
+	const [busy, setBusyState] = useState<ValiBusy>(null);
+	const setBusy = (b: ValiBusy) => {
+		busyRef.current = b;
+		setBusyState(b);
+	};
 
 	useEffect(() => {
 		const onMessage = async (e: MessageEvent) => {
-			if (e.data?.type === "vali:cancel") {
+			const post = (msg: unknown) => iframeRef.current?.contentWindow?.postMessage(msg, "*");
+			const action = valiMessageAction(e.data?.type, busyRef.current);
+			if (action === "ignore") return;
+			if (action === "cancel") {
 				cmd.valiCancel();
 				return;
 			}
-			if (e.data?.type !== "vali:generate" || runningRef.current) return;
-			runningRef.current = true;
-			const post = (msg: unknown) => iframeRef.current?.contentWindow?.postMessage(msg, "*");
+			if (action === "reject") {
+				post({ type: "vali:error", message: t("A coverage data download is still running.") });
+				return;
+			}
+			setBusy("generate");
 			const unlisten = await listen("vali-progress", (ev) =>
 				post({ type: "vali:progress", progress: ev.payload }),
 			);
@@ -65,7 +96,7 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 				post({ type: "vali:error", message: String(err) });
 			} finally {
 				unlisten();
-				runningRef.current = false;
+				setBusy(null);
 			}
 		};
 		window.addEventListener("message", onMessage);
@@ -73,10 +104,34 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 	}, []);
 
 	return (
-		<Sidebar title={t("Vali")} onBack={onClose} className="vali-sidebar" flush>
+		<Sidebar
+			title={t("Vali")}
+			onBack={onClose}
+			className="vali-sidebar"
+			flush
+			actions={
+				<Tooltip content={t("Download coverage data")} side="bottom">
+					<button
+						className="icon-button"
+						type="button"
+						aria-label={t("Download coverage data")}
+						disabled={busy === "generate"}
+						onClick={() => setDownloadOpen(true)}
+					>
+						<Icon path={mdiCloudDownloadOutline} />
+					</button>
+				</Tooltip>
+			}
+		>
 			<div className="vali-sidebar__iframe-wrap">
 				<iframe ref={iframeRef} src={VALIG_URL} title={t("Vali")} />
 			</div>
+			<ValiDownloadDialog
+				open={downloadOpen}
+				onOpenChange={setDownloadOpen}
+				running={busy === "download"}
+				onRunningChange={(running) => setBusy(running ? "download" : null)}
+			/>
 		</Sidebar>
 	);
 }

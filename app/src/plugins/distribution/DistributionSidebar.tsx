@@ -6,22 +6,10 @@ import { countBy } from "@/store/useMapStore";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { usePluginState, createPluginStorage } from "@/plugins/registry";
 import "./distribution.css";
-import { t, getLocale } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { countryName } from "@/lib/util/format";
 
 type Source = "coords" | "metadata";
-
-let countryNames: { locale: string; names: Intl.DisplayNames } | null = null;
-
-function getCountryName(code: string): string {
-	const locale = getLocale();
-	if (countryNames?.locale !== locale)
-		countryNames = { locale, names: new Intl.DisplayNames([locale], { type: "region" }) };
-	try {
-		return countryNames.names.of(code) ?? code;
-	} catch {
-		return code;
-	}
-}
 
 interface CountryEntry {
 	code: string;
@@ -36,7 +24,7 @@ function toDistribution(
 	total: number,
 ): { entries: CountryEntry[]; unknown: number } {
 	const entries = counts
-		.map(([code, count]) => ({ code, name: getCountryName(code), count }))
+		.map(([code, count]) => ({ code, name: countryName(code), count }))
 		.sort((a, b) => b.count - a.count);
 	const known = entries.reduce((sum, e) => sum + e.count, 0);
 	return { entries, unknown: total - known };
@@ -80,7 +68,7 @@ export function DistributionSidebar({ onClose }: { onClose: () => void }) {
 			const counts = await cmd.storeCountryDistribution({ kind: "all" }, getSettings().borderDetail);
 			setEntries(
 				counts
-					.map(([code, count]) => ({ code, name: getCountryName(code), count }))
+					.map(([code, count]) => ({ code, name: countryName(code), count }))
 					.sort((a, b) => b.count - a.count),
 			);
 			setUnknown(0);

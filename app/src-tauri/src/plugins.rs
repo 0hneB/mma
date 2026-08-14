@@ -203,6 +203,17 @@ pub fn vali_subdivisions(country: String) -> AppResult<String> {
     vali_generate::export::subdivisions_export(&country, false).map_err(AppError)
 }
 
+/// Country codes Vali has coverage data for, i.e. the set `vali download` iterates
+/// when no country is given. Display names are the caller's job.
+#[tauri::command]
+#[specta::specta]
+pub fn vali_countries() -> Vec<String> {
+    vali_generate::names::country_names()
+        .iter()
+        .map(|(code, _)| code.to_string())
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "plugins.test.rs"]
 mod tests;

@@ -10,3 +10,80 @@
 	height: 100%;
 	border: none;
 }
+
+.vali-download {
+	width: 440px;
+	max-width: 100%;
+}
+
+.vali-download__label {
+	margin-bottom: 6px;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.vali-download__option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vali-download__option-spacer {
+	width: 20px;
+	flex-shrink: 0;
+}
+
+.vali-download__switch {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 4px 0;
+	cursor: pointer;
+}
+
+.vali-download__progress {
+	margin-top: 12px;
+}
+
+.vali-download__progress-label {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 6px;
+	font-size: 12px;
+	color: var(--text-2);
+}
+
+.vali-download__bar-track {
+	height: 6px;
+	border-radius: 3px;
+	background: var(--surface-2);
+	overflow: hidden;
+}
+
+.vali-download__bar-fill {
+	height: 100%;
+	border-radius: 3px;
+	background: var(--action);
+	transition: width 0.2s ease;
+}
+
+.vali-download__result {
+	margin-top: 12px;
+	font-size: 13px;
+	color: var(--text-2);
+}
+
+.vali-download__error {
+	margin-top: 12px;
+	font-size: 13px;
+	color: var(--destructive);
+	word-break: break-word;
+}
+
+.vali-download__footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 20px;
+}

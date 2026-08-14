@@ -30,6 +30,24 @@ export const dateTimeFmt = localeFormat<Date | number>(
 	(l) => new Intl.DateTimeFormat(l, { dateStyle: "medium", timeStyle: "short" }),
 );
 
+const regionFmt = localeFormat<string>((l) => {
+	const names = new Intl.DisplayNames([l], { type: "region" });
+	return {
+		format: (code) => {
+			try {
+				return names.of(code) ?? code;
+			} catch {
+				return code;
+			}
+		},
+	};
+});
+
+/** Localised country name for an ISO 3166-1 alpha-2 code; the code itself if unknown. */
+export function countryName(code: string): string {
+	return regionFmt.format(code);
+}
+
 // Fixed to UTC so the month index can't slip a boundary in a negative-offset zone.
 const monthFmt = localeFormat<Date | number>(
 	(l) => new Intl.DateTimeFormat(l, { month: "short", timeZone: "UTC" }),

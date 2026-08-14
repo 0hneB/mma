@@ -383,6 +383,11 @@ export const commands = {
 	valiCancel: () => __TAURI_INVOKE<void>("vali_cancel"),
 	/**  Subdivision weights for a country (JSON text, same shape as `vali subdivisions`). */
 	valiSubdivisions: (country: string) => __TAURI_INVOKE<string>("vali_subdivisions", { country }),
+	/**
+	 *  Country codes Vali has coverage data for, i.e. the set `vali download` iterates
+	 *  when no country is given. Display names are the caller's job.
+	 */
+	valiCountries: () => __TAURI_INVOKE<string[]>("vali_countries"),
 };
 
 /** Events */
