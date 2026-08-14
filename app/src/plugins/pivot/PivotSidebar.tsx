@@ -471,7 +471,7 @@ function PivotTable({ data, mode, stale }: { data: PivotData; mode: ValueMode; s
 									className={`pivot-sidebar__th-sort${selected ? " pivot-sidebar__th-selected" : ""}`}
 									title={
 										selectable
-											? "Click to sort. Ctrl+Click to select matching locations."
+											? t("Click to sort. Ctrl+Click to select matching locations.")
 											: undefined
 									}
 									onClick={(e) => {

@@ -35,6 +35,7 @@ import { SelectionRow } from "./SelectionRow";
 import { PinnedToolbar } from "./PinnedToolbar";
 import { SaveSelectionsDialog, ApplySavedSelectionDialog } from "./SavedSelectionDialogs";
 import { t } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 /** Opt-in "run this pick once per active selection" switch, shown only when there are
  *  enough selections for it to mean anything. */
@@ -100,7 +101,7 @@ function RandomPickPanel() {
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 			/>
-			<span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>
+			<span style={{ opacity: 0.6 }}>{t("of {total}", { total: fmt.format(total) })}</span>
 			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
 				{t("Pick")}
@@ -157,7 +158,9 @@ function SpacedPickPanel() {
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 			/>
-			{mode === "count" && <span style={{ opacity: 0.6 }}>of {fmt.format(total)}</span>}
+			{mode === "count" && (
+				<span style={{ opacity: 0.6 }}>{t("of {total}", { total: fmt.format(total) })}</span>
+			)}
 			<PerSelectionToggle value={perSelection} onChange={setPerSelection} />
 			<Button type="submit" disabled={!valid}>
 				{t("Pick")}
@@ -224,7 +227,7 @@ function SelectedCount({ className }: { className?: string }) {
 	const total = useMapState((s) => s.selectedLocationIds.size);
 	return (
 		<span className={className}>
-			<span className="mono">{fmt.format(total)}</span> selected
+			<Trans msg="{count} selected" count={<span className="mono">{fmt.format(total)}</span>} />
 		</span>
 	);
 }

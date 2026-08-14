@@ -149,10 +149,9 @@ export function describeRule(props: SavedSelectionProps): string {
 				value: String(props.value),
 			});
 		case "TopK":
-			return t(props.ascending ? "Bottom {k} by {field}" : "Top {k} by {field}", {
-				k: props.k,
-				field: props.field,
-			});
+			return props.ascending
+				? t("Bottom {k} by {field}", { k: props.k, field: props.field })
+				: t("Top {k} by {field}", { k: props.k, field: props.field });
 		// Boolean composites read as a formal expression, so only the operator tokens translate.
 		case "Intersection":
 			return props.selections.map(describeRule).join(` ${t("AND")} `);

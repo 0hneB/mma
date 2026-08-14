@@ -11,7 +11,7 @@ import { t } from "@/lib/i18n";
 export async function selectBorderAt(lat: number, lng: number, subdivision: boolean) {
 	const { borderDetail, subdivisionDetail } = getSettings();
 	if (subdivision && subdivisionDetail === "off") {
-		toast("Subdivision borders are off — enable them in Settings");
+		toast(t("Subdivision borders are off -- enable them in Settings"));
 		return;
 	}
 	const level = subdivision ? subdivisionDetail : borderDetail;

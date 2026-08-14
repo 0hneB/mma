@@ -14,6 +14,7 @@ import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { toggleInSet } from "@/lib/util/util";
 import { t } from "@/lib/i18n";
+import { Trans } from "@/components/primitives/Trans";
 
 function DuplicateItem({
 	location,
@@ -117,7 +118,11 @@ export default function SameLocation() {
 	return (
 		<section className="duplicates">
 			<h2>
-				<span className="mono">{locations.length}</span> locations
+				<Trans
+					msg={{ one: "{count} location", other: "{count} locations" }}
+					n={locations.length}
+					count={<span className="mono">{locations.length}</span>}
+				/>
 			</h2>
 			<p>
 				{t(

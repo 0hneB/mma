@@ -132,7 +132,10 @@ export const MapContextMenuContent = forwardRef<HTMLDivElement>((_props, ref) =>
 					onClick={() => deletePolygonsAt(latLng.lat, latLng.lng)}
 				>
 					{polygonCount > 1
-						? t("Delete {n} polygons here", { n: polygonCount })
+						? t(
+								{ one: "Delete {n} polygon here", other: "Delete {n} polygons here" },
+								{ n: polygonCount },
+							)
 						: t("Delete this polygon")}
 				</ContextMenu.Item>
 				<ContextMenu.Item className="context-menu__item" onClick={() => setLatLngAnchor(latLng)}>

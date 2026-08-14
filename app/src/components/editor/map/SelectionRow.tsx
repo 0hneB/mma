@@ -328,7 +328,7 @@ export const SelectionRow = memo(function SelectionRow({
 					{selectionDisplayName(selection)}
 				</span>
 				{isDropTarget && dropZone === "on" && (
-					<span className="selection-row__drop-hint">{drag?.altKey ? "OR" : "AND"}</span>
+					<span className="selection-row__drop-hint">{drag?.altKey ? t("OR") : t("AND")}</span>
 				)}
 				<span className="selection-row__size mono">{fmt.format(count)}</span>
 				<span className="selection-row__actions">

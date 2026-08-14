@@ -5,7 +5,7 @@ import { msg } from "@/lib/i18n";
 
 registerPlugin({
 	id: "disambiguate",
-	name: "Disambiguate",
+	name: msg("Disambiguate"),
 	description: msg("Rank metadata fields by how strongly they separate selections"),
 	icon: mdiCompare,
 	activate() {},

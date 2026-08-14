@@ -94,7 +94,7 @@ export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
 								return (
 									<li key={id} className="copy-to-map-modal__row">
 										<span className="copy-to-map-modal__name">
-											{meta ? meta.name || "(unnamed)" : "(missing map)"}
+											{meta ? meta.name || t("(unnamed)") : t("(missing map)")}
 											{meta?.folder && <small> · {meta.folder}</small>}
 										</span>
 										<HotkeyInput value={key} onChange={(combo) => setRowKey(id, combo)} />
@@ -116,7 +116,7 @@ export function CopyToMapDialog({ onClose }: { onClose: () => void }) {
 						autoFocus
 						renderItem={(m) => (
 							<>
-								<strong>{m.name || "(unnamed)"}</strong>
+								<strong>{m.name || t("(unnamed)")}</strong>
 								{m.folder && <span className="search-result__context"> · {m.folder}</span>}
 							</>
 						)}

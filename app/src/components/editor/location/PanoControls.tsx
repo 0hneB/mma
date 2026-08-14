@@ -449,7 +449,7 @@ function PanoMetadataControl() {
 				style={{ fontSize: "10px", display: "flex", flexDirection: "column", gap: "2px" }}
 			>
 				<span>
-					{t("Pinned pano:")} {hasLoadAsPanoId(location) ? "yes" : "no"}
+					{t("Pinned pano:")} {hasLoadAsPanoId(location) ? t("yes") : t("no")}
 				</span>
 				{location.extra &&
 					Object.entries(location.extra).map(([key, val]) => (

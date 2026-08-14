@@ -5,7 +5,7 @@ import { msg } from "@/lib/i18n";
 
 registerPlugin({
 	id: "distribution",
-	name: "Distribution",
+	name: msg("Distribution"),
 	description: msg("View how locations are distributed across countries"),
 	icon: mdiChartBar,
 	activate() {},

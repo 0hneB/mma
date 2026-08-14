@@ -571,10 +571,9 @@ export function selectionDisplayName(sel: Selection): string {
 		.with({ type: "TopK" }, (p) => {
 			const fieldDef = getFieldDef(p.field);
 			const label = fieldDef?.label ? t(fieldDef.label) : p.field;
-			return t(p.ascending ? "Bottom {k} by {field}" : "Top {k} by {field}", {
-				k: p.k,
-				field: label,
-			});
+			return p.ascending
+				? t("Bottom {k} by {field}", { k: p.k, field: label })
+				: t("Top {k} by {field}", { k: p.k, field: label });
 		})
 		.exhaustive();
 }

@@ -366,7 +366,7 @@ export function SyncSidebar({
 				<Section title={t("Sync")} defaultOpen>
 					<Field label={t("Linked to")} row>
 						<span>
-							{link.remoteMapName || "(unnamed)"}{" "}
+							{link.remoteMapName || t("(unnamed)")}{" "}
 							<span style={{ opacity: 0.6 }}>#{link.remoteMapId}</span>
 						</span>
 					</Field>
@@ -384,7 +384,7 @@ export function SyncSidebar({
 								<Tooltip content={t("Sync continuously while this map is open")}>
 									<span
 										style={{ display: "inline-flex", cursor: "help", opacity: 0.6 }}
-										aria-label="info"
+										aria-label={t("info")}
 									>
 										<svg viewBox="0 0 24 24" width={14} height={14}>
 											<path d={mdiInformationOutline} fill="currentColor" />
@@ -414,7 +414,7 @@ export function SyncSidebar({
 								}}
 							/>
 							<button className={live ? "button button--primary" : "button"} onClick={toggleLive}>
-								{live ? "On" : "Off"}
+								{live ? t("On") : t("Off")}
 							</button>
 						</span>
 					</Field>
@@ -514,7 +514,7 @@ export function SyncSidebar({
 											opacity: m.unsupported ? 0.5 : 1,
 										}}
 									>
-										<span>{m.name || "(unnamed)"}</span>
+										<span>{m.name || t("(unnamed)")}</span>
 										<span style={{ opacity: 0.6, whiteSpace: "nowrap" }}>
 											{m.unsupported ?? (m.locationCount !== null ? m.locationCount : "")}
 										</span>

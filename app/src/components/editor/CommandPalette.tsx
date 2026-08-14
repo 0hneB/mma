@@ -13,7 +13,7 @@ import { getBinding, useBinding } from "@/lib/util/hotkeys";
 import { getMapState, closeMap } from "@/store/useMapStore";
 import { useMapList } from "@/store/mapList";
 import { goToMap } from "@/store/router";
-import { t } from "@/lib/i18n";
+import { t, msg } from "@/lib/i18n";
 
 interface PaletteContext {
 	close: () => void;
@@ -103,7 +103,12 @@ function formatBinding(binding: string): string {
 		.replace("ArrowDown", "↓");
 }
 
-const COMMAND_GROUPS: CommandGroup[] = ["Map", "Bulk Operations", "Selections", "Tags"];
+const COMMAND_GROUPS: CommandGroup[] = [
+	msg("Map"),
+	msg("Bulk Operations"),
+	msg("Selections"),
+	msg("Tags"),
+];
 
 function MainCommands() {
 	const ctx = useContext(Ctx);

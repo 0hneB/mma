@@ -6,7 +6,7 @@ import { msg } from "@/lib/i18n";
 
 registerPlugin({
 	id: "map-generator",
-	name: "Map generator",
+	name: msg("Map generator"),
 	description: msg("Generate locations from Street View coverage"),
 	icon: mdiMapMarkerPlus,
 	activate() {

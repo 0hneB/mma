@@ -5,7 +5,7 @@ import { msg } from "@/lib/i18n";
 
 registerPlugin({
 	id: "pivot",
-	name: "Pivot Table",
+	name: msg("Pivot Table"),
 	description: msg("Cross-tabulate selections against location metadata"),
 	icon: mdiTablePivot,
 	activate() {},

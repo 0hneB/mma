@@ -4,8 +4,7 @@ import { Button } from "@/components/primitives/Button";
 import { commitMap } from "@/store/useMapStore";
 import { useCommitDiff } from "@/store/commitDiff";
 import { t } from "@/lib/i18n";
-
-const fmt = new Intl.NumberFormat("en");
+import { fmt } from "@/lib/util/format";
 
 export function CommitDialog({ onClose }: { onClose: () => void }) {
 	const diff = useCommitDiff();

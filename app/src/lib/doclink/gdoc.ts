@@ -1,4 +1,5 @@
 import { schemeBase } from "@/lib/util/util";
+import { msg } from "@/lib/i18n";
 import type {
 	DocBlock,
 	DocListItem,
@@ -300,7 +301,7 @@ function convertElement(el: Element, rules: Map<string, StyleProps>, ref: DocRef
 	if (tag === "TABLE") {
 		// Tables are not converted to the IR yet (deferred); the placeholder points
 		// users at the original doc for now.
-		out.push({ kind: "placeholder", note: "Table omitted - open the doc to view it." });
+		out.push({ kind: "placeholder", note: msg("Table omitted - open the doc to view it.") });
 		return;
 	}
 	if (tag === "HR") {

@@ -353,7 +353,7 @@ export function SettingsPanel({
 										/>
 									</label>
 									<label className="generator-settings__date-label">
-										to{" "}
+										{t("to")}{" "}
 										<input
 											className="text-input"
 											style={{ width: "3rem" }}
@@ -373,7 +373,7 @@ export function SettingsPanel({
 										/>
 									</label>
 									<label className="generator-settings__date-label">
-										and{" "}
+										{t("and")}{" "}
 										<input
 											className="text-input"
 											style={{ width: "4rem" }}

@@ -26,6 +26,9 @@ export const shortDateFmt = localeFormat<Date | number>(
 export const dayMonthFmt = localeFormat<Date | number>(
 	(l) => new Intl.DateTimeFormat(l, { month: "short", day: "numeric" }),
 );
+export const dateTimeFmt = localeFormat<Date | number>(
+	(l) => new Intl.DateTimeFormat(l, { dateStyle: "medium", timeStyle: "short" }),
+);
 
 // Fixed to UTC so the month index can't slip a boundary in a negative-offset zone.
 const monthFmt = localeFormat<Date | number>(

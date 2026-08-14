@@ -10,7 +10,7 @@ import {
 	selectReviewSet,
 	renameReview,
 } from "@/lib/review/review";
-import { shortDateFmt } from "@/lib/util/format";
+import { shortDateFmt, relativeTime } from "@/lib/util/format";
 import { getLocale, t } from "@/lib/i18n";
 import type { ReviewSession } from "@/bindings.gen";
 
@@ -19,17 +19,6 @@ function formatDate(iso: string): string {
 	return shortDateFmt.format(d);
 }
 
-function formatRelative(iso: string): string {
-	const diff = Date.now() - new Date(iso).getTime();
-	const mins = Math.floor(diff / 60_000);
-	if (mins < 1) return "just now";
-	if (mins < 60) return `${mins}m ago`;
-	const hrs = Math.floor(mins / 60);
-	if (hrs < 24) return `${hrs}h ago`;
-	const days = Math.floor(hrs / 24);
-	if (days < 30) return `${days}d ago`;
-	return formatDate(iso);
-}
 
 export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 	const [filter, setFilter] = useState<"active" | "done">("active");
@@ -162,7 +151,7 @@ export function ReviewSessionsModal({ open, onOpenChange }: DialogProps) {
 												{t("Started")} {formatDate(s.createdAt)}
 											</span>
 											<span title={new Date(s.updatedAt).toLocaleString(getLocale())}>
-												{t("Updated")} {formatRelative(s.updatedAt)}
+												{t("Updated")} {relativeTime(s.updatedAt)}
 											</span>
 										</div>
 										<div className="review-sessions__bar">

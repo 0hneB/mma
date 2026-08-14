@@ -10,7 +10,7 @@ import { getLocale, t } from "@/lib/i18n";
 function PanoBadge({ cameraType }: { cameraType: FullCameraType | null }) {
 	switch (cameraType) {
 		case "unofficial":
-			return <span className="pano-option__badge badge badge--unofficial">unofficial</span>;
+			return <span className="pano-option__badge badge badge--unofficial">{t("unofficial")}</span>;
 		case "gen1":
 			return <span className="pano-option__badge badge badge--gen1">{t("Gen1")}</span>;
 		case "gen2":

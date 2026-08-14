@@ -140,7 +140,9 @@ export function ImportSidebar() {
 
 			{preview.warnings.length > 0 && (
 				<details className="import-sidebar__section">
-					<summary>{preview.warnings.length} warning(s)</summary>
+					<summary>
+						{t({ one: "{n} warning", other: "{n} warnings" }, { n: preview.warnings.length })}
+					</summary>
 					<ul>
 						{preview.warnings.map((w, i) => (
 							<li key={i}>{w}</li>

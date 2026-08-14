@@ -7,15 +7,18 @@ import { fetchAllLocations } from "@/store/useMapStore";
 import { subscribeMany, LOCATION_DATA_EVENTS } from "@/lib/events";
 import { usePluginState, createPluginStorage } from "@/plugins/registry";
 import "./distribution.css";
-import { t } from "@/lib/i18n";
+import { t, getLocale } from "@/lib/i18n";
 
 type Source = "coords" | "metadata";
 
-const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+let countryNames: { locale: string; names: Intl.DisplayNames } | null = null;
 
 function getCountryName(code: string): string {
+	const locale = getLocale();
+	if (countryNames?.locale !== locale)
+		countryNames = { locale, names: new Intl.DisplayNames([locale], { type: "region" }) };
 	try {
-		return countryNames.of(code) ?? code;
+		return countryNames.names.of(code) ?? code;
 	} catch {
 		return code;
 	}

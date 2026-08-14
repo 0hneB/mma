@@ -87,7 +87,7 @@ export function QuickCopyToMapDialog({
 						autoFocus
 						renderItem={(m) => (
 							<>
-								<strong>{m.name || "(unnamed)"}</strong>
+								<strong>{m.name || t("(unnamed)")}</strong>
 								{m.folder && <span className="search-result__context"> &middot; {m.folder}</span>}
 							</>
 						)}

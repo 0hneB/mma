@@ -123,7 +123,7 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 					<div className="doclink-assign__panes">
 						<div className="doclink-assign__tags">
 							<div className="doclink-assign__pane-title">
-								{t("Tags")} {armed ? "" : "(pick one to arm)"}
+								{t("Tags")} {armed ? "" : t("(pick one to arm)")}
 							</div>
 							{tags.map((tag) => {
 								const n = anchorsInDoc(tag, docRef.docId).size;

@@ -7,12 +7,7 @@ import { cmd } from "@/lib/commands";
 import { useAsync } from "@/lib/hooks/useAsync";
 import type { CommitInfo } from "@/bindings.gen";
 import { t } from "@/lib/i18n";
-
-const fmt = new Intl.NumberFormat("en");
-const dateFmt = new Intl.DateTimeFormat("en", {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
+import { fmt, dateTimeFmt } from "@/lib/util/format";
 
 function diffLabel(c: CommitInfo): ReactNode | null {
 	const parts: ReactNode[] = [];
@@ -110,7 +105,7 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 											}}
 										>
 											<td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-												{dateFmt.format(new Date(c.createdAt))}
+												{dateTimeFmt.format(new Date(c.createdAt))}
 											</td>
 											<td
 												className="mono"
@@ -129,7 +124,7 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
 											>
 												{msg}
 												{msg && diff && " "}
-												{diff ?? (msg ? null : i === 0 ? "(latest)" : "(no changes)")}
+												{diff ?? (msg ? null : i === 0 ? t("(latest)") : t("(no changes)"))}
 											</td>
 											<td className="mono" style={{ padding: "6px 8px", textAlign: "right" }}>
 												{fmt.format(c.locationCount)}
