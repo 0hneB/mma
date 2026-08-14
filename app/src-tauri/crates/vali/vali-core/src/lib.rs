@@ -1,4 +1,4 @@
-//! Port of slashP/Vali @ 3.0.1 (7b89718).
+//! Port of slashP/Vali @ 3.2.1 (d961e46).
 
 pub mod location;
 pub mod map_definition;
