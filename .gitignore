@@ -46,6 +46,7 @@ lint.json
 docs/
 CLAUDE.md
 mma-source
+vali-oracle/
 *.bin
 # sidecar ONNX models (exported/downloaded, not committed)
 plugins/*/sidecar/models/*
