@@ -1,5 +1,5 @@
 import { HeatmapLayer } from "@deck.gl/aggregation-layers";
-import type { DeckOverlayHandle, LatLng, SourceScope } from "mma-plugin-types";
+import type { DeckOverlayHandle, LatLng, ScopeWithSaved } from "mma-plugin-types";
 import {
 	DEFAULT_GRADIENT_ID,
 	gradientIdFromLegacyIndex,
@@ -19,7 +19,7 @@ export interface HeatmapLayerSettings {
 	opacity: number;
 	threshold: number;
 	gradientId: string;
-	source: SourceScope;
+	source: ScopeWithSaved;
 }
 
 export const LAYER_DEFAULTS: Omit<HeatmapLayerSettings, "id" | "source"> = {
@@ -33,7 +33,7 @@ export const LAYER_DEFAULTS: Omit<HeatmapLayerSettings, "id" | "source"> = {
 
 const store = MMA.storage("heatmap");
 
-function defaultSource(): SourceScope {
+function defaultSource(): ScopeWithSaved {
 	return MMA.getMapState().selectedLocationIds.size > 0 ? { kind: "selected" } : { kind: "all" };
 }
 
@@ -133,7 +133,7 @@ export function removeCustomGradient(id: string) {
 	commitGradients();
 }
 
-async function sourceData(source: SourceScope): Promise<LatLng[]> {
+async function sourceData(source: ScopeWithSaved): Promise<LatLng[]> {
 	const ids = await MMA.resolveScopeIds(source);
 	const locs = await MMA.fetchLocations(ids ? { kind: "ids", ids: [...ids] } : { kind: "all" });
 	return locs.map((l) => ({ lat: l.lat, lng: l.lng }));

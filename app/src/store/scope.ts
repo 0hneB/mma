@@ -9,12 +9,12 @@ import { useMapState, getMapState, groupBy, scopeIds } from "./useMapStore";
 
 /** The user-facing "which locations" concept: Rust's mechanical Scope widened with
  *  saved selections, which resolve to ids in JS (Rust never sees saved definitions). */
-export type SourceScope = Scope | { kind: "saved"; id: string };
+export type ScopeWithSaved = Scope | { kind: "saved"; id: string };
 
-export interface ScopeController<S extends SourceScope = Scope> {
+export interface ScopeController<S extends ScopeWithSaved = Scope> {
 	scope: S;
 	// Method syntax on purpose: bivariance lets a plain ScopeController flow into
-	// ScopeSelector's wider ScopeController<SourceScope> prop.
+	// ScopeSelector's wider ScopeController<ScopeWithSaved> prop.
 	setScope(s: S): void;
 	allCount: number;
 	selectionCount: number;
@@ -35,7 +35,7 @@ export function applyScope(scope: Scope, pool: Location[]): Location[] {
 }
 
 /** The id-set a scope narrows to, or null for "all". Saved and props scopes resolve async. */
-export async function resolveScopeIds(scope: SourceScope): Promise<ReadonlyIdSet | null> {
+export async function resolveScopeIds(scope: ScopeWithSaved): Promise<ReadonlyIdSet | null> {
 	switch (scope.kind) {
 		case "all":
 			return null;

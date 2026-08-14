@@ -2839,11 +2839,11 @@ declare namespace commitDiff {
 
 /** The user-facing "which locations" concept: Rust's mechanical Scope widened with
  *  saved selections, which resolve to ids in JS (Rust never sees saved definitions). */
-export type SourceScope = Scope | {
+export type ScopeWithSaved = Scope | {
     kind: "saved";
     id: string;
 };
-export interface ScopeController<S extends SourceScope = Scope> {
+export interface ScopeController<S extends ScopeWithSaved = Scope> {
     scope: S;
     setScope(s: S): void;
     allCount: number;
@@ -2857,7 +2857,7 @@ export interface ScopeController<S extends SourceScope = Scope> {
  *  `resolveScopeIds`/`fetchLocations` instead. */
 declare function applyScope(scope: Scope, pool: Location[]): Location[];
 /** The id-set a scope narrows to, or null for "all". Saved and props scopes resolve async. */
-declare function resolveScopeIds(scope: SourceScope): Promise<ReadonlyIdSet | null>;
+declare function resolveScopeIds(scope: ScopeWithSaved): Promise<ReadonlyIdSet | null>;
 /** Group the scoped location set by a derived key - entirely in Rust, no locations fetched.
  *  Numeric bins arrive in bound order; projection keys are sorted naturally for display. */
 declare function partition(field: string, key: KeySpec, scope: Scope): Promise<PartitionBucket[]>;
@@ -2880,9 +2880,9 @@ export interface ScopeHandle {
 /** A standalone "all locations vs current selection" switch, for features that operate on a subset. */
 declare function createScope(initial?: Scope): ScopeHandle;
 
-export type scope_ScopeController<S extends SourceScope = Scope> = ScopeController<S>;
+export type scope_ScopeController<S extends ScopeWithSaved = Scope> = ScopeController<S>;
 export type scope_ScopeHandle = ScopeHandle;
-export type scope_SourceScope = SourceScope;
+export type scope_ScopeWithSaved = ScopeWithSaved;
 declare const scope_applyScope: typeof applyScope;
 declare const scope_createScope: typeof createScope;
 declare const scope_partition: typeof partition;
@@ -2890,7 +2890,7 @@ declare const scope_resolveScopeIds: typeof resolveScopeIds;
 declare const scope_useScope: typeof useScope;
 declare namespace scope {
   export { scope_applyScope as applyScope, scope_createScope as createScope, scope_partition as partition, scope_resolveScopeIds as resolveScopeIds, scope_useScope as useScope };
-  export type { scope_ScopeController as ScopeController, scope_ScopeHandle as ScopeHandle, scope_SourceScope as SourceScope };
+  export type { scope_ScopeController as ScopeController, scope_ScopeHandle as ScopeHandle, scope_ScopeWithSaved as ScopeWithSaved };
 }
 
 /** Reactive list of all maps (metadata only). */
@@ -3110,7 +3110,7 @@ declare function SegmentedControl<T extends string | number>({ options, value, o
 }): react.JSX.Element;
 
 declare function ScopeSelector({ ctl, className, }: {
-    ctl: ScopeController<SourceScope>;
+    ctl: ScopeController<ScopeWithSaved>;
     className?: string;
 }): react.JSX.Element;
 
