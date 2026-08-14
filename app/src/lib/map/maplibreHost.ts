@@ -9,7 +9,8 @@
 // source uses a fake `mma-sv://{z}/{x}/{y}` template and `transformRequest`
 // rewrites each request through the current SV tile source.
 
-import maplibregl, { type MapMouseEvent } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PickingInfo } from "@deck.gl/core";
@@ -261,10 +262,11 @@ class MapLibreHost implements MapHostContract<"maplibre"> {
 
 	on<K extends keyof MapHostEvents>(event: K, fn: (arg: MapHostEvents[K]) => void): () => void {
 		const name = EVENT_NAMES[event];
-		const handler = (e?: maplibregl.MapMouseEvent) => {
+		const handler = (e?: unknown) => {
 			if (LATLNG_EVENTS.has(event)) {
-				if (!e?.lngLat) return;
-				(fn as (arg: LatLng) => void)({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+				const lngLat = (e as maplibregl.MapMouseEvent | undefined)?.lngLat;
+				if (!lngLat) return;
+				(fn as (arg: LatLng) => void)({ lat: lngLat.lat, lng: lngLat.lng });
 			} else {
 				(fn as () => void)();
 			}

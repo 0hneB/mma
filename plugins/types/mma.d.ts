@@ -10,7 +10,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { Layer, PickingInfo } from '@deck.gl/core';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 /** Commands */
 declare const commands: {
