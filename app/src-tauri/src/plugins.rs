@@ -187,6 +187,41 @@ pub async fn vali_download(
     result
 }
 
+/// Download exactly the countries `vali_data_status` reports as behind. No-op when nothing
+/// is stale, so the caller can fire it without checking first.
+#[tauri::command]
+#[specta::specta]
+pub async fn vali_download_stale(state: tauri::State<'_, ValiState>) -> AppResult<()> {
+    let token = CancelToken::new();
+    *state.cancel.lock().unwrap() = Some(token.clone());
+    let result = tokio::task::spawn_blocking(move || {
+        let root = data_root()?;
+        let stale = vali_generate::download::stale_countries(
+            &root,
+            std::time::Duration::from_secs(30),
+            Some(&token),
+        )
+        .map_err(|e| AppError(format!("{e:#}")))?;
+        let codes: Vec<String> = stale.into_iter().map(|c| c.country_code).collect();
+        if codes.is_empty() {
+            return Ok(());
+        }
+        vali_generate::download::download_codes(
+            &root,
+            &codes,
+            false,
+            false,
+            Some(&emit_progress),
+            Some(&token),
+        )
+        .map_err(|e| AppError(format!("{e:#}")))
+    })
+    .await
+    .map_err(|e| AppError(format!("vali download task failed: {e}")))?;
+    *state.cancel.lock().unwrap() = None;
+    result
+}
+
 /// Cancel an in-flight vali generate or download.
 #[tauri::command]
 #[specta::specta]

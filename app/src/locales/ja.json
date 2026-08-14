@@ -251,9 +251,6 @@
 	"Custom CSS": "カスタム CSS",
 	"Cycle movement mode": "移動モードを切り替え",
 	"Data": "データ",
-	"Data for {countries} and {n} others is out of date.": {
-		"other": "{countries} と他 {n} 件のデータが古くなっています。"
-	},
 	"Data for {countries} is out of date.": "{countries} のデータが古くなっています。",
 	"Date": "日付",
 	"Date + time": "日付 + 時刻",
@@ -1138,6 +1135,7 @@
 	"Update filter": "フィルターを更新",
 	"Update installed. Restart to apply.": "更新をインストールしました。再起動して適用してください。",
 	"Update requires app v{version} or newer": "更新にはアプリ v{version} 以降が必要です",
+	"Update these": "これらを更新",
 	"Update to v{version}": "v{version} に更新",
 	"Updated": "更新",
 	"Updates": "更新",

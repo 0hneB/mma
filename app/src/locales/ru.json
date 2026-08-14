@@ -272,12 +272,6 @@
 	"Custom CSS": "Свой CSS",
 	"Cycle movement mode": "Переключить режим движения",
 	"Data": "Данные",
-	"Data for {countries} and {n} others is out of date.": {
-		"one": "Данные для {countries} и ещё {n} страны устарели.",
-		"few": "Данные для {countries} и ещё {n} стран устарели.",
-		"many": "Данные для {countries} и ещё {n} стран устарели.",
-		"other": "Данные для {countries} и ещё {n} стран устарели."
-	},
 	"Data for {countries} is out of date.": "Данные для {countries} устарели.",
 	"Date": "Дата",
 	"Date + time": "Дата + время",
@@ -1243,6 +1237,7 @@
 	"Update filter": "Обновить фильтр",
 	"Update installed. Restart to apply.": "Обновление установлено. Перезапустите для применения.",
 	"Update requires app v{version} or newer": "Для обновления нужно приложение v{version} или новее",
+	"Update these": "Обновить их",
 	"Update to v{version}": "Обновить до v{version}",
 	"Updated": "Обновлено",
 	"Updates": "Обновления",

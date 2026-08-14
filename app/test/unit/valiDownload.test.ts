@@ -73,18 +73,12 @@ describe("staleSummary", () => {
 		expect(staleSummary(status("FR"))).toBe("Data for France is out of date.");
 	});
 
-	it("names every country while the list is short", () => {
+	it("names every country, however many there are", () => {
 		expect(staleSummary(status("FR", "DE", "JP"))).toBe(
 			"Data for France, Germany, Japan is out of date.",
 		);
-	});
-
-	it("counts the tail once there are more than three", () => {
-		expect(staleSummary(status("FR", "DE", "JP", "IT"))).toBe(
-			"Data for France, Germany, Japan and 1 other is out of date.",
-		);
 		expect(staleSummary(status("FR", "DE", "JP", "IT", "ES"))).toBe(
-			"Data for France, Germany, Japan and 2 others is out of date.",
+			"Data for France, Germany, Japan, Italy, Spain is out of date.",
 		);
 	});
 

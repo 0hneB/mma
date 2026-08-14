@@ -258,10 +258,6 @@
 	"Custom CSS": "Custom CSS",
 	"Cycle movement mode": "Cycle movement mode",
 	"Data": "Data",
-	"Data for {countries} and {n} others is out of date.": {
-		"one": "Data for {countries} and {n} other is out of date.",
-		"other": "Data for {countries} and {n} others is out of date."
-	},
 	"Data for {countries} is out of date.": "Data for {countries} is out of date.",
 	"Date": "Date",
 	"Date + time": "Date + time",
@@ -1173,6 +1169,7 @@
 	"Update filter": "Update filter",
 	"Update installed. Restart to apply.": "Update installed. Restart to apply.",
 	"Update requires app v{version} or newer": "Update requires app v{version} or newer",
+	"Update these": "Update these",
 	"Update to v{version}": "Update to v{version}",
 	"Updated": "Updated",
 	"Updates": "Updates",

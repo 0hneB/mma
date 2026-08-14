@@ -27,17 +27,33 @@
 }
 
 .vali-download {
-	width: 440px;
+	width: 560px;
 	max-width: 100%;
 }
 
 .vali-download__stale {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
 	margin-bottom: 16px;
 	padding: 10px 12px;
 	border-radius: var(--radius-2);
 	background: color-mix(in srgb, var(--action) 12%, transparent);
 	font-size: 13px;
 	line-height: 1.4;
+}
+
+.vali-download__stale > .button {
+	flex-shrink: 0;
+}
+
+.vali-download__picker {
+	margin-bottom: 14px;
+}
+
+.vali-download__picker .text-input {
+	width: 100%;
 }
 
 .vali-download__label {

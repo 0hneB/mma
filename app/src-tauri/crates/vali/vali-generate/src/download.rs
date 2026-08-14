@@ -58,7 +58,6 @@ pub fn download_files(
     progress: Option<Progress<'_>>,
     cancel: Option<&CancelToken>,
 ) -> anyhow::Result<()> {
-    ensure_download_folder_writable(root)?;
     let all_codes: Vec<&str> =
         crate::names::country_names().iter().map(|(c, _)| *c).collect();
     let country_codes: Vec<String> = match country.filter(|c| !c.is_empty()) {
@@ -78,7 +77,20 @@ pub fn download_files(
                 .collect()
         }
     };
-    for cc in &country_codes {
+    download_codes(root, &country_codes, full, updates, progress, cancel)
+}
+/// The download itself, once the targets are named. `download_files` resolves a CLI-style
+/// `--country` argument to this; callers that already hold country codes use it directly.
+pub fn download_codes(
+    root: &Path,
+    country_codes: &[String],
+    full: bool,
+    updates: bool,
+    progress: Option<Progress<'_>>,
+    cancel: Option<&CancelToken>,
+) -> anyhow::Result<()> {
+    ensure_download_folder_writable(root)?;
+    for cc in country_codes {
         ensure_download_metadata_file_exists(root, cc)?;
     }
     let agent = agent();
@@ -88,7 +100,7 @@ pub fn download_files(
             force: updates,
         },
     ] {
-        for cc in &country_codes {
+        for cc in country_codes {
             if let Some(c) = cancel {
                 c.check()?;
             }

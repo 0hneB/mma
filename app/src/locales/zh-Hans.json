@@ -251,9 +251,6 @@
 	"Custom CSS": "自定义 CSS",
 	"Cycle movement mode": "循环移动模式",
 	"Data": "数据",
-	"Data for {countries} and {n} others is out of date.": {
-		"other": "{countries} 和其他 {n} 个国家/地区的数据已过期。"
-	},
 	"Data for {countries} is out of date.": "{countries} 的数据已过期。",
 	"Date": "日期",
 	"Date + time": "日期 + 时间",
@@ -1138,6 +1135,7 @@
 	"Update filter": "更新筛选",
 	"Update installed. Restart to apply.": "更新已安装。重启以生效。",
 	"Update requires app v{version} or newer": "更新需要应用 v{version} 或更新版本",
+	"Update these": "更新这些",
 	"Update to v{version}": "更新到 v{version}",
 	"Updated": "更新于",
 	"Updates": "更新",

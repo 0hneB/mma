@@ -258,10 +258,6 @@
 	"Custom CSS": "Eigenes CSS",
 	"Cycle movement mode": "Bewegungsmodus wechseln",
 	"Data": "Daten",
-	"Data for {countries} and {n} others is out of date.": {
-		"one": "Die Daten für {countries} und {n} weiteres Land sind veraltet.",
-		"other": "Die Daten für {countries} und {n} weitere Länder sind veraltet."
-	},
 	"Data for {countries} is out of date.": "Die Daten für {countries} sind veraltet.",
 	"Date": "Datum",
 	"Date + time": "Datum + Uhrzeit",
@@ -1173,6 +1169,7 @@
 	"Update filter": "Filter aktualisieren",
 	"Update installed. Restart to apply.": "Update installiert. Zum Anwenden neu starten.",
 	"Update requires app v{version} or newer": "Update erfordert App v{version} oder neuer",
+	"Update these": "Diese aktualisieren",
 	"Update to v{version}": "Auf v{version} aktualisieren",
 	"Updated": "Aktualisiert",
 	"Updates": "Updates",

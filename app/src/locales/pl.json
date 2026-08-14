@@ -272,12 +272,6 @@
 	"Custom CSS": "Własny CSS",
 	"Cycle movement mode": "Przełącz tryb poruszania",
 	"Data": "Dane",
-	"Data for {countries} and {n} others is out of date.": {
-		"one": "Dane dla {countries} i {n} innego kraju są nieaktualne.",
-		"few": "Dane dla {countries} i {n} innych krajów są nieaktualne.",
-		"many": "Dane dla {countries} i {n} innych krajów są nieaktualne.",
-		"other": "Dane dla {countries} i {n} innych krajów są nieaktualne."
-	},
 	"Data for {countries} is out of date.": "Dane dla {countries} są nieaktualne.",
 	"Date": "Data",
 	"Date + time": "Data + godzina",
@@ -1243,6 +1237,7 @@
 	"Update filter": "Zaktualizuj filtr",
 	"Update installed. Restart to apply.": "Aktualizacja zainstalowana. Uruchom ponownie, aby ją zastosować.",
 	"Update requires app v{version} or newer": "Aktualizacja wymaga aplikacji w wersji v{version} lub nowszej",
+	"Update these": "Zaktualizuj te",
 	"Update to v{version}": "Zaktualizuj do v{version}",
 	"Updated": "Zaktualizowano",
 	"Updates": "Aktualizacje",

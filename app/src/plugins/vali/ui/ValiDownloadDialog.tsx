@@ -79,24 +79,11 @@ function fmtBytes(bytes: number): string {
 	return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
 }
 
-const NAMED_IN_SUMMARY = 3;
-
-/** Names the out-of-date countries, keeping the sentence short once there are more than a
- *  few. Empty string for "nothing stale" so callers can render it unconditionally. */
+/** Names every out-of-date country. Empty string for "nothing stale" so callers can render
+ *  it unconditionally. */
 export function staleSummary(stale: ValiCountryStatus[]): string {
 	if (stale.length === 0) return "";
-	const names = stale.map((s) => countryName(s.countryCode));
-	const countries = names.slice(0, NAMED_IN_SUMMARY).join(", ");
-	const rest = names.length - NAMED_IN_SUMMARY;
-	if (rest > 0) {
-		return t(
-			{
-				one: "Data for {countries} and {n} other is out of date.",
-				other: "Data for {countries} and {n} others is out of date.",
-			},
-			{ countries, n: rest },
-		);
-	}
+	const countries = stale.map((s) => countryName(s.countryCode)).join(", ");
 	return t("Data for {countries} is out of date.", { countries });
 }
 
@@ -156,8 +143,8 @@ export function ValiDownloadDialog({
 		return match.slice(0, MAX_SUGGESTIONS);
 	}, [targets, query]);
 
-	const run = async () => {
-		if (!target || running) return;
+	const run = async (download: () => Promise<unknown>) => {
+		if (running) return;
 		setProgress(null);
 		setResult(null);
 		setError(null);
@@ -171,7 +158,7 @@ export function ValiDownloadDialog({
 			}),
 		);
 		try {
-			await cmd.valiDownload(target.code, full, false);
+			await download();
 			// Nothing is emitted when every local timestamp already matches the remote one.
 			setResult(
 				filesRef.current === 0
@@ -199,7 +186,17 @@ export function ValiDownloadDialog({
 		<Dialog open={open && ready} onOpenChange={running ? () => {} : onOpenChange}>
 			<DialogContent title={t("Download coverage data")} className="vali-download">
 				{stale && stale.length > 0 && (
-					<div className="vali-download__stale">{staleSummary(stale)}</div>
+					<div className="vali-download__stale">
+						<span>{staleSummary(stale)}</span>
+						<Button
+							variant="primary"
+							small
+							disabled={running}
+							onClick={() => run(() => cmd.valiDownloadStale())}
+						>
+							{t("Update these")}
+						</Button>
+					</div>
 				)}
 
 				<div className="vali-download__label">{t("Country or region")}</div>
@@ -214,6 +211,7 @@ export function ValiDownloadDialog({
 						setTarget(item);
 						setQuery(item.name);
 					}}
+					containerClassName="vali-download__picker"
 					getKey={(item) => item.code ?? "_all"}
 					renderItem={(item) => (
 						<span className="vali-download__option">
@@ -279,7 +277,11 @@ export function ValiDownloadDialog({
 					) : (
 						<Button onClick={() => onOpenChange(false)}>{t("Close")}</Button>
 					)}
-					<Button variant="primary" disabled={!target || running} onClick={run}>
+					<Button
+						variant="primary"
+						disabled={!target || running}
+						onClick={() => target && run(() => cmd.valiDownload(target.code, full, false))}
+					>
 						{running ? t("Downloading...") : t("Download")}
 					</Button>
 				</div>

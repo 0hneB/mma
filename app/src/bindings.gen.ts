@@ -394,6 +394,11 @@ export const commands = {
 	 *  rather than "up to date".
 	 */
 	valiDataStatus: () => __TAURI_INVOKE<ValiCountryStatus[]>("vali_data_status").then((v) => (v.map(i=>i) as typeof v)),
+	/**
+	 *  Download exactly the countries `vali_data_status` reports as behind. No-op when nothing
+	 *  is stale, so the caller can fire it without checking first.
+	 */
+	valiDownloadStale: () => __TAURI_INVOKE<null>("vali_download_stale"),
 };
 
 /** Events */

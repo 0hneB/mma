@@ -403,6 +403,11 @@ declare const commands: {
      *  rather than "up to date".
      */
     valiDataStatus: () => Promise<ValiCountryStatus[]>;
+    /**
+     *  Download exactly the countries `vali_data_status` reports as behind. No-op when nothing
+     *  is stale, so the caller can fire it without checking first.
+     */
+    valiDownloadStale: () => Promise<null>;
 };
 /** Events */
 declare const events: {

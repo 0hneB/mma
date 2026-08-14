@@ -258,10 +258,6 @@
 	"Custom CSS": "[Çüşţöɱ ÇŞŞ åéîö]",
 	"Cycle movement mode": "[Çýçĺé ɱöṽéɱéñţ ɱöðé åéîöüåéî]",
 	"Data": "[Ðåţå åé]",
-	"Data for {countries} and {n} others is out of date.": {
-		"one": "[Ðåţå ƒöŕ {countries} åñð {n} öţĥéŕ îş öüţ öƒ ðåţé. åéîöüåéîöüåéîöü]",
-		"other": "[Ðåţå ƒöŕ {countries} åñð {n} öţĥéŕş îş öüţ öƒ ðåţé. åéîöüåéîöüåéîöü]"
-	},
 	"Data for {countries} is out of date.": "[Ðåţå ƒöŕ {countries} îş öüţ öƒ ðåţé. åéîöüåéîöü]",
 	"Date": "[Ðåţé åé]",
 	"Date + time": "[Ðåţé + ţîɱé åéîöü]",
@@ -1173,6 +1169,7 @@
 	"Update filter": "[Üƥðåţé ƒîĺţéŕ åéîöüå]",
 	"Update installed. Restart to apply.": "[Üƥðåţé îñşţåĺĺéð. Ŕéşţåŕţ ţö åƥƥĺý. åéîöüåéîöüåéîö]",
 	"Update requires app v{version} or newer": "[Üƥðåţé ŕéǫüîŕéş åƥƥ ṽ{version} öŕ ñéŵéŕ åéîöüåéîöüåé]",
+	"Update these": "[Üƥðåţé ţĥéşé åéîöü]",
 	"Update to v{version}": "[Üƥðåţé ţö ṽ{version} åéîöü]",
 	"Updated": "[Üƥðåţéð åéî]",
 	"Updates": "[Üƥðåţéş åéî]",
