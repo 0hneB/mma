@@ -6,7 +6,7 @@ import type { Location, ExtraFieldDef, ComparisonType } from "@/bindings.gen";
 import { getFieldDef, isWritableField, getBuiltinKeys } from "@/lib/data/fieldDefRegistry";
 import { fieldValue, extraKeysOf } from "@/lib/data/fieldOps";
 import { ymOrdinal } from "@/lib/util/date";
-import { t } from "@/lib/i18n";
+import { t, msg } from "@/lib/i18n";
 import {
 	kruskalEps2,
 	circularEta2,
@@ -153,9 +153,9 @@ function categoryValue(loc: Location, key: string): string | null {
 
 function fieldLabel(key: string, def: ExtraFieldDef | undefined): string {
 	if (def?.label) return def.label;
-	if (key === "heading") return t("Heading");
-	if (key === "pitch") return t("Pitch");
-	if (key === "zoom") return t("Zoom");
+	if (key === "heading") return msg("Heading");
+	if (key === "pitch") return msg("Pitch");
+	if (key === "zoom") return msg("Zoom");
 	return key;
 }
 

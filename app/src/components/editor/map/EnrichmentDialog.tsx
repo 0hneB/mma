@@ -494,7 +494,7 @@ function FieldsTable({
 										<option key={o.token} value={o.token}>
 											{o.token === "circular" && row.comparison?.type === "circular"
 												? t("Circular · {period}", { period: row.comparison.period })
-												: o.label}
+												: t(o.label)}
 										</option>
 									))}
 								</NSelect>
@@ -616,12 +616,12 @@ function FieldsTable({
 						<div className="enum-values__row" key={i}>
 							<TextInput
 								value={r.value}
-								placeholder="value"
+								placeholder={t("value")}
 								onChange={(e) => setEnumRow(i, { value: e.target.value })}
 							/>
 							<TextInput
 								value={r.label}
-								placeholder="label"
+								placeholder={t("label")}
 								onChange={(e) => setEnumRow(i, { label: e.target.value })}
 							/>
 							<button

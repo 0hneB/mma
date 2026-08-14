@@ -663,7 +663,7 @@ function EditTagDialog({
 								{globalConflicts.length > 0 && (
 									<>
 										{t('Overrides "{label}" while this map is open.', {
-											label: globalConflicts[0].label,
+											label: t(globalConflicts[0].label),
 										})}
 									</>
 								)}

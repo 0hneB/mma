@@ -320,12 +320,14 @@ function ClearFieldsSetup({ locs, scopedLocs, scopeCtl, onReady }: SetupProps) {
 						return (
 							<label key={key} className="bulk-operation__field-item">
 								<Checkbox checked={selected.has(key)} onChange={() => toggle(key)} />
-								<span className="bulk-operation__field-label">{fieldLabel(key)}</span>
+								<span className="bulk-operation__field-label">{t(fieldLabel(key))}</span>
 								{def?.label && def.label !== key && (
 									<span className="bulk-operation__field-key">{key}</span>
 								)}
 								<span className="bulk-operation__field-count">
-									{count > 0 ? `${fmt.format(count)} values` : "no data"}
+									{count > 0
+										? t({ one: "{n} value", other: "{n} values" }, { n: count })
+										: t("no data")}
 								</span>
 							</label>
 						);
@@ -419,7 +421,7 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 					</option>
 					{sortedKeys.map((k) => (
 						<option key={k} value={k}>
-							{fieldLabel(k)}
+							{t(fieldLabel(k))}
 						</option>
 					))}
 					<option value="__new__">{t("New field...")}</option>
@@ -452,7 +454,7 @@ function SetFieldSetup({ locs, scopeCtl, onReady }: SetupProps) {
 						type="text"
 						value={raw}
 						onChange={(e) => setRaw(e.target.value)}
-						placeholder={isNumber ? "e.g. 45 or mod(sunAzimuth + 180, 360)" : undefined}
+						placeholder={isNumber ? t("e.g. 45 or mod(sunAzimuth + 180, 360)") : undefined}
 					/>
 				)}
 			</label>
@@ -645,7 +647,7 @@ function DownloadPanoramasSetup({ scopeCtl, scopedLocs, onReady }: SetupProps) {
 								doneMessage:
 									t("Done -- {n} downloaded", { n: result.succeeded.length }) +
 									(result.failed.length > 0
-										? t(", {n} failed.", { n: result.failed.length })
+										? t({ one: ", {n} failed.", other: ", {n} failed." }, { n: result.failed.length })
 										: "."),
 								doneActions: <DownloadDoneActions result={result} initiallySaved={saved} />,
 							};
@@ -671,7 +673,10 @@ async function saveDownloadResult(result: BulkDownloadResult): Promise<boolean> 
 		toast(
 			result.fileCount === 1
 				? t("Panorama saved")
-				: t("Saved {n} panoramas as ZIP", { n: result.fileCount }),
+				: t(
+						{ one: "Saved {n} panorama as ZIP", other: "Saved {n} panoramas as ZIP" },
+						{ n: result.fileCount },
+					),
 		);
 	}
 	return ok;
@@ -742,13 +747,15 @@ function EnrichSummary({
 		<div className="enrich-summary">
 			{result.map((r) => (
 				<div key={r.id}>
-					{r.label}
-					{t(":")} {fmt.format(r.success.length)} updated
-					{r.failed.length > 0 && <>, {fmt.format(r.failed.length)} failed</>}
+					{t(r.label)}
+					{t(":")} {t({ one: "{n} updated", other: "{n} updated" }, { n: r.success.length })}
+					{r.failed.length > 0 && (
+						<>{t({ one: ", {n} failed", other: ", {n} failed" }, { n: r.failed.length })}</>
+					)}
 					{r.failed.length > 0 && (
 						<Button
 							style={{ marginLeft: 8 }}
-							onClick={() => onSelect(r.failed, `${r.label} failed`)}
+							onClick={() => onSelect(r.failed, t("{label} failed", { label: t(r.label) }))}
 						>
 							{t("Select failed")}
 						</Button>
@@ -849,9 +856,13 @@ function BulkProgress({
 		<div className="bulk-operation">
 			<div className="bulk-operation__status">
 				{status === "running" &&
-					`${phaseLabel ? `${phaseLabel}: ` : ""}${fmt.format(done)} / ${fmt.format(total)} (${pct}%)${
-						rate != null ? ` -- ${fmt.format(Math.round(rate))}/s` : ""
-					}`}
+					(phaseLabel ? `${t(phaseLabel)}${t(":")} ` : "") +
+						t("{done} / {total} ({pct}%)", {
+							done: fmt.format(done),
+							total: fmt.format(total),
+							pct,
+						}) +
+						(rate != null ? t(" -- {rate}/s", { rate: fmt.format(Math.round(rate)) }) : "")}
 				{status === "done" &&
 					(result.doneContent ??
 						result.doneMessage ??

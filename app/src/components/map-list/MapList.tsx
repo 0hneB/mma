@@ -448,8 +448,11 @@ interface MapAction {
 }
 
 const FIELD_RENDERERS: Record<MapListField, (meta: MapMeta) => React.ReactNode> = {
-	locationCount: (meta) => <>{fmt.format(meta.locationCount)} locations</>,
-	lastOpened: (meta) => (meta.lastOpenedAt ? <>opened {relativeTime(meta.lastOpenedAt)}</> : null),
+	locationCount: (meta) => (
+		<>{t({ one: "{n} location", other: "{n} locations" }, { n: meta.locationCount })}</>
+	),
+	lastOpened: (meta) =>
+		meta.lastOpenedAt ? <>{t("opened {when}", { when: relativeTime(meta.lastOpenedAt) })}</> : null,
 	created: (meta) => <>{shortDateFmt.format(new Date(meta.createdAt))}</>,
 };
 
@@ -502,7 +505,7 @@ const MapEntry = React.memo(function MapEntry({
 					openMapWindow(meta.id, meta.name);
 				}}
 			>
-				{meta.name || "(unnamed)"}
+				{meta.name || t("(unnamed)")}
 			</a>
 			{metaParts.length > 0 && (
 				<span className="map-list__meta">
@@ -756,18 +759,23 @@ function ImportPreviewModal({
 							<Checkbox checked={entry.selected} readOnly />
 							<span className="import-preview__name">{entry.name}</span>
 							<span className="import-preview__meta">
-								{fmt.format(entry.locationCount)} loc
-								{entry.tagCount > 0 && `, ${entry.tagCount} tags`}
+								{t({ one: "{n} loc", other: "{n} loc" }, { n: entry.locationCount })}
+								{entry.tagCount > 0 &&
+									t({ one: ", {n} tag", other: ", {n} tags" }, { n: entry.tagCount })}
 								{entry.folder && ` [${entry.folder}]`}
 							</span>
-							{entry.isDuplicate && <span className="import-preview__badge">duplicate</span>}
+							{entry.isDuplicate && (
+								<span className="import-preview__badge">{t("duplicate")}</span>
+							)}
 						</li>
 					))}
 				</ul>
 
 				{preview.warnings.length > 0 && (
 					<details className="import-preview__warnings">
-						<summary>{preview.warnings.length} warning(s)</summary>
+						<summary>
+							{t({ one: "{n} warning", other: "{n} warnings" }, { n: preview.warnings.length })}
+						</summary>
 						<ul>
 							{preview.warnings.map((w, i) => (
 								<li key={i}>{w}</li>
@@ -1141,8 +1149,12 @@ export function MapList() {
 				<h2>
 					{t("Your Maps")}{" "}
 					<span style={{ color: "#fff8", fontWeight: "normal", fontSize: "0.75em" }}>
-						({fmt.format(maps.length)} maps,{" "}
-						{fmt.format(maps.reduce((a, m) => a + m.locationCount, 0))} locations)
+						({t({ one: "{n} map", other: "{n} maps" }, { n: maps.length })},{" "}
+						{t(
+							{ one: "{n} location", other: "{n} locations" },
+							{ n: maps.reduce((a, m) => a + m.locationCount, 0) },
+						)}
+						)
 					</span>
 				</h2>
 
@@ -1224,7 +1236,7 @@ export function MapList() {
 					>
 						{SORT_OPTIONS.map((o) => (
 							<option key={o.value} value={o.value}>
-								{o.label}
+								{t(o.label)}
 							</option>
 						))}
 					</NSelect>

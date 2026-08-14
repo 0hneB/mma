@@ -205,7 +205,12 @@ export function parseFieldExpr(src: string): FieldExpr {
 				}
 				expectOp(")");
 				if (args.length !== fn.arity)
-					throw new Error(`${tok.v}() takes ${fn.arity} argument${fn.arity === 1 ? "" : "s"}`);
+					throw new Error(
+						t(
+							{ one: "{name}() takes {n} argument", other: "{name}() takes {n} arguments" },
+							{ n: fn.arity, name: tok.v },
+						),
+					);
 				return { kind: "call", fn: tok.v, args };
 			}
 			return { kind: "field", name: tok.v };
@@ -521,7 +526,7 @@ export function partitionKeyOptions(
 ): { id: string; label: string }[] {
 	const projs = projectionsForType(type).map((p) => ({ id: p.id, label: p.label }));
 	const hasRange = type === "number" || (rangeForDates && type === "date");
-	return hasRange ? [{ id: RANGE_ID, label: t("Range") }, ...projs] : projs;
+	return hasRange ? [{ id: RANGE_ID, label: msg("Range") }, ...projs] : projs;
 }
 
 export function rewriteSelectionFields(

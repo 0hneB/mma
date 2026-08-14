@@ -112,7 +112,7 @@ function FieldRow({
 	return (
 		<div className={`disambig__row${field.lowConfidence ? " disambig__row--weak" : ""}`}>
 			<div className="disambig__head">
-				<span className="disambig__label">{field.label}</span>
+				<span className="disambig__label">{t(field.label)}</span>
 				<span className="disambig__badge">{badgeText(field)}</span>
 				{field.lowConfidence && (
 					<span className="disambig__badge disambig__badge--warn">{t("low data")}</span>

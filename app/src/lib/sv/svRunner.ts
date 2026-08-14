@@ -15,7 +15,7 @@ import { fetchSvMetadataBatched } from "@/lib/sv/svMeta";
 import { resolvePanoIds } from "@/lib/sv/lookup";
 import { getEnrichmentProviders, providerWaves } from "@/lib/data/fieldDefs";
 import type { Update, LocationPatch_Deserialize as LocationPatch } from "@/bindings.gen";
-import { t } from "@/lib/i18n";
+import { msg } from "@/lib/i18n";
 
 export type PanoData = google.maps.StreetViewResolvedPanoramaData;
 
@@ -117,10 +117,10 @@ export async function runResolvers(
 	const allUpdates: Update<LocationPatch>[] = [];
 	let resolvedPanoIds: Map<number, string> | undefined;
 	if (needResolve.length > 0) {
-		onProgress?.(0, needResolve.length, t("Resolving panoramas"));
+		onProgress?.(0, needResolve.length, msg("Resolving panoramas"));
 		const pr = await resolvePanoIds(needResolve, {
 			signal,
-			onProgress: (d) => onProgress?.(d, needResolve.length, t("Resolving panoramas")),
+			onProgress: (d) => onProgress?.(d, needResolve.length, msg("Resolving panoramas")),
 		});
 		resolvedPanoIds = new Map(pr.resolved.map((x) => [x.id, x.panoId]));
 		for (const { id, panoId } of pr.resolved) {
@@ -212,7 +212,7 @@ export async function runResolvers(
 			const waveTotal = units.reduce((a, b) => a + b, 0);
 			const slow = wave.filter((p, i) => units[i] > 0 && p.label);
 			const label =
-				slow.length === 1 ? slow[0].label : slow.length > 1 ? t("Enriching fields") : undefined;
+				slow.length === 1 ? slow[0].label : slow.length > 1 ? msg("Enriching fields") : undefined;
 			let waveDone = 0;
 			if (waveTotal > 0) onProgress?.(0, waveTotal, label);
 			const outcomeOf = (id: string) => (result[id] ??= { success: [], failed: [] });

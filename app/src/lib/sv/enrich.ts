@@ -233,7 +233,7 @@ export async function enrichAll(
 	const run = await runResolvers(locations, [{ id: "enrichMeta", config: enrichFields }], opts);
 	const labelOf = (id: string) =>
 		id === "enrichMeta"
-			? t("Metadata")
+			? msg("Metadata")
 			: (getEnrichmentProviders().find((p) => p.id === id)?.label ?? id);
 	return Object.entries(run)
 		.filter(([, o]) => o.success.length > 0 || o.failed.length > 0)

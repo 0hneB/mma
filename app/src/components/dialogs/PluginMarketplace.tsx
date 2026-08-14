@@ -175,16 +175,16 @@ function PluginCard({
 			<div className="plugin-card__icon">{icon ? <Icon path={icon} size={32} /> : null}</div>
 			<div className="plugin-card__info">
 				<div className="plugin-card__name">
-					{name}
+					{t(name)}
 					{CARD_LABELS.filter((l) => l.applies(entry)).map((l) => (
-						<Tooltip key={l.key} content={l.tooltip}>
-							<span className="plugin-card__label" aria-label={l.tooltip}>
+						<Tooltip key={l.key} content={t(l.tooltip)}>
+							<span className="plugin-card__label" aria-label={t(l.tooltip)}>
 								<Icon path={l.icon} size={14} />
 							</span>
 						</Tooltip>
 					))}
 				</div>
-				{description && <div className="plugin-card__desc">{description}</div>}
+				{description && <div className="plugin-card__desc">{t(description)}</div>}
 			</div>
 			{!comingSoon && (
 				<div className="plugin-card__actions">

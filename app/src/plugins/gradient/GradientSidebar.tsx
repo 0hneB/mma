@@ -13,7 +13,7 @@ import { partition, useScope } from "@/store/scope";
 import { usePluginState } from "@/plugins/registry";
 import { useSetting } from "@/store/settings";
 import "./gradient.css";
-import { t } from "@/lib/i18n";
+import { t, msg } from "@/lib/i18n";
 
 interface GradientPreset {
 	name: string;
@@ -22,14 +22,14 @@ interface GradientPreset {
 
 const PRESETS: GradientPreset[] = [
 	{
-		name: "Blue-Red",
+		name: msg("Blue-Red"),
 		stops: [
 			[66, 133, 244],
 			[234, 67, 53],
 		],
 	},
 	{
-		name: "Green-Yellow-Red",
+		name: msg("Green-Yellow-Red"),
 		stops: [
 			[52, 168, 83],
 			[251, 188, 4],
@@ -37,14 +37,14 @@ const PRESETS: GradientPreset[] = [
 		],
 	},
 	{
-		name: "Purple-Orange",
+		name: msg("Purple-Orange"),
 		stops: [
 			[136, 84, 208],
 			[255, 152, 0],
 		],
 	},
 	{
-		name: "Cool-Warm",
+		name: msg("Cool-Warm"),
 		stops: [
 			[33, 150, 243],
 			[200, 200, 200],
@@ -210,7 +210,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 							>
 								{fields.map((f) => (
 									<option key={f.key} value={f.key}>
-										{f.label}
+										{t(f.label)}
 									</option>
 								))}
 							</NSelect>
@@ -225,7 +225,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 							>
 								{projOptions.map((p) => (
 									<option key={p.id} value={p.id}>
-										{p.label}
+										{t(p.label)}
 									</option>
 								))}
 							</NSelect>
@@ -255,7 +255,7 @@ export function GradientSidebar({ onClose }: { onClose: () => void }) {
 									onClick={() => {
 										setPresetIdx(i);
 									}}
-									title={p.name}
+									title={t(p.name)}
 								>
 									<div
 										className="gradient-sidebar__preset-bar"

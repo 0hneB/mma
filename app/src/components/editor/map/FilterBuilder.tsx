@@ -14,7 +14,7 @@ import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
 import { mdiArrowRight, mdiArrowLeft } from "@mdi/js";
-import { t } from "@/lib/i18n";
+import { t, msg } from "@/lib/i18n";
 
 const ALL_OPS: FilterOp[] = ["eq", "neq", "gt", "lt", "gte", "lte", "between", "has", "nothas"];
 const EQUALITY_OPS: FilterOp[] = ["eq", "neq", "has", "nothas"];
@@ -33,13 +33,13 @@ const ARRAY_OPS: FilterOp[] = [
 	"nothas",
 ];
 const ARRAY_OP_LABELS: Partial<Record<FilterOp, string>> = {
-	eq: "length =",
-	neq: "length !=",
-	gt: "length >",
-	lt: "length <",
-	gte: "length >=",
-	lte: "length <=",
-	between: "length between",
+	eq: msg("length ="),
+	neq: msg("length !="),
+	gt: msg("length >"),
+	lt: msg("length <"),
+	gte: msg("length >="),
+	lte: msg("length <="),
+	between: msg("length between"),
 };
 const filterBuilderState = new Map<
 	string,
@@ -157,7 +157,7 @@ function FilterValueInput({
 				<option value="">--</option>
 				{enumValues.map((v) => (
 					<option key={v} value={v}>
-						{def?.labels?.[v] ?? v}
+						{def?.labels?.[v] ? t(def.labels[v]) : v}
 					</option>
 				))}
 			</NSelect>
@@ -493,7 +493,7 @@ export function FilterForm({
 			<NSelect value={op} onChange={(e) => handleOpChange(e.target.value as FilterOp)}>
 				{availableOps.map((o) => (
 					<option key={o} value={o}>
-						{(fieldEntry?.def.type === "array" && ARRAY_OP_LABELS[o]) || OP_LABELS[o]}
+						{t((fieldEntry?.def.type === "array" && ARRAY_OP_LABELS[o]) || OP_LABELS[o])}
 					</option>
 				))}
 			</NSelect>
