@@ -16,7 +16,13 @@ const filename = path.join(root, "case.ts");
 const tester = new RuleTester({
 	languageOptions: {
 		parser: tseslint.parser as never,
-		parserOptions: { project: "./tsconfig.json", tsconfigRootDir: root },
+		parserOptions: {
+			project: "./tsconfig.json",
+			tsconfigRootDir: root,
+			// CI=true flips typescript-estree into single-run mode, whose one-shot program
+			// can't track the RuleTester re-parsing case.ts with different code per case.
+			disallowAutomaticSingleRunInference: true,
+		},
 	},
 });
 
