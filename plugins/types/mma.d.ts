@@ -4,8 +4,8 @@
 import * as _tauri_apps_api_window from '@tauri-apps/api/window';
 import * as _tauri_apps_api_webview from '@tauri-apps/api/webview';
 import * as __TAURI_EVENT from '@tauri-apps/api/event';
+import * as react from 'react';
 import { ComponentType, SetStateAction, ReactNode } from 'react';
-import * as react_jsx_runtime from 'react/jsx-runtime';
 import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -2986,7 +2986,7 @@ declare function Sidebar({ title, onBack, actions, className, flush, children, }
     className?: string;
     flush?: boolean;
     children: ReactNode;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 /** Collapsible titled section inside a Sidebar. */
 declare function Section({ title, defaultOpen, collapsible, addons, children, }: {
     title: ReactNode;
@@ -2994,19 +2994,19 @@ declare function Section({ title, defaultOpen, collapsible, addons, children, }:
     collapsible?: boolean;
     addons?: ReactNode;
     children: ReactNode;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 /** Labelled form row (label left, control right) for sidebar sections. */
 declare function Field({ label, hint, row, children, }: {
     label: ReactNode;
     hint?: ReactNode;
     row?: boolean;
     children: ReactNode;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 /** Centered icon + message for empty panels. */
 declare function EmptyState({ icon, children }: {
     icon?: string;
     children: ReactNode;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 export interface SegmentedOption<T extends string | number> {
     value: T;
     label: ReactNode;
@@ -3019,12 +3019,12 @@ declare function SegmentedControl<T extends string | number>({ options, value, o
     value: T;
     onChange: (value: T) => void;
     className?: string;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 declare function ScopeSelector({ ctl, className, }: {
     ctl: ScopeController<SourceScope>;
     className?: string;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 declare function toast(message: string, duration?: number, container?: HTMLElement): void;
 
@@ -3172,7 +3172,7 @@ declare function validateLocations(locations: Location[], opts?: {
 }): Promise<Map<ValidationState, Location[]>>;
 
 /** Fetch full pano metadata directly from Google's internal RPC (bypasses StreetViewService). */
-declare function fetchSvMetadata(panoIds: string[]): Promise<(google.maps.StreetViewResolvedPanoramaData | null)[]>;
+declare function fetchSvMetadata(panoIds: string[], signal?: AbortSignal): Promise<(google.maps.StreetViewResolvedPanoramaData | null)[]>;
 
 /** URL that serves a local file over the `mma-buf://` protocol (binary Rust-to-JS transfers). */
 declare function mmaBufUrl(path: string): string;
