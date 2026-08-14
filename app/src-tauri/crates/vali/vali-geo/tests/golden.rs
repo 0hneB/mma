@@ -62,12 +62,17 @@ fn precision_from(p: u8) -> HashPrecision {
     }
 }
 
+/// Always runs the committed `-small` set, plus `-boundary` (crafted near-threshold cases,
+/// where a "better" formula diverges from the oracle while random samples still agree) and
+/// the full regenerated set when either is present.
 fn on_fixtures(name: &str, check: impl Fn(&Path)) {
     let dir = fixture_dir();
     check(&dir.join(format!("{name}-small.bin")));
-    let full = dir.join(format!("{name}.bin"));
-    if full.exists() {
-        check(&full);
+    for extra in [format!("{name}-boundary.bin"), format!("{name}.bin")] {
+        let path = dir.join(extra);
+        if path.exists() {
+            check(&path);
+        }
     }
 }
 

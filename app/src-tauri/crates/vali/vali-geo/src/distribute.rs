@@ -1,4 +1,8 @@
-use mma_geo::{within_m2, M_PER_DEG};
+//! Oracle port, not general geometry -- see `distance.rs`. The grid walk and its
+//! constants mirror Vali.Core; `mma-geo`'s `covering_cells`/`M_PER_DEG` are a
+//! different contract and must not be substituted here.
+
+use crate::distance::points_are_closer_than;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 pub const DISTANCES: [i32; 53] = [
@@ -7,6 +11,7 @@ pub const DISTANCES: [i32; 53] = [
     4200, 4500, 5000, 6000, 7000, 8000, 9000, 10000, 12500, 15000, 20000, 25000, 30000,
     35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000,
 ];
+const METRES_PER_DEGREE: f64 = 6371137.0 * PI / 180.0;
 pub fn with_max_min_distance(
     ordered_candidates: &[(f64, f64)],
     goal_count: usize,
@@ -77,7 +82,7 @@ pub fn get_some(
         for (i, &(lat, lng)) in ordered_candidates.iter().enumerate() {
             if already_in_map
                 .iter()
-                .any(|&(plat, plng)| within_m2(
+                .any(|&(plat, plng)| points_are_closer_than(
                     plat,
                     plng,
                     lat,
@@ -104,7 +109,7 @@ pub fn get_some(
         for i in cursor + 1..alive.len() {
             if alive[i] {
                 let (lat2, lng2) = ordered_candidates[i];
-                if within_m2(lat2, lng2, lat, lng, d_squared) {
+                if points_are_closer_than(lat2, lng2, lat, lng, d_squared) {
                     alive[i] = false;
                 }
             }
@@ -123,11 +128,29 @@ pub fn place_spaced(
     }
     let d = min_distance;
     let d_squared = d as f64 * d as f64;
-    let cell = d as f64 / M_PER_DEG;
-    let key_for = |lat: f64, lng: f64| pack((lng / cell).floor() as i32, (lat / cell).floor() as i32);
+    let mut max_abs_lat = 0.0f64;
+    for &(lat, _) in ordered_candidates {
+        let a = lat.abs();
+        if a > max_abs_lat {
+            max_abs_lat = a;
+        }
+    }
+    for &(lat, _) in already_in_map {
+        let a = lat.abs();
+        if a > max_abs_lat {
+            max_abs_lat = a;
+        }
+    }
+    let mut cos_ref = (max_abs_lat.min(89.0) * PI / 180.0).cos();
+    if cos_ref < 1e-6 {
+        cos_ref = 1e-6;
+    }
+    let cell_lat = d as f64 / METRES_PER_DEGREE;
+    let cell_lng = d as f64 / (METRES_PER_DEGREE * cos_ref);
     let mut grid: FxHashMap<i64, Vec<(f64, f64)>> = FxHashMap::default();
     for &(lat, lng) in already_in_map {
-        grid.entry(key_for(lat, lng)).or_insert_with(|| Vec::with_capacity(1)).push((lat, lng));
+        let key = pack((lng / cell_lng).floor() as i32, (lat / cell_lat).floor() as i32);
+        grid.entry(key).or_insert_with(|| Vec::with_capacity(1)).push((lat, lng));
     }
     let mut result: Vec<u32> = Vec::with_capacity(
         goal_count.min(ordered_candidates.len()),
@@ -136,21 +159,24 @@ pub fn place_spaced(
         if result.len() >= goal_count {
             break;
         }
-        let cover = mma_geo::covering_cells(lat, lng, d as f64, cell);
+        let cx = (lng / cell_lng).floor() as i32;
+        let cy = (lat / cell_lat).floor() as i32;
         let mut ok = true;
-        'scan: for (cx, cy) in cover.cells() {
-            if let Some(bucket) = grid.get(&pack(cx, cy)) {
-                for &(blat, blng) in bucket {
-                    if within_m2(blat, blng, lat, lng, d_squared) {
-                        ok = false;
-                        break 'scan;
+        'scan: for dx in -1..=1 {
+            for dy in -1..=1 {
+                if let Some(bucket) = grid.get(&pack(cx + dx, cy + dy)) {
+                    for &(blat, blng) in bucket {
+                        if points_are_closer_than(blat, blng, lat, lng, d_squared) {
+                            ok = false;
+                            break 'scan;
+                        }
                     }
                 }
             }
         }
         if ok {
             result.push(i as u32);
-            grid.entry(key_for(lat, lng))
+            grid.entry(pack(cx, cy))
                 .or_insert_with(|| Vec::with_capacity(1))
                 .push((lat, lng));
         }
@@ -177,8 +203,8 @@ fn seed_index(candidates: &[(f64, f64)], distances: &[i32], goal_count: usize) -
         }
     }
     let mid_lat_rad = (min_lat + max_lat) * 0.5 * PI / 180.0;
-    let height_m = (max_lat - min_lat) * M_PER_DEG;
-    let width_m = (max_lng - min_lng) * M_PER_DEG * mid_lat_rad.cos();
+    let height_m = (max_lat - min_lat) * METRES_PER_DEGREE;
+    let width_m = (max_lng - min_lng) * METRES_PER_DEGREE * mid_lat_rad.cos();
     let area = height_m.max(1.0) * width_m.max(1.0);
     let guess_distance = (area / goal_count.max(1) as f64).sqrt();
     nearest_index(distances, guess_distance)
@@ -198,7 +224,3 @@ fn nearest_index(sorted_ascending: &[i32], target: f64) -> usize {
 fn pack(cx: i32, cy: i32) -> i64 {
     ((cx as i64) << 32) | (cy as u32 as i64)
 }
-
-#[cfg(test)]
-#[path = "distribute.test.rs"]
-mod tests;
