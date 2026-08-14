@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { t, msg, initLocale, getLocale } from "@/lib/i18n";
 import { Trans } from "@/components/primitives/Trans";
-import { staleCatalogs, pseudo } from "../../scripts/i18n-extract.mjs";
+import { staleCatalogs, pseudo, auditUnwrapped, catalogTargets } from "../../scripts/i18n-extract.mjs";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -23,14 +23,14 @@ function renderToText(node: React.ReactNode): string {
 
 describe("i18n runtime", () => {
 	beforeEach(async () => {
-		// No catalog ships for "de", so this exercises the fallback path with German plural
+		// No catalog ships for "de-DE", so this exercises the fallback path with German plural
 		// and number rules -- the shape every untranslated locale starts in.
-		await initLocale("de");
+		await initLocale("de-DE");
 	});
 
 	it("falls back to the source string when the catalog has no entry", () => {
 		expect(t("Street View")).toBe("Street View");
-		expect(getLocale()).toBe("de");
+		expect(getLocale()).toBe("de-DE");
 	});
 
 	it("interpolates params and leaves unknown placeholders visible", () => {
@@ -101,6 +101,16 @@ const forms = (entry: string | Record<string, string>) =>
 describe("i18n catalogs", () => {
 	it("are regenerated from the current source tree", () => {
 		expect(staleCatalogs().map(([f]: [string]) => path.basename(f))).toEqual([]);
+	});
+
+	it("leave no user-visible string unwrapped", () => {
+		const unwrapped: string[] = [];
+		for (const [file, hits] of auditUnwrapped(catalogTargets().files)) {
+			for (const h of hits as { kind: string; text: string }[]) {
+				unwrapped.push(`${file}: [${h.kind}] ${JSON.stringify(h.text)}`);
+			}
+		}
+		expect(unwrapped).toEqual([]);
 	});
 
 	it("ship at least the base locale and the pseudolocale", () => {

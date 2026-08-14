@@ -131,6 +131,29 @@ export function extract(files) {
 	return messages;
 }
 
+/** Field and enum labels defined on the Rust side reach the UI through the generated
+ *  bindings, so extraction reads them from there -- the bindings stay the single source. */
+function bindingLabels() {
+	const file = path.join(SRC, "bindings.gen.ts");
+	const sf = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+	const labels = [];
+	for (const st of sf.statements) {
+		if (!ts.isVariableStatement(st)) continue;
+		for (const decl of st.declarationList.declarations) {
+			const name = decl.name.getText();
+			if (name !== "BUILTIN_FIELDS" && name !== "KNOWN_FIELDS") continue;
+			const init = ts.isAsExpression(decl.initializer)
+				? decl.initializer.expression
+				: decl.initializer;
+			for (const f of JSON.parse(init.getText(sf))) {
+				if (f.label) labels.push(f.label);
+				for (const [, label] of f.labels ?? []) labels.push(label);
+			}
+		}
+	}
+	return labels;
+}
+
 const ACCENTS = {
 	a: "å", b: "ƀ", c: "ç", d: "ð", e: "é", f: "ƒ", g: "ǧ", h: "ĥ", i: "î", j: "ĵ",
 	k: "ķ", l: "ĺ", m: "ɱ", n: "ñ", o: "ö", p: "ƥ", q: "ǫ", r: "ŕ", s: "ş", t: "ţ",
@@ -193,6 +216,9 @@ function looksLikeCopy(s) {
 	return /\s/.test(text) || /^[A-Z]/.test(text);
 }
 
+// Call channels whose first argument is user-visible copy.
+const COPY_CALLS = new Set(["toast"]);
+
 /** User-visible string literals that are NOT inside a t()/msg()/<Trans> call, per file. Drives the
  *  coverage gate: once a file reads zero here, it cannot silently regain a hardcoded string. */
 export function auditUnwrapped(files) {
@@ -212,22 +238,59 @@ export function auditUnwrapped(files) {
 		// `label: t("…")` or `msg("…")` -- all calls, not literals. So anything still matching
 		// below is genuinely unwrapped. Object properties are covered too: inline
 		// `options={[{ label: "Gen 1" }]}` arrays are display text the JSX walk alone would miss.
+
+		/** String leaves of a rendering expression: literals, ternary arms, `||`/`??`/`&&`
+		 *  fallbacks, concatenation, and template spans. */
+		const leaves = (expr, kind) => {
+			if (!expr) return;
+			if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+				if (looksLikeCopy(expr.text)) hits.push({ kind, text: expr.text, node: expr });
+			} else if (ts.isTemplateExpression(expr)) {
+				for (const part of [expr.head, ...expr.templateSpans.map((s) => s.literal)]) {
+					if (looksLikeCopy(part.text)) hits.push({ kind, text: part.text, node: part });
+				}
+			} else if (ts.isConditionalExpression(expr)) {
+				leaves(expr.whenTrue, kind);
+				leaves(expr.whenFalse, kind);
+			} else if (ts.isParenthesizedExpression(expr)) {
+				leaves(expr.expression, kind);
+			} else if (
+				ts.isBinaryExpression(expr) &&
+				["||", "??", "&&", "+"].includes(expr.operatorToken.getText())
+			) {
+				leaves(expr.left, kind);
+				leaves(expr.right, kind);
+			}
+		};
 		const visit = (n) => {
 			if (ts.isJsxText(n)) {
 				const text = n.text.replace(/\s+/g, " ").trim();
 				if (looksLikeCopy(text)) hits.push({ kind: "text", text, node: n });
+			} else if (
+				ts.isJsxExpression(n) &&
+				(ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))
+			) {
+				leaves(n.expression, "text");
 			} else if (ts.isJsxAttribute(n) && DISPLAY_PROPS.has(n.name.getText()) && n.initializer) {
 				const init = n.initializer;
-				const inner = ts.isJsxExpression(init) ? init.expression : init;
-				const text = literal(inner);
-				if (text !== null && looksLikeCopy(text)) hits.push({ kind: "attr", text, node: inner });
+				if (ts.isJsxExpression(init)) leaves(init.expression, "attr");
+				else leaves(init, "attr");
 			} else if (ts.isPropertyAssignment(n)) {
 				const key = n.name.getText().replace(/["']/g, "");
-				if (DISPLAY_PROPS.has(key)) {
-					const text = literal(n.initializer);
-					if (text !== null && looksLikeCopy(text))
-						hits.push({ kind: "prop", text, node: n.initializer });
-				}
+				if (DISPLAY_PROPS.has(key)) leaves(n.initializer, "prop");
+			} else if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				COPY_CALLS.has(n.expression.text)
+			) {
+				leaves(n.arguments[0], "call");
+			} else if (
+				(ts.isParameter(n) || ts.isBindingElement(n)) &&
+				n.initializer &&
+				ts.isIdentifier(n.name) &&
+				DISPLAY_PROPS.has(n.name.text)
+			) {
+				leaves(n.initializer, "prop");
 			}
 			ts.forEachChild(n, visit);
 		};
@@ -242,7 +305,9 @@ const serialise = (obj) => JSON.stringify(obj, null, "\t") + "\n";
 /** The catalogs the current source tree should produce, as `[path, contents]`. */
 export function catalogTargets() {
 	const files = sourceFiles(SRC);
-	const { en, xa } = build(extract(files));
+	const messages = extract(files);
+	for (const label of bindingLabels()) if (!messages.has(label)) messages.set(label, label);
+	const { en, xa } = build(messages);
 	return {
 		files,
 		count: Object.keys(en).length,
@@ -308,7 +373,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		const scoped = filter ? files.filter((f) => f.replace(/\\/g, "/").includes(filter)) : files;
 		const perFile = auditUnwrapped(scoped);
 		const total = [...perFile.values()].reduce((a, h) => a + h.length, 0);
-		const byKind = { text: 0, attr: 0, prop: 0 };
+		const byKind = { text: 0, attr: 0, prop: 0, call: 0 };
 		for (const [file, hits] of [...perFile].sort((a, b) => b[1].length - a[1].length)) {
 			console.log(String(hits.length).padStart(4), file);
 			for (const h of hits) {
@@ -317,7 +382,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 			}
 		}
 		console.log(`\n${total} unwrapped strings across ${perFile.size} of ${scoped.length} files`);
-		console.log(`  jsx text ${byKind.text} | attributes ${byKind.attr} | object props ${byKind.prop}`);
+		console.log(
+			`  jsx text ${byKind.text} | attributes ${byKind.attr} | object props ${byKind.prop} | calls ${byKind.call}`,
+		);
 	} else if (process.argv.includes("--check")) {
 		const stale = targets.filter(([file, want]) => {
 			const have = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
