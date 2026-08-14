@@ -1512,7 +1512,7 @@ type SidecarLine = {
     reqId: number;
     line: string;
 };
-/**  Same shape as [`SidecarLine`]; a distinct type because one type carries one channel. */
+/**  Same shape as [`SidecarLine`]; distinct so the two event channels can't be cross-wired. */
 type SidecarLog = {
     reqId: number;
     line: string;

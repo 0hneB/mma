@@ -1267,7 +1267,7 @@ export type SidecarLine = {
 	line: string,
 };
 
-/**  Same shape as [`SidecarLine`]; a distinct type because one type carries one channel. */
+/**  Same shape as [`SidecarLine`]; distinct so the two event channels can't be cross-wired. */
 export type SidecarLog = {
 	reqId: number,
 	line: string,

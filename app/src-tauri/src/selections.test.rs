@@ -1429,10 +1429,9 @@ fn duplicates_bitmask_matches_flattened_groups() {
     }
 }
 
-// The grid broad-phase must not miss longitude-separated pairs at high latitude
-// (the old fixed 3x3 walk did, above ~48N). Oracle: brute-force nearest-neighbor
-// haversine, with a 0.5m dead band around the threshold so equirect-vs-haversine
-// rounding on borderline pairs can't flake the assert.
+// The grid broad-phase must not miss longitude-separated pairs at high latitude.
+// Oracle: brute-force nearest-neighbor haversine, with a 0.5m dead band around the
+// threshold so equirect-vs-haversine rounding on borderline pairs can't flake the assert.
 #[test]
 fn duplicates_match_brute_force_at_high_latitude() {
     let mut rng = fastrand::Rng::with_seed(42);

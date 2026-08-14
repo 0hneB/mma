@@ -94,9 +94,8 @@ fn candidates_widen_at_high_latitude() {
     assert_eq!(query(&ix, 78.0, 20.0 + dlng, 200.0), vec![1, 2]);
 }
 
-// A covering radius far beyond the window a bounded walk could afford (the old
-// MAX_AXIS_CELLS clamp silently dropped candidates past ~102km) must still return
-// every point; huge windows scan the occupied cells instead.
+// A covering radius far beyond any bounded walk must still return every point;
+// huge windows scan the occupied cells instead.
 #[test]
 fn huge_radius_returns_far_candidates() {
     let mut ix = SpatialIndex::new();

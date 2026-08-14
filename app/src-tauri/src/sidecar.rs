@@ -51,7 +51,7 @@ pub(crate) struct SidecarLine {
     line: String,
 }
 
-/// Same shape as [`SidecarLine`]; a distinct type because one type carries one channel.
+/// Same shape as [`SidecarLine`]; distinct so the two event channels can't be cross-wired.
 #[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 #[tauri_specta(event_name = "sidecar-log")]

@@ -1806,10 +1806,7 @@ fn push_resolved(store: &mut Store, key: &str, color: [u8; 3], members: &[u32]) 
 }
 
 /// Generator, not an assertion. `cargo test emit_render_fixture -- --ignored` rewrites
-/// `app/test/unit/fixtures/render-buffer.bin`, the scene `cellManager.test.ts` parses:
-/// the writer here and the reader there then agree on one artifact instead of two
-/// restatements of the layout. Content is fixed (no clock, no ids from disk), so a
-/// regenerated file is byte-identical unless the format actually changed.
+/// `app/test/unit/fixtures/render-buffer.bin`, which `cellManager.test.ts` parses.
 ///
 /// Scene: 4 locations in 3 cells (d: id 3, r: id 2, u: ids 1 and 4), arrow style, and
 /// two selections -- "a" [255,0,0] over ids 1 and 4, "b" [0,0,255] over id 2.

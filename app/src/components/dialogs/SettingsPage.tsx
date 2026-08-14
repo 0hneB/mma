@@ -1243,8 +1243,7 @@ type Section = {
 	Body: () => ReactNode;
 };
 
-/** Editing surfaces first, then input, then app-level concerns. Section 0 is also the landing
- *  section, so the heaviest page (Keyboard) deliberately isn't it. */
+/** Editing surfaces first, then input, then app-level concerns. Section 0 is the landing section. */
 const SECTIONS: Section[] = [
 	{ id: "streetview", title: msg("Street View"), icon: mdiGoogleStreetView, Body: StreetViewBody },
 	{ id: "map", title: msg("Map"), icon: mdiMapOutline, Body: MapBody },

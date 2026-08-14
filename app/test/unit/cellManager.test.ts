@@ -419,13 +419,10 @@ describe("CellManager", () => {
 
 	// --- shared render-binary fixture ---
 	//
-	// `render-buffer.bin` is written by the Rust writer itself (location_store.test.rs,
-	// `emit_render_fixture`, an #[ignore]d generator), so this asserts the reader against
-	// the real producer rather than against a second hand-written statement of the layout.
+	// `render-buffer.bin` is written by the Rust generator (location_store.test.rs,
+	// `emit_render_fixture`), which also describes the scene. Asserting against the real
+	// producer keeps the layout stated once.
 	// Regenerate with: cargo test emit_render_fixture -- --ignored
-	//
-	// The scene: 4 arrow-style locations in 3 cells (d: id 3, r: id 2, u: ids 1 and 4),
-	// selection "a" [255,0,0] over ids 1 and 4, selection "b" [0,0,255] over id 2.
 	const fixturePath = fileURLToPath(new URL("./fixtures/render-buffer.bin", import.meta.url));
 
 	// Skips until the generator has been run, so a checkout without the artifact stays green.

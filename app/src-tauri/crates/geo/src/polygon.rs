@@ -167,9 +167,7 @@ pub fn anchor_bbox(bb: &mut [f64; 4]) {
 
 /// `bb` is `[min_lng, min_lat, max_lng, max_lat]` with `min_lng` anchored in [-180, 180)
 /// by `anchor_bbox`; `max_lng` may run past 180 when the box crosses the antimeridian.
-/// Requires a test longitude in [-180, 180]. Nothing normalizes longitude on ingest, so
-/// an import carrying lng 200 would miss here; fix that at the ingest boundary, not with
-/// a modulo on this hot path.
+/// Requires a test longitude in [-180, 180]; out-of-range longitudes miss.
 #[inline]
 pub fn in_bbox(lng: f64, lat: f64, bb: &[f64; 4]) -> bool {
     if lat < bb[1] || lat > bb[3] {

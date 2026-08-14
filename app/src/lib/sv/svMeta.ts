@@ -256,7 +256,7 @@ export async function fetchSvMetadata(
 	return resp.metadata.map(parseResult);
 }
 
-// 200 is GetMetadata's hard per-request cap; concurrency saturates the endpoint ~48.
+// 200 is GetMetadata's hard per-request cap.
 export const META_BATCH_SIZE = 200;
 export const META_CONCURRENCY = 48;
 

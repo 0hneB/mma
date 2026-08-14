@@ -120,7 +120,6 @@ describe("i18n catalogs", () => {
 	for (const { code, catalog } of locales.filter((l) => l.code !== "en")) {
 		// Deliberately strict in both directions. A missing key would render correct English via
 		// `t()`'s fallback, so this could be a warning -- but then translations rot silently.
-		// Failing the build is the forcing function that keeps every locale in step with the source.
 		it(`${code} covers every key in en with no orphans`, () => {
 			expect(Object.keys(catalog).sort()).toEqual(Object.keys(en.catalog).sort());
 		});
