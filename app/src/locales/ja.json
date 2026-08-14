@@ -1,17 +1,30 @@
 {
+	" -- {rate}/s": " -- {rate}/秒",
 	" in {seconds}s ({rate}/s)": " 所要 {seconds}s（{rate}/s）",
 	" — click a heading to assign \"{name}\"": " - 見出しをクリックして「{name}」を割り当て",
 	"\"{path}\" already exists in the tree": "「{path}」はツリー内に既に存在します",
 	"(deleted selection)": "（削除済みの選択）",
 	"(downloading...)": "(ダウンロード中...)",
+	"(latest)": "(最新)",
 	"(location time)": "（現地時間）",
+	"(missing map)": "(マップが見つかりません)",
+	"(no changes)": "(変更なし)",
+	"(pick one to arm)": "(選択して有効化)",
 	"(unnamed)": "（無名）",
 	"(will download)": "(ダウンロードされます)",
 	"({n} without country data)": "（国データなし {n} 件）",
 	"(~45MB, will download)": "(約45MB、ダウンロードされます)",
 	"+ click to select a country outline.": "+ クリックで国の境界を選択。",
 	", at least {distance}m apart": "、{distance}m 以上の間隔",
-	", {n} failed.": "、{n} 件失敗。",
+	", {n} failed": {
+		"other": "、{n} 件失敗"
+	},
+	", {n} failed.": {
+		"other": "、{n} 件失敗。"
+	},
+	", {n} tags": {
+		"other": "、タグ {n} 件"
+	},
 	"10 buckets": "10 バケット",
 	"15 buckets": "15 バケット",
 	"20 buckets": "20 バケット",
@@ -60,6 +73,7 @@
 	"Already in \"{name}\"": "「{name}」に既にあります",
 	"Also bound to \"{label}\" - click to jump there": "「{label}」にも割り当て済み - クリックで移動",
 	"Alt slow-down": "Alt で減速",
+	"Altitude": "標高",
 	"Analyzing…": "解析中…",
 	"Animate tags during drag reorder": "ドラッグ並べ替え中にタグをアニメーション",
 	"Any date": "任意の日付",
@@ -71,6 +85,9 @@
 	"Apply saved selection": "保存した選択を適用",
 	"Apply saved selection...": "保存した選択を適用...",
 	"Apply to": "適用先",
+	"Apply to {n} tags inside": {
+		"other": "内部の {n} 件のタグに適用"
+	},
 	"Arctic": "アークティック",
 	"Are you sure?": "本当によろしいですか？",
 	"Array": "配列",
@@ -87,18 +104,21 @@
 	"Back to map": "マップに戻る",
 	"Back to map list": "マップ一覧に戻る",
 	"Backwards": "後方",
+	"Bad cam": "Bad cam",
 	"Badcam": "Badcam",
 	"Badcam, but good coverage available": "Badcam だが良好なカバレッジあり",
 	"Between years": "年の範囲",
 	"Bidirectional sync with GeoGuessr maps": "GeoGuessr マップと双方向同期",
 	"Bidirectional sync with map-making.app maps": "map-making.app のマップと双方向同期",
 	"Binding": "割り当て",
+	"Blue-Red": "青-赤",
 	"Blueprint": "ブループリント",
 	"Border data missing -- downloading...": "境界データがありません -- ダウンロード中...",
 	"Borders": "境界線",
 	"Both sides added": "両側で追加",
 	"Both sides edited": "両側で編集",
 	"Bottom": "下",
+	"Bottom {k} by {field}": "{field} の下位 {k} 件",
 	"Bucket numeric values": "数値をバケットに分割",
 	"Bucket width...": "バケット幅...",
 	"Buckets": "バケット",
@@ -107,6 +127,7 @@
 	"Bypass GeoGuessr auto-panning for locations with 0 heading": "方位 0 の地点で GeoGuessr の自動パンを回避",
 	"CSV exports do {not} retain camera orientation and pano IDs.": "CSV エクスポートでは、カメラの向きと Pano ID は{not}。",
 	"Camera direction arrow": "カメラ方向の矢印",
+	"Camera type": "カメラの種類",
 	"Cancel": "キャンセル",
 	"Cancelled at {done} / {total}.": "{done} / {total} で中止しました。",
 	"Categorical": "カテゴリ",
@@ -136,12 +157,16 @@
 	"Clear metadata fields": "メタデータフィールドをクリア",
 	"Clear search": "検索をクリア",
 	"Clear time (whole day)": "時刻をクリア（終日）",
+	"Clear {n} fields": {
+		"other": "{n} 個のフィールドをクリア"
+	},
 	"Cleared fields from {n} locations.": {
 		"other": "{n} 件の地点のフィールドを消去しました。"
 	},
 	"Click to point north (N). Ctrl+click to cycle through linked panoramas.": "クリックで北を向きます（N）。Ctrl+クリックでリンク先パノラマを順に切り替えます。",
 	"Click to rebind": "クリックで再割り当て",
 	"Click to rename": "クリックで名前を変更",
+	"Click to sort. Ctrl+Click to select matching locations.": "クリックで並べ替え。Ctrl+クリックで一致する地点を選択。",
 	"Clipboard unavailable, downloaded instead": "クリップボードを利用できないため、ダウンロードしました",
 	"Close": "閉じる",
 	"Close doclink panel": "ドキュメントリンクパネルを閉じる",
@@ -173,6 +198,7 @@
 	"Constant or expression over fields (e.g. sunAzimuth, drivingDirection, lat).": "定数、またはフィールドを使った式です（例: sunAzimuth、drivingDirection、lat）。",
 	"Contains": "含む",
 	"Context menu": "コンテキストメニュー",
+	"Cool-Warm": "寒色-暖色",
 	"Coordinate / zoom display": "座標・ズーム表示",
 	"Coordinate locations": "座標の地点",
 	"Coordinates": "座標",
@@ -203,8 +229,10 @@
 	"Couldn't load:": "読み込めませんでした:",
 	"Couldn't relaunch automatically -- restart the app to apply.": "自動で再起動できませんでした -- 適用するにはアプリを再起動してください。",
 	"Count": "件数",
+	"Country code": "国コード",
 	"Country data": "国データ",
 	"Coverage": "カバレッジ",
+	"Coverage dates": "カバレッジの日付",
 	"Coverage line color": "カバレッジ線の色",
 	"Coverage settings": "カバレッジ設定",
 	"Coverage updated since last view": "前回表示以降にカバレッジが更新",
@@ -235,7 +263,9 @@
 	"Delete all duplicate locations, except the selected ones": "選択したもの以外の重複地点をすべて削除",
 	"Delete field": "フィールドを削除",
 	"Delete folder": "フォルダーを削除",
-	"Delete folder \"{name}\"? The {n} map(s) inside will be moved to the root.": "フォルダー「{name}」を削除しますか？内部の {n} 個のマップはルートに移動されます。",
+	"Delete folder \"{name}\"? The {n} maps inside will be moved to the root.": {
+		"other": "フォルダー「{name}」を削除しますか？中の {n} 件のマップはルートに移動されます。"
+	},
 	"Delete location": "地点を削除",
 	"Delete map": "マップを削除",
 	"Delete selected": "選択項目を削除",
@@ -245,7 +275,9 @@
 	"Delete style": "スタイルを削除",
 	"Delete this polygon": "このポリゴンを削除",
 	"Delete {field} and clear its values from every location? This cannot be undone.": "{field} を削除し、すべての地点から値を消去しますか？この操作は取り消せません。",
-	"Delete {n} polygons here": "ここにある {n} 個のポリゴンを削除",
+	"Delete {n} polygons here": {
+		"other": "ここにある {n} 個のポリゴンを削除"
+	},
 	"Delete “{name}”? This permanently removes the map and its history.": "「{name}」を削除しますか？マップとその履歴が完全に削除されます。",
 	"Deleted here": "ローカルで削除",
 	"Deleted on one side, edited on the other": "片側で削除、もう片側で編集",
@@ -257,6 +289,7 @@
 	"Direction:": "方向:",
 	"Disable": "無効化",
 	"Disallow unofficial coverage": "非公式カバレッジを許可しない",
+	"Disambiguate": "曖昧性解消",
 	"Disambiguate selections": "選択を判別",
 	"Discard": "破棄",
 	"Discord": "Discord",
@@ -299,6 +332,7 @@
 	"Draw a polygon selection": "ポリゴン選択を描画",
 	"Draw a rectangle selection": "矩形選択を描画",
 	"Draw where the generator has searched, as a growing overlay. Clears when you stop.": "ジェネレーターが探索した範囲をオーバーレイとして描画します。停止するとクリアされます。",
+	"Driving direction": "走行方向",
 	"Drop file to import": "ファイルをドロップしてインポート",
 	"Dupes ({distance}m)": "重複（{distance}m）",
 	"Duplicate location": "地点を複製",
@@ -333,6 +367,7 @@
 	"Error: {error}": "エラー: {error}",
 	"Every feature, explained. A recommended read and reference point.": "全機能の解説。通読にもリファレンスにも最適です。",
 	"Everything": "すべて",
+	"Exact date": "正確な日付",
 	"Exact date format": "正確な日付の形式",
 	"Exact date timezone": "正確な日付のタイムゾーン",
 	"Exact dates": "正確な日付",
@@ -429,6 +464,7 @@
 	"Got it": "了解",
 	"Gradient": "グラデーション",
 	"Grayscale": "グレースケール",
+	"Green-Yellow-Red": "緑-黄-赤",
 	"Group by": "グループ化",
 	"Grow": "拡大",
 	"Grow when zoomed in": "ズームインで拡大",
@@ -450,12 +486,17 @@
 	"Hotkey:": "ホットキー:",
 	"Hour of day": "時刻（時）",
 	"How long the minimap stays expanded after the pointer leaves it.": "ポインターが離れた後、ミニマップが展開されたままになる時間です。",
+	"ID": "ID",
+	"Image date": "画像の日付",
 	"Import": "インポート",
 	"Import Maps": "マップをインポート",
 	"Import and commit": "インポートしてコミット",
 	"Import complete": "インポート完了",
 	"Import file": "ファイルをインポート",
 	"Import maps": "マップをインポート",
+	"Import {n} maps": {
+		"other": "{n} 件のマップをインポート"
+	},
 	"Imported {imported}, {failed} failed": "{imported} 件をインポート、{failed} 件失敗",
 	"Importing maps...": "マップをインポート中...",
 	"Importing...": "インポート中...",
@@ -475,6 +516,7 @@
 	"Invalid number at position {position}": "位置 {position} の数値が無効です",
 	"Invert selection": "選択を反転",
 	"Invert: {selection}": "反転: {selection}",
+	"JSON editor": "JSONエディター",
 	"Join the Discord": "Discord に参加",
 	"Jump backward 100 metres ({key})": "100m 後退（{key}）",
 	"Jump backward 100m": "100m 後退",
@@ -497,6 +539,7 @@
 	"Last opened": "最終アクセス",
 	"Last synced": "最終同期",
 	"Last used opacity": "前回の不透明度",
+	"Latitude": "緯度",
 	"Layer opacity toggle": "レイヤー不透明度の切り替え",
 	"Layers": "レイヤー",
 	"Layers and map style": "レイヤーとマップスタイル",
@@ -521,6 +564,7 @@
 	"Locations per region:": "地域ごとの地点数:",
 	"Lock viewport direction": "ビューポートの向きを固定",
 	"Log viewed panos": "表示したパノラマを記録",
+	"Longitude": "経度",
 	"Look down": "下を見る",
 	"Look left": "左を見る",
 	"Look right": "右を見る",
@@ -538,6 +582,7 @@
 	"Map behaviour": "マップの挙動",
 	"Map data": "マップデータ",
 	"Map data will be stored in:": "マップデータの保存先:",
+	"Map generator": "マップジェネレーター",
 	"Map links (open in maps, copy link)": "マップリンク（マップで開く、リンクをコピー）",
 	"Map list": "マップ一覧",
 	"Map making settings": "マップ作成の設定",
@@ -645,6 +690,7 @@
 	"Off": "オフ",
 	"Off (too many values)": "オフ（値が多すぎます）",
 	"Official": "公式",
+	"On": "オン",
 	"On conflict, keep:": "競合時に保持:",
 	"Only allow locations that don't have other nearby coverage in timeframe.": "期間内に近隣の別カバレッジがない地点のみを許可します。",
 	"Only applies to Range grouping": "範囲グループ化にのみ適用されます",
@@ -681,6 +727,7 @@
 	"Pano ID broke": "Pano ID が無効",
 	"Pano ID locations": "Pano ID の地点",
 	"Pano look speed": "パノラマの視点移動速度",
+	"Pano type": "パノラマの種類",
 	"Panorama dot color": "パノラマドットの色",
 	"Panorama dots": "パノラマドット",
 	"Panorama download failed": "パノラマのダウンロードに失敗しました",
@@ -733,6 +780,7 @@
 		"other": "{n} 件の重複を除去しました"
 	},
 	"Pseudolocale": "疑似ロケール",
+	"Purple-Orange": "紫-橙",
 	"Pushed +{pc} ~{pu} -{pd} · Pulled +{lc} ~{lu} -{ld}": "プッシュ +{pc} ~{pu} -{pd}・プル +{lc} ~{lu} -{ld}",
 	"Q": "Q",
 	"Questions, feedback, and release news.": "質問、フィードバック、リリース情報。",
@@ -789,10 +837,16 @@
 	"Rename {from} to {to} across {n} locations. This cannot be undone.": {
 		"other": "{n} 件の地点で {from} を {to} に変更します。この操作は取り消せません。"
 	},
+	"Rename {n} tags inside": {
+		"other": "内部の {n} 件のタグの名前を変更"
+	},
 	"Rename:": "名前を変更:",
 	"Rendering (live)": "レンダリング（ライブ）",
 	"Replace": "置換",
 	"Replace with...": "置換後の文字列...",
+	"Replace {n} tags": {
+		"other": "{n} 件のタグを置換"
+	},
 	"Requires app v{version} or newer": "アプリ v{version} 以降が必要です",
 	"Reset": "リセット",
 	"Reset all to defaults": "すべてデフォルトに戻す",
@@ -839,7 +893,9 @@
 	"Save zoom levels": "ズームレベルを保存",
 	"Saved": "保存済み",
 	"Saved selection could not be resolved.": "保存した選択を解決できませんでした。",
-	"Saved {n} panoramas as ZIP": "{n} 件のパノラマを ZIP として保存しました",
+	"Saved {n} panoramas as ZIP": {
+		"other": "{n} 件のパノラマを ZIP として保存しました"
+	},
 	"Scanning file...": "ファイルをスキャン中...",
 	"Scanning files...": "ファイルをスキャン中...",
 	"Score:": "スコア:",
@@ -960,6 +1016,7 @@
 	"Style name": "スタイル名",
 	"Style:": "スタイル:",
 	"Subdivision": "行政区画",
+	"Subdivision borders are off -- enable them in Settings": "行政区画の境界がオフです -- 設定で有効にしてください",
 	"Subdivision borders missing - downloading...": "行政区画の境界がありません - ダウンロード中...",
 	"Subdivision data": "行政区画データ",
 	"Suggestions shown": "表示する候補数",
@@ -968,8 +1025,10 @@
 	"Sync continuously while this map is open": "このマップを開いている間、継続的に同期",
 	"Sync now": "今すぐ同期",
 	"Syncing...": "同期中...",
+	"Table omitted - open the doc to view it.": "表は省略されています - ドキュメントを開いて確認してください。",
 	"Tag all imported locations": "インポートした地点すべてにタグ付け",
 	"Tag as:": "タグ名:",
+	"Tag count": "タグ数",
 	"Tag gap": "タグの間隔",
 	"Tag name...": "タグ名...",
 	"Tag renames cannot be undone.": "タグ名の変更は取り消せません。",
@@ -997,6 +1056,7 @@
 	"Tile Y": "タイル Y",
 	"Time of day:": "時間帯:",
 	"Time:": "時刻:",
+	"Timezone": "タイムゾーン",
 	"To": "終了",
 	"To back of car": "車の後方へ",
 	"To front of car": "車の前方へ",
@@ -1014,6 +1074,7 @@
 	"Toggle stats for nerds": "詳細統計を切り替え",
 	"Toggle whole document": "ドキュメント全体を切り替え",
 	"Top": "上",
+	"Top {k} by {field}": "{field} の上位 {k} 件",
 	"Total": "合計",
 	"Total:": "合計:",
 	"Translations are machine-generated and were not written by native speakers. Wording may be imperfect.": "翻訳は機械生成であり、ネイティブスピーカーによるものではありません。表現が不自然な場合があります。",
@@ -1038,6 +1099,7 @@
 	"Uninstall": "アンインストール",
 	"Union": "和集合",
 	"Union (OR) selections": "選択を和集合（OR）",
+	"Unknown": "不明",
 	"Unknown function \"{name}\"": "不明な関数「{name}」",
 	"Unlink": "リンク解除",
 	"Unnamed polygon": "名前のないポリゴン",
@@ -1059,11 +1121,13 @@
 	"Updates": "更新",
 	"Updates haven't been checked yet.": "まだ更新を確認していません。",
 	"Upload": "アップロード",
+	"Uploader": "投稿者",
 	"Use Pano ID locations by default": "既定で Pano ID の地点を使用",
 	"Use blobby layer while zoomed out": "ズームアウト時にブロブレイヤーを使用",
 	"Use latest timeline coverage": "最新のタイムラインカバレッジを使用",
 	"Use local · delete remote-only pins": "ローカルを使用・リモートのみのピンを削除",
 	"Use remote · delete local-only pins": "リモートを使用・ローカルのみのピンを削除",
+	"User uploaded": "ユーザー投稿",
 	"VIEWPORT LOCK": "ビューポート固定",
 	"Vali": "Vali",
 	"Valid location": "有効な地点",
@@ -1105,6 +1169,10 @@
 	"Zoom out": "ズームアウト",
 	"Zoom to bounds": "範囲にズーム",
 	"Zoom to selected locations": "選択した地点にズーム",
+	"across {n} countries": {
+		"other": "{n} か国にわたる"
+	},
+	"and": "～",
 	"between": "の範囲内",
 	"between (any date)": "の範囲内（任意の日付）",
 	"between (any year)": "の範囲内（任意の年）",
@@ -1113,29 +1181,57 @@
 	"does not contain": "を含まない",
 	"does not have": "を持たない",
 	"drop map here to move out of folder": "ここにドロップするとフォルダーの外に移動",
+	"duplicate": "重複",
+	"e.g. 45 or mod(sunAzimuth + 180, 360)": "例: 45 または mod(sunAzimuth + 180, 360)",
 	"e.g. Europe/France (blank = top level)": "例: Europe/France（空欄 = 最上位）",
 	"field name": "フィールド名",
 	"from each of {n} selections": "{n} 個の選択それぞれから",
 	"has": "を持つ",
 	"has {field}": "{field} あり",
 	"here": "こちら",
+	"info": "情報",
 	"just now": "たった今",
+	"label": "ラベル",
+	"length !=": "長さ !=",
+	"length <": "長さ <",
+	"length <=": "長さ <=",
+	"length =": "長さ =",
+	"length >": "長さ >",
+	"length >=": "長さ >=",
+	"length between": "長さの範囲",
 	"low data": "データ不足",
 	"missing {field}": "{field} なし",
 	"never": "なし",
+	"no": "いいえ",
 	"no data": "データなし",
 	"not": "保持されません",
+	"of {total}": "/ {total}",
+	"opened {when}": "{when}に開きました",
 	"paste API key": "API キーを貼り付け",
 	"presence differs across groups (coverage {score})": "グループ間で有無が異なります（カバレッジ {score}）",
+	"to": "～",
+	"unofficial": "非公式",
+	"value": "値",
 	"v{version} - download update": "v{version} - 更新をダウンロード",
+	"yes": "はい",
 	"zoom {zoom}": "ズーム {zoom}",
 	"{combo} conflicts with \"{label}\" (Alt is the slow modifier for navigation)": "{combo} は「{label}」と競合します（Alt はナビゲーションの低速修飾キーです）",
 	"{combo} is bound to {labels}": "{combo} は {labels} に割り当て済み",
+	"{count} locations": {
+		"other": "{count} 件の地点"
+	},
+	"{count} reviewed": "{count} 件確認済み",
+	"{count} selected": "{count} 件選択中",
+	"{done} / {total} ({pct}%)": "{done} / {total} ({pct}%)",
 	"{done} / {total} reviewed ({pct}%)": "{done} / {total} レビュー済み（{pct}%）",
 	"{field} {op} {value}": "{field} {op} {value}",
 	"{field}: local {local} · remote {remote}": "{field}: ローカル {local}・リモート {remote}",
 	"{field}’s values": "{field} の値",
+	"{label} failed": "{label} 失敗",
 	"{maps} maps · {locations} locations": "{maps} マップ・{locations} 地点",
+	"{name}() takes {n} arguments": {
+		"other": "{name}() は {n} 個の引数を取ります"
+	},
 	"{n} conflicts held for review": {
 		"other": "{n} 件の競合をレビュー用に保留"
 	},
@@ -1147,15 +1243,34 @@
 		"other": "{distance}m 以内に {n} グループ。"
 	},
 	"{n} groups. Too many to color (max {max}).": "{n} グループ。色分けするには多すぎます（最大 {max}）。",
+	"{n} loc": {
+		"other": "{n} 地点"
+	},
 	"{n} locations": {
 		"other": "{n} 地点"
 	},
 	"{n} locations not pinned to a pano ID.": {
 		"other": "{n} 件の地点が Pano ID にピン留めされていません。"
 	},
+	"{n} maps": {
+		"other": "{n} 件のマップ"
+	},
+	"{n} maps assigned to folders": {
+		"other": "{n} 件のマップがフォルダーに割り当て済み"
+	},
+	"{n} not found locally": "{n} 件がローカルに見つかりません",
 	"{n} skipped (missing source fields).": "{n} 件をスキップしました（ソースフィールドがありません）。",
 	"{n} tags will be affected:": {
 		"other": "{n} 件のタグが影響を受けます:"
+	},
+	"{n} updated": {
+		"other": "{n} 件更新"
+	},
+	"{n} values": {
+		"other": "{n} 件の値"
+	},
+	"{n} warnings": {
+		"other": "{n} 件の警告"
 	},
 	"{n} without pano ID will be resolved from coordinates.": {
 		"other": "Pano ID のない {n} 件は座標から解決されます。"
