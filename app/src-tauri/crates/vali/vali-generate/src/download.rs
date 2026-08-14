@@ -365,7 +365,7 @@ fn download_file(
 ) -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(folder)?;
     let dest = folder.join(downloaded_file_name(r2));
-    let url = format!("{BASE_URL}/{bucket}/{}", r2.key);
+    let url = format!("{BASE_URL}/{bucket}/{}", encode_key(&r2.key));
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 1..=3u32 {
         match try_download(agent, &url) {
@@ -590,6 +590,31 @@ fn escape_dotnet(s: &str) -> String {
         }
     }
     out
+}
+/// Object keys carry subdivision names verbatim ("AU/AU+Jervis Bay Territory.zip"), so they hold
+/// spaces and non-ASCII. Encode to RFC 3986 `pchar`, keeping `/` as separator and `+` literal:
+/// the bucket 404s form-style `+`, so there it is a real path character, not an encoded space.
+fn encode_key(key: &str) -> String {
+    const PATH: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+        .remove(b'-')
+        .remove(b'.')
+        .remove(b'_')
+        .remove(b'~')
+        .remove(b'!')
+        .remove(b'$')
+        .remove(b'&')
+        .remove(b'\'')
+        .remove(b'(')
+        .remove(b')')
+        .remove(b'*')
+        .remove(b'+')
+        .remove(b',')
+        .remove(b';')
+        .remove(b'=')
+        .remove(b':')
+        .remove(b'@')
+        .remove(b'/');
+    percent_encoding::utf8_percent_encode(key, PATH).to_string()
 }
 /// What `download_file` names a fetched object on disk.
 fn downloaded_file_name(r2: &R2Object) -> String {

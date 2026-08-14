@@ -1,5 +1,6 @@
 use super::{
-    append_update_file, downloaded_country_codes, outdated, MetadataFile, NetDateTime, R2Object,
+    append_update_file, downloaded_country_codes, encode_key, outdated, MetadataFile, NetDateTime,
+    R2Object,
 };
 
 fn time(s: &str) -> NetDateTime {
@@ -60,6 +61,28 @@ fn matching_ignores_the_key_prefix_and_one_extension() {
     assert!(outdated(&r, &[local("paris", "2026-06-01T00:00:00Z")]).is_empty());
     assert!(outdated(&r, &[local("paris.bin", "2026-06-01T00:00:00Z")]).is_empty());
     assert_eq!(outdated(&r, &[local("lyon", "2026-06-01T00:00:00Z")]).len(), 1);
+}
+
+#[test]
+fn keys_with_spaces_and_accents_become_valid_uris() {
+    assert_eq!(
+        encode_key("AU/AU+Jervis Bay Territory.zip"),
+        "AU/AU+Jervis%20Bay%20Territory.zip"
+    );
+    assert_eq!(encode_key("FR/FR+Île-de-France.zip"), "FR/FR+%C3%8Ele-de-France.zip");
+}
+
+#[test]
+fn encoding_leaves_ordinary_keys_untouched() {
+    // Every key that worked before must still produce the byte-identical URL.
+    for key in [
+        "FR/FR+Paris.bin",
+        "US/US+New_York.zip",
+        "GB/2026-01-01-GB+Wales.bin",
+        "JP/JP+Tokyo(1).zip",
+    ] {
+        assert_eq!(encode_key(key), key);
+    }
 }
 
 /// Deltas are fetched concurrently but must land in listing order, since several can target

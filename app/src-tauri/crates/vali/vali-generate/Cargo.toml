@@ -11,6 +11,7 @@ bzip2 = "0.6.1"
 fastrand = "2"
 geojson = "0.24"
 mma-geo = { path = "../../geo" }
+percent-encoding = "2.3"
 rayon = "1"
 rust_decimal = "1"
 rustc-hash = "2"
