@@ -915,7 +915,11 @@ impl Store {
     }
 
     /// Adjust tag counts by `delta` (+1 for adds, -1 for removes). O(L * T) where L = locs, T = avg tags per loc.
-    pub(crate) fn update_tag_counts(&mut self, locs: &[Location], delta: isize) {
+    pub(crate) fn update_tag_counts<'a>(
+        &mut self,
+        locs: impl IntoIterator<Item = &'a Location>,
+        delta: isize,
+    ) {
         // Pre-aggregate membership changes per tag for bulk bitmap operations.
         let mut members: HashMap<u32, Vec<u32>> = HashMap::new();
         for loc in locs {
@@ -973,11 +977,11 @@ impl Store {
     }
 
     /// Increment tag counts for all tags referenced by `locs`.
-    pub(crate) fn add_tag_counts(&mut self, locs: &[Location]) {
+    pub(crate) fn add_tag_counts<'a>(&mut self, locs: impl IntoIterator<Item = &'a Location>) {
         self.update_tag_counts(locs, 1);
     }
     /// Decrement tag counts for all tags referenced by `locs` (saturating at zero).
-    pub(crate) fn remove_tag_counts(&mut self, locs: &[Location]) {
+    pub(crate) fn remove_tag_counts<'a>(&mut self, locs: impl IntoIterator<Item = &'a Location>) {
         self.update_tag_counts(locs, -1);
     }
 
@@ -1611,12 +1615,10 @@ impl Store {
 
     /// Apply a partial patch to an existing location. Reads the current state, merges
     /// non-None fields from the patch, and writes back to overlay_adds or overlay_patches.
-    fn overlay_update(&mut self, id: u32, patch: &LocationPatch) {
-        let mut loc = match self.get_loc_by_id(id) {
-            Some(l) => l,
-            None => return,
-        };
-        let old_coords = (loc.lat, loc.lng);
+    fn overlay_update(&mut self, id: u32, patch: &LocationPatch) -> Option<(Location, Location)> {
+        let old = self.get_loc_by_id(id)?;
+        let mut loc = old.clone();
+        let old_coords = (old.lat, old.lng);
         apply_patch!(loc, patch; lat, lng, heading, pitch, zoom, created_at, modified_at);
         apply_patch!(clone loc, patch; pano_id, tags);
         if let Some(v) = patch.flags {
@@ -1639,7 +1641,8 @@ impl Store {
                 }
             };
         }
-        self.overlay_write(id, loc, old_coords);
+        self.overlay_write(id, loc.clone(), old_coords);
+        Some((old, loc))
     }
 
     /// Write an already-computed Location into the overlay (adds/patches), given the id
@@ -2371,35 +2374,30 @@ fn apply_updates(
     let mut updated: Vec<(Location, Location)> = Vec::with_capacity(updates.len());
     let any_tags = updates.iter().any(|u| u.patch.tags.is_some());
     let any_extras = updates.iter().any(|u| u.patch.extra.is_some());
-    // TODO: overlay_update re-fetches internally; returning (old, new) would drop 2 of the
-    // 3 lookups+clones per id, and the any_tags/undo blocks below re-clone the pairs again.
-    // Only matters for 100k+ bulk edits.
     for u in updates {
-        if let Some(old) = store.get_loc_by_id(u.id) {
-            store.overlay_update(u.id, &u.patch);
-            let new_loc = store.get_loc_by_id(u.id).unwrap();
-            updated.push((old, new_loc));
+        if let Some(pair) = store.overlay_update(u.id, &u.patch) {
+            updated.push(pair);
         }
     }
     if any_tags {
-        let old_locs: Vec<Location> = updated.iter().map(|(o, _)| o.clone()).collect();
-        let new_locs: Vec<Location> = updated.iter().map(|(_, n)| n.clone()).collect();
-        store.remove_tag_counts(&old_locs);
-        store.add_tag_counts(&new_locs);
+        store.remove_tag_counts(updated.iter().map(|(o, _)| o));
+        store.add_tag_counts(updated.iter().map(|(_, n)| n));
     }
     if record_undo {
         store.record_update_undo(&updated);
     }
+    let extras: Vec<crate::types::RawExtra> = if any_extras {
+        updated.iter().filter_map(|(_, n)| n.extra.clone()).collect()
+    } else {
+        Vec::new()
+    };
     let mut result = store.finish_mutation(ChangeSet {
-        updated: updated.clone(),
+        updated,
         ..Default::default()
     });
     if any_extras {
-        let extras: Vec<&crate::types::RawExtra> = updated
-            .iter()
-            .filter_map(|(_, n)| n.extra.as_ref())
-            .collect();
-        auto_register_extras(store, &extras, &mut result);
+        let refs: Vec<&crate::types::RawExtra> = extras.iter().collect();
+        auto_register_extras(store, &refs, &mut result);
     }
     result
 }
