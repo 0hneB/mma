@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { events } from "@/bindings.gen";
-import type { ValiProgress } from "@/bindings.gen";
+import type { ValiCountryStatus, ValiProgress } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { Button } from "@/components/primitives/Button";
@@ -79,12 +79,41 @@ function fmtBytes(bytes: number): string {
 	return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
 }
 
+const NAMED_IN_SUMMARY = 3;
+
+/** Names the out-of-date countries, keeping the sentence short once there are more than a
+ *  few. Empty string for "nothing stale" so callers can render it unconditionally. */
+export function staleSummary(stale: ValiCountryStatus[]): string {
+	if (stale.length === 0) return "";
+	const names = stale.map((s) => countryName(s.countryCode));
+	const countries = names.slice(0, NAMED_IN_SUMMARY).join(", ");
+	const rest = names.length - NAMED_IN_SUMMARY;
+	if (rest > 0) {
+		return t(
+			{
+				one: "Data for {countries} and {n} other is out of date.",
+				other: "Data for {countries} and {n} others is out of date.",
+			},
+			{ countries, n: rest },
+		);
+	}
+	return t("Data for {countries} is out of date.", { countries });
+}
+
 export function ValiDownloadDialog({
 	open,
 	onOpenChange,
 	running,
 	onRunningChange,
-}: DialogProps & { running: boolean; onRunningChange: (running: boolean) => void }) {
+	stale,
+	onDownloaded,
+}: DialogProps & {
+	running: boolean;
+	onRunningChange: (running: boolean) => void;
+	/** `null` while unknown -- the check has not run, or it failed (offline). */
+	stale: ValiCountryStatus[] | null;
+	onDownloaded: () => void;
+}) {
 	const [countries, setCountries] = useState<string[]>([]);
 	const [ready, setReady] = useState(false);
 	const [query, setQuery] = useState("");
@@ -152,6 +181,7 @@ export function ValiDownloadDialog({
 							{ n: filesRef.current },
 						),
 			);
+			onDownloaded();
 		} catch (e) {
 			const message = String(e);
 			if (/cancel/i.test(message)) setResult(t("Cancelled."));
@@ -168,6 +198,10 @@ export function ValiDownloadDialog({
 	return (
 		<Dialog open={open && ready} onOpenChange={running ? () => {} : onOpenChange}>
 			<DialogContent title={t("Download coverage data")} className="vali-download">
+				{stale && stale.length > 0 && (
+					<div className="vali-download__stale">{staleSummary(stale)}</div>
+				)}
+
 				<div className="vali-download__label">{t("Country or region")}</div>
 				<SuggestInput<Target>
 					value={query}

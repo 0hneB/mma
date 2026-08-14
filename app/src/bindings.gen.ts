@@ -388,6 +388,12 @@ export const commands = {
 	 *  when no country is given. Display names are the caller's job.
 	 */
 	valiCountries: () => __TAURI_INVOKE<string[]>("vali_countries"),
+	/**
+	 *  Countries whose downloaded coverage data is older than the remote copy. Object metadata
+	 *  only -- nothing is fetched. Errors while offline, which callers should read as "unknown"
+	 *  rather than "up to date".
+	 */
+	valiDataStatus: () => __TAURI_INVOKE<ValiCountryStatus[]>("vali_data_status").then((v) => (v.map(i=>i) as typeof v)),
 };
 
 /** Events */
@@ -1416,6 +1422,13 @@ export type TagPatch = {
 export type Update<P> = {
 	id: number,
 	patch: P,
+};
+
+/**  How far behind one country's downloaded coverage data is. */
+export type ValiCountryStatus = {
+	countryCode: string,
+	files: number,
+	bytes: number,
 };
 
 

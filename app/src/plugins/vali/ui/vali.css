@@ -11,9 +11,33 @@
 	border: none;
 }
 
+.vali-sidebar__download {
+	position: relative;
+}
+
+.vali-sidebar__badge {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--action);
+	pointer-events: none;
+}
+
 .vali-download {
 	width: 440px;
 	max-width: 100%;
+}
+
+.vali-download__stale {
+	margin-bottom: 16px;
+	padding: 10px 12px;
+	border-radius: var(--radius-2);
+	background: color-mix(in srgb, var(--action) 12%, transparent);
+	font-size: 13px;
+	line-height: 1.4;
 }
 
 .vali-download__label {

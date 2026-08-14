@@ -29,10 +29,26 @@ struct MetadataFile {
     last_write_time_utc: NetDateTime,
 }
 fn agent() -> ureq::Agent {
+    agent_with(Duration::from_secs(600))
+}
+fn agent_with(timeout: Duration) -> ureq::Agent {
     ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(600)))
+        .timeout_global(Some(timeout))
         .build()
         .into()
+}
+/// Remote objects that are missing locally or whose upload is newer than the local copy --
+/// the one rule for "out of date", shared by the download passes and the staleness check.
+fn outdated<'a>(remote: &'a [R2Object], local: &[MetadataFile]) -> Vec<&'a R2Object> {
+    remote
+        .iter()
+        .filter(|r2| {
+            local
+                .iter()
+                .find(|f| file_stem(&f.name) == key_stem(&r2.key))
+                .is_none_or(|f| f.last_write_time_utc < r2.uploaded)
+        })
+        .collect()
 }
 pub fn download_files(
     root: &Path,
@@ -106,15 +122,11 @@ fn run_operation(
     };
     let files_from_r2 = list_files(agent, cc, bucket)?;
     let local_files = existing_files_in_metadata(&country_folder);
-    let files_to_download: Vec<&R2Object> = files_from_r2
-        .iter()
-        .filter(|r2| {
-            let local = local_files
-                .iter()
-                .find(|f| file_stem(&f.name) == key_stem(&r2.key));
-            force || local.is_none_or(|f| f.last_write_time_utc < r2.uploaded)
-        })
-        .collect();
+    let files_to_download: Vec<&R2Object> = if force {
+        files_from_r2.iter().collect()
+    } else {
+        outdated(&files_from_r2, &local_files)
+    };
     let files_to_delete: Vec<&MetadataFile> = local_files
         .iter()
         .filter(|f| {
@@ -190,15 +202,7 @@ pub fn ensure_files_downloaded(
     let agent = agent();
     let files_from_r2 = list_files(&agent, cc, COUNTRIES_BUCKET)?;
     let local_files = existing_files_in_metadata(&country_folder);
-    let files_to_download: Vec<&R2Object> = files_from_r2
-        .iter()
-        .filter(|r2| {
-            let local = local_files
-                .iter()
-                .find(|f| file_stem(&f.name) == key_stem(&r2.key));
-            local.is_none_or(|f| f.last_write_time_utc < r2.uploaded)
-        })
-        .collect();
+    let files_to_download = outdated(&files_from_r2, &local_files);
     if !files_to_download.is_empty() {
         emit(
             progress,
@@ -230,6 +234,67 @@ pub fn ensure_files_downloaded(
             })?;
     }
     Ok(())
+}
+/// How far behind one country's on-disk data is.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CountryStatus {
+    pub country_code: String,
+    pub files: usize,
+    pub bytes: i64,
+}
+/// Countries with data on disk whose remote copy has moved on. Lists object metadata only --
+/// no file bodies are fetched, so this is cheap enough to run unprompted. Countries that were
+/// never downloaded are not reported: nothing is stale about data you don't have.
+pub fn stale_countries(
+    root: &Path,
+    timeout: Duration,
+    cancel: Option<&CancelToken>,
+) -> anyhow::Result<Vec<CountryStatus>> {
+    let codes = downloaded_country_codes(root);
+    if codes.is_empty() {
+        return Ok(Vec::new());
+    }
+    let agent = agent_with(timeout);
+    let found = std::sync::Mutex::new(Vec::new());
+    run_limited(
+        &codes,
+        10,
+        cancel,
+        |cc| {
+            let remote = list_files(&agent, cc, COUNTRIES_BUCKET)?;
+            let local = existing_files_in_metadata(&root.join(cc));
+            let stale = outdated(&remote, &local);
+            if !stale.is_empty() {
+                found
+                    .lock()
+                    .unwrap()
+                    .push(CountryStatus {
+                        country_code: cc.clone(),
+                        files: stale.len(),
+                        bytes: stale.iter().filter_map(|f| f.size).sum(),
+                    });
+            }
+            Ok(())
+        },
+    )?;
+    let mut out = found.into_inner().unwrap();
+    out.sort_by(|a, b| a.country_code.cmp(&b.country_code));
+    Ok(out)
+}
+/// Country folders holding at least one data file, keyed by Vali's own country list so a
+/// stray directory can't turn into a bogus listing request.
+fn downloaded_country_codes(root: &Path) -> Vec<String> {
+    crate::names::country_names()
+        .iter()
+        .map(|(c, _)| c.to_string())
+        .filter(|cc| {
+            std::fs::read_dir(root.join(cc))
+                .map(|mut e| e.any(|f| {
+                    f.is_ok_and(|f| f.path().extension().is_some_and(|x| x == "bin"))
+                }))
+                .unwrap_or(false)
+        })
+        .collect()
 }
 fn download_data_files(
     agent: &ureq::Agent,
@@ -521,6 +586,9 @@ fn file_stem(name: &str) -> &str {
 fn remove_date_prefix(name: &str) -> &str {
     name.trim_start_matches(|c: char| c.is_ascii_digit() || c == '-')
 }
+#[cfg(test)]
+#[path = "download.test.rs"]
+mod tests;
 fn ensure_download_folder_writable(root: &Path) -> anyhow::Result<()> {
     std::fs::create_dir_all(root).ok();
     let probe = root.join(".vali-write-probe");

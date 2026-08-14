@@ -238,6 +238,7 @@
 	"Country data": "国家数据",
 	"Country or region": "国家或地区",
 	"Coverage": "覆盖",
+	"Coverage data is out of date": "覆盖数据已过期",
 	"Coverage dates": "覆盖日期",
 	"Coverage line color": "覆盖线颜色",
 	"Coverage settings": "覆盖设置",
@@ -250,6 +251,10 @@
 	"Custom CSS": "自定义 CSS",
 	"Cycle movement mode": "循环移动模式",
 	"Data": "数据",
+	"Data for {countries} and {n} others is out of date.": {
+		"other": "{countries} 和其他 {n} 个国家/地区的数据已过期。"
+	},
+	"Data for {countries} is out of date.": "{countries} 的数据已过期。",
 	"Date": "日期",
 	"Date + time": "日期 + 时间",
 	"Date created": "创建日期",

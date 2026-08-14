@@ -252,6 +252,7 @@
 	"Country data": "Données de pays",
 	"Country or region": "Pays ou région",
 	"Coverage": "Couverture",
+	"Coverage data is out of date": "Les données de couverture sont obsolètes",
 	"Coverage dates": "Dates de couverture",
 	"Coverage line color": "Couleur des lignes de couverture",
 	"Coverage settings": "Paramètres de couverture",
@@ -264,6 +265,12 @@
 	"Custom CSS": "CSS personnalisé",
 	"Cycle movement mode": "Changer de mode de déplacement",
 	"Data": "Données",
+	"Data for {countries} and {n} others is out of date.": {
+		"one": "Les données de {countries} et {n} autre pays sont obsolètes.",
+		"many": "Les données de {countries} et {n} autres pays sont obsolètes.",
+		"other": "Les données de {countries} et {n} autres pays sont obsolètes."
+	},
+	"Data for {countries} is out of date.": "Les données de {countries} sont obsolètes.",
 	"Date": "Date",
 	"Date + time": "Date + heure",
 	"Date created": "Date de création",

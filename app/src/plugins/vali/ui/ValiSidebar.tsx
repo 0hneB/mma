@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { mdiCloudDownloadOutline } from "@mdi/js";
 import { cmd } from "@/lib/commands";
-import type { ValiLocation } from "@/bindings.gen";
+import type { ValiCountryStatus, ValiLocation } from "@/bindings.gen";
 import { createLocation, LocationFlag } from "@/types";
 import { createTags } from "@/store/useMapStore";
 import { Sidebar } from "@/components/primitives/Sidebar";
@@ -62,6 +62,8 @@ export function valiMessageAction(
 export function ValiSidebar({ onClose }: { onClose: () => void }) {
 	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const [downloadOpen, setDownloadOpen] = useState(false);
+	// null = unknown: the check hasn't answered yet, or it failed. Never flag on a guess.
+	const [stale, setStale] = useState<ValiCountryStatus[] | null>(null);
 	// The ref answers the message handler synchronously; the state only drives the button.
 	const busyRef = useRef<ValiBusy>(null);
 	const [busy, setBusyState] = useState<ValiBusy>(null);
@@ -103,6 +105,21 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 		return () => window.removeEventListener("message", onMessage);
 	}, []);
 
+	// Metadata-only, so it costs a couple of listing requests. Offline leaves it unknown.
+	const checkStale = useCallback(() => {
+		cmd
+			.valiDataStatus()
+			.then(setStale)
+			.catch((e) => {
+				log.debug("[vali] data status unavailable:", e);
+				setStale(null);
+			});
+	}, []);
+
+	useEffect(checkStale, [checkStale]);
+
+	const outdated = (stale?.length ?? 0) > 0;
+
 	return (
 		<Sidebar
 			title={t("Vali")}
@@ -110,15 +127,19 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 			className="vali-sidebar"
 			flush
 			actions={
-				<Tooltip content={t("Download coverage data")} side="bottom">
+				<Tooltip
+					content={outdated ? t("Coverage data is out of date") : t("Download coverage data")}
+					side="bottom"
+				>
 					<button
-						className="icon-button"
+						className="icon-button vali-sidebar__download"
 						type="button"
 						aria-label={t("Download coverage data")}
 						disabled={busy === "generate"}
 						onClick={() => setDownloadOpen(true)}
 					>
 						<Icon path={mdiCloudDownloadOutline} />
+						{outdated && <span className="vali-sidebar__badge" />}
 					</button>
 				</Tooltip>
 			}
@@ -131,6 +152,8 @@ export function ValiSidebar({ onClose }: { onClose: () => void }) {
 				onOpenChange={setDownloadOpen}
 				running={busy === "download"}
 				onRunningChange={(running) => setBusy(running ? "download" : null)}
+				stale={stale}
+				onDownloaded={checkStale}
 			/>
 		</Sidebar>
 	);

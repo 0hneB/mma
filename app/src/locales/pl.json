@@ -259,6 +259,7 @@
 	"Country data": "Dane krajów",
 	"Country or region": "Kraj lub region",
 	"Coverage": "Pokrycie",
+	"Coverage data is out of date": "Dane o pokryciu są nieaktualne",
 	"Coverage dates": "Daty pokrycia",
 	"Coverage line color": "Kolor linii pokrycia",
 	"Coverage settings": "Ustawienia pokrycia",
@@ -271,6 +272,13 @@
 	"Custom CSS": "Własny CSS",
 	"Cycle movement mode": "Przełącz tryb poruszania",
 	"Data": "Dane",
+	"Data for {countries} and {n} others is out of date.": {
+		"one": "Dane dla {countries} i {n} innego kraju są nieaktualne.",
+		"few": "Dane dla {countries} i {n} innych krajów są nieaktualne.",
+		"many": "Dane dla {countries} i {n} innych krajów są nieaktualne.",
+		"other": "Dane dla {countries} i {n} innych krajów są nieaktualne."
+	},
+	"Data for {countries} is out of date.": "Dane dla {countries} są nieaktualne.",
 	"Date": "Data",
 	"Date + time": "Data + godzina",
 	"Date created": "Data utworzenia",

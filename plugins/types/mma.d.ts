@@ -397,6 +397,12 @@ declare const commands: {
      *  when no country is given. Display names are the caller's job.
      */
     valiCountries: () => Promise<string[]>;
+    /**
+     *  Countries whose downloaded coverage data is older than the remote copy. Object metadata
+     *  only -- nothing is fetched. Errors while offline, which callers should read as "unknown"
+     *  rather than "up to date".
+     */
+    valiDataStatus: () => Promise<ValiCountryStatus[]>;
 };
 /** Events */
 declare const events: {
@@ -1716,6 +1722,12 @@ type TagPatch = {
 type Update<P> = {
     id: number;
     patch: P;
+};
+/**  How far behind one country's downloaded coverage data is. */
+type ValiCountryStatus = {
+    countryCode: string;
+    files: number;
+    bytes: number;
 };
 type ValiLocation_Deserialize = {
     lat: number;
@@ -3643,4 +3655,4 @@ declare global {
 }
 
 export { BUILTIN_FIELDS, KNOWN_FIELDS, MMA as MMAApi, PanoType, commands, events };
-export type { CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExportProgress, ExternalMutation, ExtraFieldDef, ExtraFieldType, FieldCount, FieldOp, FilterOp, FirstSyncMode, GeoResult, GgUser, ImportPreviewEntry, ImportProgress, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MergeWinner, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, QueryResult, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Select, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SidecarDone, SidecarLine, SidecarLog, SidecarProgress, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiLocation, ValiLocation_Deserialize, ValiProgress, VirtualTag };
+export type { CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExportProgress, ExternalMutation, ExtraFieldDef, ExtraFieldType, FieldCount, FieldOp, FilterOp, FirstSyncMode, GeoResult, GgUser, ImportPreviewEntry, ImportProgress, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MergeWinner, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, QueryResult, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Select, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SidecarDone, SidecarLine, SidecarLog, SidecarProgress, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiCountryStatus, ValiLocation, ValiLocation_Deserialize, ValiProgress, VirtualTag };

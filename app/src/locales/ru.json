@@ -259,6 +259,7 @@
 	"Country data": "Данные о странах",
 	"Country or region": "Страна или регион",
 	"Coverage": "Покрытие",
+	"Coverage data is out of date": "Данные покрытия устарели",
 	"Coverage dates": "Даты покрытия",
 	"Coverage line color": "Цвет линий покрытия",
 	"Coverage settings": "Настройки покрытия",
@@ -271,6 +272,13 @@
 	"Custom CSS": "Свой CSS",
 	"Cycle movement mode": "Переключить режим движения",
 	"Data": "Данные",
+	"Data for {countries} and {n} others is out of date.": {
+		"one": "Данные для {countries} и ещё {n} страны устарели.",
+		"few": "Данные для {countries} и ещё {n} стран устарели.",
+		"many": "Данные для {countries} и ещё {n} стран устарели.",
+		"other": "Данные для {countries} и ещё {n} стран устарели."
+	},
+	"Data for {countries} is out of date.": "Данные для {countries} устарели.",
 	"Date": "Дата",
 	"Date + time": "Дата + время",
 	"Date created": "Дата создания",

@@ -238,6 +238,7 @@
 	"Country data": "国データ",
 	"Country or region": "国または地域",
 	"Coverage": "カバレッジ",
+	"Coverage data is out of date": "カバレッジデータが古くなっています",
 	"Coverage dates": "カバレッジの日付",
 	"Coverage line color": "カバレッジ線の色",
 	"Coverage settings": "カバレッジ設定",
@@ -250,6 +251,10 @@
 	"Custom CSS": "カスタム CSS",
 	"Cycle movement mode": "移動モードを切り替え",
 	"Data": "データ",
+	"Data for {countries} and {n} others is out of date.": {
+		"other": "{countries} と他 {n} 件のデータが古くなっています。"
+	},
+	"Data for {countries} is out of date.": "{countries} のデータが古くなっています。",
 	"Date": "日付",
 	"Date + time": "日付 + 時刻",
 	"Date created": "作成日",

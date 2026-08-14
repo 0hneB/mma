@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
 	downloadProgress,
+	staleSummary,
 	type DownloadProgress,
 } from "@/plugins/vali/ui/ValiDownloadDialog";
 import { valiMessageAction } from "@/plugins/vali/ui/ValiSidebar";
-import type { ValiProgress } from "@/bindings.gen";
+import type { ValiCountryStatus, ValiProgress } from "@/bindings.gen";
 
 const started = (countryCode: string, files: number, bytes = 100, updates = false): ValiProgress => ({
 	kind: "countryDownloadStarted",
@@ -57,6 +58,38 @@ describe("downloadProgress", () => {
 
 	it("ignores a file event arriving before any batch started", () => {
 		expect(fold([file("FR")])).toBeNull();
+	});
+});
+
+describe("staleSummary", () => {
+	const status = (...codes: string[]): ValiCountryStatus[] =>
+		codes.map((countryCode) => ({ countryCode, files: 1, bytes: 10 }));
+
+	it("is empty when nothing is stale, so the banner can render unconditionally", () => {
+		expect(staleSummary([])).toBe("");
+	});
+
+	it("names a single country", () => {
+		expect(staleSummary(status("FR"))).toBe("Data for France is out of date.");
+	});
+
+	it("names every country while the list is short", () => {
+		expect(staleSummary(status("FR", "DE", "JP"))).toBe(
+			"Data for France, Germany, Japan is out of date.",
+		);
+	});
+
+	it("counts the tail once there are more than three", () => {
+		expect(staleSummary(status("FR", "DE", "JP", "IT"))).toBe(
+			"Data for France, Germany, Japan and 1 other is out of date.",
+		);
+		expect(staleSummary(status("FR", "DE", "JP", "IT", "ES"))).toBe(
+			"Data for France, Germany, Japan and 2 others is out of date.",
+		);
+	});
+
+	it("falls back to the code for a country Intl doesn't know", () => {
+		expect(staleSummary(status("XZ"))).toBe("Data for XZ is out of date.");
 	});
 });
 
