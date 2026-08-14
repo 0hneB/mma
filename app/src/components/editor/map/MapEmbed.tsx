@@ -13,13 +13,12 @@ import { useMapSurface } from "@/lib/render/useMapSurface";
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { svThumbnailUrl, svSearchRadius } from "@/lib/sv/lookup";
-import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
 import { getSettings, useSetting } from "@/store/settings";
 import { useMeasure, useMeasureInteraction } from "@/lib/sv/measure";
 import { MeasurementBar } from "@/components/primitives/MeasurementBar";
 import { MapContextMenuContent } from "@/components/editor/map/MapContextMenu";
-import { useMapState, addSelections, mapOpen } from "@/store/useMapStore";
+import { useMapState, addSelections, mapOpen, fetchBounds } from "@/store/useMapStore";
 import { loadOpenSV, google } from "@/lib/sv/opensv";
 import { setMapHost, tryInterceptDraw } from "@/lib/map/mapState";
 import { createMapHost, hostKindForMapType, type MapHost } from "@/lib/map/host";
@@ -177,7 +176,7 @@ export function MapEmbed({
 				mapOpen.mark("map-ready");
 				created.once("tilesloaded", () => mapOpen.mark("tiles"));
 				if (map.meta.locationCount > 0) {
-					cmd.storeBounds(false).then((bounds) => {
+					fetchBounds({ kind: "all" }).then((bounds) => {
 						if (cancelled || !hostRef.current || !bounds) return;
 						const [west, south, east, north] = bounds;
 						hostRef.current.fitBounds({ west, south, east, north }, undefined, { snap: true });
@@ -315,7 +314,7 @@ export function MapEmbed({
 	useHotkey(useBinding("toggleSvOpacity"), () => toggleOpacity("svOpacity"));
 	useHotkey(useBinding("toggleMarkerOpacity"), () => toggleOpacity("markerOpacity"));
 	useHotkey(useBinding("mapZoomBounds"), () => {
-		cmd.storeBounds(false).then((bounds) => {
+		fetchBounds({ kind: "all" }).then((bounds) => {
 			if (!hostRef.current || !bounds) return;
 			const [west, south, east, north] = bounds;
 			hostRef.current.fitBounds({ west, south, east, north }, undefined, { snap: true });
@@ -323,7 +322,7 @@ export function MapEmbed({
 	});
 
 	useHotkey(useBinding("mapZoomSelection"), () => {
-		cmd.storeBounds(true).then((bounds) => {
+		fetchBounds({ kind: "selected" }).then((bounds) => {
 			if (!hostRef.current || !bounds) return;
 			const [west, south, east, north] = bounds;
 			hostRef.current.fitBounds({ west, south, east, north }, undefined, { snap: true });

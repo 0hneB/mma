@@ -58,7 +58,7 @@ export interface LocationStore {
  *  Call `destroy()` when done. */
 async function createLocationStore(): Promise<LocationStore> {
 	const locs = new Map<number, Location>();
-	for (const l of await store.fetchAllLocations()) locs.set(l.id, l);
+	for (const l of await store.fetchLocations({ kind: "all" })) locs.set(l.id, l);
 
 	const listeners = new Set<() => void>();
 	const notify = () => {
@@ -80,6 +80,14 @@ async function createLocationStore(): Promise<LocationStore> {
 				if (existing) locs.set(u.id, applyLocationPatch(existing, u.patch));
 			}
 			notify();
+		}),
+		// Bulk rewrites (field ops) ship no per-location patches; refetch wholesale.
+		subscribe("location:invalidate", () => {
+			void store.fetchLocations({ kind: "all" }).then((all) => {
+				locs.clear();
+				for (const l of all) locs.set(l.id, l);
+				notify();
+			});
 		}),
 	];
 

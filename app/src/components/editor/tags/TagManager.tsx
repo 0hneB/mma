@@ -7,7 +7,6 @@ import {
 	useOptimistic,
 	startTransition,
 } from "react";
-import { cmd } from "@/lib/commands";
 import { HslColorPicker } from "react-colorful";
 import { ContextMenu } from "@base-ui-components/react/context-menu";
 import {
@@ -20,6 +19,7 @@ import {
 	removeTagFromAllLocations,
 	getVisibleTags,
 	removeTagFromLocations,
+	scopeIds,
 } from "@/store/useMapStore";
 import type { TagSortMode } from "@/types";
 import type { Tag, TagPatch, Update, VirtualTag } from "@/bindings.gen";
@@ -395,7 +395,7 @@ export function TagContextMenuContent({
 			setSelCount(0);
 			return;
 		}
-		cmd.storeResolveSelection({ type: "Tag", tagId }).then((tagLocIds) => {
+		scopeIds({ kind: "props", props: { type: "Tag", tagId } }).then((tagLocIds) => {
 			let count = 0;
 			for (const id of tagLocIds) if (selIds.has(id)) count++;
 			setSelCount(count);

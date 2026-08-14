@@ -18,7 +18,7 @@ use rayon::prelude::*;
 use crate::arrow_bridge;
 use crate::arrow_bridge::{col_heading, col_id, col_lat, col_lng};
 use crate::map_meta;
-use crate::selections::{self, Selection, SelectionProps};
+use crate::selections::{self, Scope, Selection, SelectionProps};
 use crate::spatial;
 use crate::storage;
 use crate::types::{Location, LocationFlags, Tag};
@@ -1316,12 +1316,12 @@ impl Store {
         })
     }
 
-    /// Evenly spaced subset of `scope`, defaulting to the current selection:
-    /// `target_count` thins to N ids maximizing spacing; `min_distance_m` keeps as
-    /// many as fit at that spacing.
+    /// Evenly spaced subset of `set` (`None` = whole map): `target_count` thins to
+    /// N ids maximizing spacing; `min_distance_m` keeps as many as fit at that
+    /// spacing.
     pub(crate) fn pick_spaced(
         &self,
-        scope: Option<&SelectionProps>,
+        set: Option<&RoaringBitmap>,
         target_count: Option<u32>,
         min_distance_m: Option<u32>,
     ) -> AppResult<SpacedPickResult> {
@@ -1347,9 +1347,9 @@ impl Store {
             _ => {}
         }
 
-        let candidate_ids: Vec<u32> = match scope {
-            Some(props) => selections::resolve(&self.loc_view(), props),
-            None => self.selections.ids.iter().collect(),
+        let candidate_ids: Vec<u32> = match set {
+            Some(s) => s.iter().collect(),
+            None => selections::scoped_ids(&self.loc_view(), None),
         };
         let mut candidates: Vec<(u32, f64, f64)> = candidate_ids
             .into_iter()
@@ -1387,46 +1387,30 @@ impl Store {
         Ok(SpacedPickResult { ids, distance_m: d })
     }
 
-    /// Collect all alive locations (batch + overlay) into a Vec. O(N) time and space.
-    pub(crate) fn collect_all_locations(&self) -> Vec<Location> {
-        let view = self.loc_view();
-        let mut locs = Vec::with_capacity(self.alive_count);
-        view.for_each(|row| locs.push(row.to_location()));
-        locs
-    }
-
-    /// Like `collect_all_locations`, optionally restricted to a set of ids.
-    pub(crate) fn collect_scoped(&self, scope: Option<&[u32]>) -> Vec<Location> {
-        match scope {
-            Some(ids) => {
-                let set: std::collections::HashSet<u32> = ids.iter().copied().collect();
-                self.collect_all_locations()
-                    .into_iter()
-                    .filter(|l| set.contains(&l.id))
-                    .collect()
-            }
-            None => self.collect_all_locations(),
+    /// Materialize the scoped location set (`Scope::All` = every alive location).
+    /// Named ids binary-search each (marker click, enrich refetch ship a handful);
+    /// every other scope is one scan. O(N) time and space.
+    pub(crate) fn collect(&self, scope: &Scope) -> Vec<Location> {
+        if let Scope::Ids { ids } = scope {
+            return ids.iter().filter_map(|&id| self.get_loc_by_id(id)).collect();
         }
+        let view = self.loc_view();
+        let resolved = scope.resolve(&view, &self.selections.ids);
+        let mut locs = Vec::with_capacity(self.alive_count);
+        locs.extend(view.scoped(resolved.as_deref()).map(|row| row.to_location()));
+        locs
     }
 
     /// Full O(N) bounds scan, optionally scoped to a selection. Returns the raw
     /// accumulator; callers `.resolve()` it to `[w,s,e,n]`.
-    fn scan_bounds(&self, scope: Option<&RoaringBitmap>) -> Option<BoundsAcc> {
-        let view = self.loc_view();
-        let mut acc: Option<BoundsAcc> = None;
-        view.for_each(|row| {
-            if let Some(ids) = scope {
-                if !ids.contains(row.id()) {
-                    return;
-                }
-            }
-            acc = Some(BoundsAcc::fold(acc, row.lat(), row.lng()));
-        });
-        acc
+    fn scan_bounds(&self, set: Option<&RoaringBitmap>) -> Option<BoundsAcc> {
+        self.loc_view()
+            .scoped(set)
+            .fold(None, |acc, row| Some(BoundsAcc::fold(acc, row.lat(), row.lng())))
     }
 
-    fn compute_bounds(&self, scope: Option<&RoaringBitmap>) -> Option<[f64; 4]> {
-        self.scan_bounds(scope).map(BoundsAcc::resolve)
+    fn compute_bounds(&self, set: Option<&RoaringBitmap>) -> Option<[f64; 4]> {
+        self.scan_bounds(set).map(BoundsAcc::resolve)
     }
 
     /// Unscoped bounding box, cached. Recomputes O(N) only when dirty (after a
@@ -2365,43 +2349,194 @@ pub async fn store_update_locations(
     let record_undo = record_undo.unwrap_or(true);
     let _t = std::time::Instant::now();
     with_store!(webview, state, |store| {
-        let mut updated: Vec<(Location, Location)> = Vec::with_capacity(updates.len());
-        let any_tags = updates.iter().any(|u| u.patch.tags.is_some());
-        let any_extras = updates.iter().any(|u| u.patch.extra.is_some());
-        // TODO: overlay_update re-fetches internally; returning (old, new) would drop 2 of the
-        // 3 lookups+clones per id, and the any_tags/undo blocks below re-clone the pairs again.
-        // Only matters for 100k+ bulk edits.
-        for u in &updates {
-            if let Some(old) = store.get_loc_by_id(u.id) {
-                store.overlay_update(u.id, &u.patch);
-                let new_loc = store.get_loc_by_id(u.id).unwrap();
-                updated.push((old, new_loc));
-            }
-        }
-        if any_tags {
-            let old_locs: Vec<Location> = updated.iter().map(|(o, _)| o.clone()).collect();
-            let new_locs: Vec<Location> = updated.iter().map(|(_, n)| n.clone()).collect();
-            store.remove_tag_counts(&old_locs);
-            store.add_tag_counts(&new_locs);
-        }
-        if record_undo {
-            store.record_update_undo(&updated);
-        }
-        let mut result = store.finish_mutation(ChangeSet {
-            updated: updated.clone(),
-            ..Default::default()
-        });
-        if any_extras {
-            let extras: Vec<&crate::types::RawExtra> = updated
-                .iter()
-                .filter_map(|(_, n)| n.extra.as_ref())
-                .collect();
-            auto_register_extras(store, &extras, &mut result);
-        }
+        let n = updates.len();
+        let result = apply_updates(store, &updates, record_undo);
         log::debug!(
             "[cmd] store_update_locations n={} undo={} total={}ms",
-            updates.len(),
+            n,
             record_undo,
+            _t.elapsed().as_millis()
+        );
+        Ok(result)
+    })
+}
+
+/// Apply `{id, patch}` updates: overlay, tag counts, undo, extras registration. The one
+/// place a patch batch becomes a mutation -- every command that derives patches ends here.
+fn apply_updates(
+    store: &mut Store,
+    updates: &[Update<LocationPatch>],
+    record_undo: bool,
+) -> MutationResult {
+    let mut updated: Vec<(Location, Location)> = Vec::with_capacity(updates.len());
+    let any_tags = updates.iter().any(|u| u.patch.tags.is_some());
+    let any_extras = updates.iter().any(|u| u.patch.extra.is_some());
+    // TODO: overlay_update re-fetches internally; returning (old, new) would drop 2 of the
+    // 3 lookups+clones per id, and the any_tags/undo blocks below re-clone the pairs again.
+    // Only matters for 100k+ bulk edits.
+    for u in updates {
+        if let Some(old) = store.get_loc_by_id(u.id) {
+            store.overlay_update(u.id, &u.patch);
+            let new_loc = store.get_loc_by_id(u.id).unwrap();
+            updated.push((old, new_loc));
+        }
+    }
+    if any_tags {
+        let old_locs: Vec<Location> = updated.iter().map(|(o, _)| o.clone()).collect();
+        let new_locs: Vec<Location> = updated.iter().map(|(_, n)| n.clone()).collect();
+        store.remove_tag_counts(&old_locs);
+        store.add_tag_counts(&new_locs);
+    }
+    if record_undo {
+        store.record_update_undo(&updated);
+    }
+    let mut result = store.finish_mutation(ChangeSet {
+        updated: updated.clone(),
+        ..Default::default()
+    });
+    if any_extras {
+        let extras: Vec<&crate::types::RawExtra> = updated
+            .iter()
+            .filter_map(|(_, n)| n.extra.as_ref())
+            .collect();
+        auto_register_extras(store, &extras, &mut result);
+    }
+    result
+}
+
+/// When a move target already holds a value, which side survives.
+#[derive(serde::Deserialize, specta::Type, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum MergeWinner {
+    From,
+    To,
+}
+
+/// A field-wide rewrite of the `extra` map. Patches are derived *per row*, which is what
+/// separates these from `store_update_locations`' explicit patch list.
+#[derive(serde::Deserialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum FieldOp {
+    /// Rename `from` into `to`. Merge is the same operation -- rename is just the case
+    /// where nothing holds `to` -- so `winner` decides only where a row holds both.
+    Move {
+        from: String,
+        to: String,
+        winner: MergeWinner,
+    },
+    /// Drop `keys` from every row that has them.
+    Delete { keys: Vec<String> },
+}
+
+/// Derive the `extra` merge patch each scoped row needs for `op`. Rows the op wouldn't
+/// change yield nothing, so the patch list is the changed set. Also reports which of the
+/// op's removed keys no longer exist on ANY row afterward -- the caller forgets those in
+/// `known_field_keys`, so a later reappearance of the key is re-announced to JS. Pure.
+fn plan_field_op(
+    view: &selections::LocView,
+    set: Option<&roaring::RoaringBitmap>,
+    op: &FieldOp,
+) -> (Vec<Update<LocationPatch>>, Vec<String>) {
+    let removed: Vec<String> = match op {
+        FieldOp::Move { from, to, .. } if from != to && !to.is_empty() => vec![from.clone()],
+        FieldOp::Move { .. } => return (Vec::new(), Vec::new()),
+        FieldOp::Delete { keys } => keys.clone(),
+    };
+    let mut survives: HashSet<String> = HashSet::new();
+    let mut updates: Vec<Update<LocationPatch>> = Vec::new();
+    view.for_each(|row| {
+        let id = row.id();
+        let mut merge = serde_json::Map::new();
+        if set.is_none_or(|s| s.contains(id)) {
+            match op {
+                FieldOp::Move { from, to, winner } => {
+                    if let Some(value) = row.resolve_field(from) {
+                        merge.insert(from.clone(), serde_json::Value::Null);
+                        // Winner decides only where the row already holds `to`.
+                        if *winner == MergeWinner::From || row.resolve_field(to).is_none() {
+                            merge.insert(to.clone(), value);
+                        }
+                    }
+                }
+                FieldOp::Delete { keys } => {
+                    for key in keys {
+                        if row.resolve_field(key).is_some() {
+                            merge.insert(key.clone(), serde_json::Value::Null);
+                        }
+                    }
+                }
+            }
+        }
+        // A removed key survives on any row this op leaves it on (out of scope, or absent
+        // from the patch).
+        for k in &removed {
+            if merge.get(k) != Some(&serde_json::Value::Null)
+                && !survives.contains(k)
+                && row.resolve_field(k).is_some()
+            {
+                survives.insert(k.clone());
+            }
+        }
+        if !merge.is_empty() {
+            updates.push(Update {
+                id,
+                patch: LocationPatch {
+                    extra: Some(crate::types::RawExtra::from_map(&merge)),
+                    ..Default::default()
+                },
+            });
+        }
+    });
+    let forget = removed.into_iter().filter(|k| !survives.contains(k)).collect();
+    (updates, forget)
+}
+
+/// Rewrite an `extra` field across the scoped set in one pass. Replaces fetching every
+/// location into JS to derive patches and shipping them all back. Keeps `known_field_keys`
+/// truthful: keys the op erased from every row are forgotten (before the status snapshot),
+/// so `StoreStatus.knownFieldKeys` reflects the data and a reappearing key is re-announced
+/// through `new_field_defs`.
+pub(crate) fn apply_field_op(
+    store: &mut Store,
+    scope: &Scope,
+    op: &FieldOp,
+    record_undo: bool,
+) -> AppResult<MutationResult> {
+    let touched: Vec<&str> = match op {
+        FieldOp::Move { from, to, .. } => vec![from.as_str(), to.as_str()],
+        FieldOp::Delete { keys } => keys.iter().map(String::as_str).collect(),
+    };
+    // These ops write through `extra` only; a built-in name would silently shadow a column.
+    if let Some(k) = touched.iter().find(|k| selections::is_builtin_field(k)) {
+        return Err(AppError::from(format!(
+            "store_apply_field_op: {k} is a built-in field"
+        )));
+    }
+    let (updates, forget) = {
+        let view = store.loc_view();
+        let resolved = scope.resolve(&view, &store.selections.ids);
+        plan_field_op(&view, resolved.as_deref(), op)
+    };
+    for k in &forget {
+        store.known_field_keys.remove(k);
+    }
+    Ok(apply_updates(store, &updates, record_undo))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn store_apply_field_op(
+    webview: tauri::Webview,
+    state: tauri::State<'_, StoreState>,
+    scope: Scope,
+    op: FieldOp,
+    record_undo: Option<bool>,
+) -> AppResult<MutationResult> {
+    let _t = std::time::Instant::now();
+    with_store!(webview, state, |store| {
+        let result = apply_field_op(store, &scope, &op, record_undo.unwrap_or(true))?;
+        log::debug!(
+            "[cmd] store_apply_field_op total={}ms",
             _t.elapsed().as_millis()
         );
         Ok(result)
@@ -2586,54 +2721,6 @@ pub fn store_set_marker_color(
     })
 }
 
-/// Fetch a single location by ID. Returns `None` if the ID is dead or doesn't exist.
-#[tauri::command]
-#[specta::specta]
-pub fn store_get_location(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    id: u32,
-) -> AppResult<Option<Location>> {
-    with_store!(webview, state, |store| { Ok(store.get_loc_by_id(id)) })
-}
-
-/// Fetch multiple locations by ID. Silently skips IDs that don't exist.
-#[tauri::command]
-#[specta::specta]
-pub fn store_get_locations_by_ids(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    ids: Vec<u32>,
-) -> AppResult<Vec<Location>> {
-    with_store!(webview, state, |store| {
-        let mut result = Vec::with_capacity(ids.len());
-        for &id in &ids {
-            if let Some(loc) = store.get_loc_by_id(id) {
-                result.push(loc);
-            }
-        }
-        Ok(result)
-    })
-}
-
-/// Dump every alive location to a temp JSON file. Returns the file path.
-/// Used by export and plugins that need the full dataset.
-#[tauri::command]
-#[specta::specta]
-pub fn store_get_all_locations(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-) -> AppResult<String> {
-    with_store!(webview, state, |store| {
-        let locs = store.collect_all_locations();
-        let map_id_str = store.map_id.as_deref().unwrap_or("default");
-        let json = serde_json::to_vec(&locs)?;
-        let path = storage::temp_dir()?.join(format!("mma_all_{map_id_str}.json"));
-        std::fs::write(&path, &json)?;
-        Ok(path.to_string_lossy().into_owned())
-    })
-}
-
 /// Count locations by country (offline point-in-polygon). Returns unsorted (ISO-A2, count) pairs.
 /// `level` selects border precision, falling back to "light" if unavailable.
 // Coords are gathered under the store lock, then classified after it's released.
@@ -2642,13 +2729,15 @@ pub fn store_get_all_locations(
 pub async fn store_country_distribution(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
+    scope: Scope,
     level: String,
 ) -> AppResult<Vec<(String, u32)>> {
     let coords: Vec<(f64, f64)> = with_store!(webview, state, |store| {
         let view = store.loc_view();
-        let mut v = Vec::with_capacity(store.alive_count);
-        view.for_each(|row| v.push((row.lat(), row.lng())));
-        v
+        let resolved = scope.resolve(&view, &store.selections.ids);
+        view.scoped(resolved.as_deref())
+            .map(|row| (row.lat(), row.lng()))
+            .collect()
     });
     crate::borders::tally_countries(&level, &coords)
 }
@@ -2817,7 +2906,7 @@ pub fn store_copy_locations_to_map(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
     target_map_id: String,
-    ids: Vec<u32>,
+    scope: Scope,
 ) -> AppResult<CopyToMapResult> {
     let _t = std::time::Instant::now();
     let conn = storage::open_db()?;
@@ -2840,17 +2929,15 @@ pub fn store_copy_locations_to_map(
     let mut source_tags: HashMap<u32, Tag> = HashMap::new();
     {
         let src = mgr.store_for_map(&source_map_id)?;
-        for &id in &ids {
-            if let Some(mut loc) = src.get_loc_by_id(id) {
-                loc.created_at = now;
-                loc.modified_at = Some(now);
-                for &t in &loc.tags {
-                    if let Some(tag) = src.tags.all.get(&t) {
-                        source_tags.insert(t, tag.clone());
-                    }
+        for mut loc in src.collect(&scope) {
+            loc.created_at = now;
+            loc.modified_at = Some(now);
+            for &t in &loc.tags {
+                if let Some(tag) = src.tags.all.get(&t) {
+                    source_tags.insert(t, tag.clone());
                 }
-                sources.push(loc);
             }
+            sources.push(loc);
         }
     }
     if sources.is_empty() {
@@ -2875,7 +2962,7 @@ pub fn store_copy_locations_to_map(
         // as a local edit — including the save — so we do NOT persist here.
         let target = mgr.store_for_map(&target_map_id)?;
         let t_scan = std::time::Instant::now();
-        let existing = target.collect_scoped(None);
+        let existing = target.collect(&Scope::All);
         let (fresh, skipped) = split_new_locations(sources, &existing);
         let scan_ms = t_scan.elapsed().as_millis();
         let copied = fresh.len() as u32;
@@ -3709,9 +3796,17 @@ pub fn store_create_tags(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
     names: Vec<String>,
-    location_ids: Vec<u32>,
+    scope: Scope,
 ) -> AppResult<MutationResult> {
     with_store!(webview, state, |store| {
+        let location_ids: Vec<u32> = {
+            let view = store.loc_view();
+            let resolved = scope.resolve(&view, &store.selections.ids);
+            match resolved {
+                Some(set) => set.iter().collect(),
+                None => selections::scoped_ids(&view, None),
+            }
+        };
         Ok(store.create_tags(&names, &location_ids))
     })
 }
@@ -3735,57 +3830,6 @@ pub fn store_reorder_tags(
         let mut result = store.finish_mutation(ChangeSet::default());
         result.tags = Some(store.tags.all.clone());
         Ok(result)
-    })
-}
-
-/// Compute the bounding box [west, south, east, north]. O(N).
-/// When `selected_only` is true, restricts to the current selection.
-#[tauri::command]
-#[specta::specta]
-pub async fn store_bounds(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    selected_only: bool,
-) -> AppResult<Option<[f64; 4]>> {
-    with_store!(webview, state, |store| {
-        // Selection-scoped bounds change with the selection, so they stay O(N)
-        // (zoom-to-selection hotkey, infrequent). The unscoped box is cached.
-        if selected_only {
-            Ok(store.compute_bounds(Some(&store.selections.ids)))
-        } else {
-            Ok(store.cached_bounds())
-        }
-    })
-}
-
-/// Collect all distinct values for an `extra` field across all alive locations. O(N).
-/// Used by the filter UI to populate dropdown options.
-#[tauri::command]
-#[specta::specta]
-pub fn store_extra_field_values(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    field: String,
-) -> AppResult<Vec<String>> {
-    let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
-        let view = store.loc_view();
-        let mut seen = std::collections::BTreeSet::new();
-        view.for_each(|row| {
-            if let Some(v) = row.resolve_field(&field) {
-                let s = match v {
-                    serde_json::Value::String(s) => s,
-                    other => other.to_string(),
-                };
-                seen.insert(s);
-            }
-        });
-        log::debug!(
-            "[cmd] store_extra_field_values field={} total={}ms",
-            field,
-            _t.elapsed().as_millis()
-        );
-        Ok(seen.into_iter().collect())
     })
 }
 
@@ -3880,91 +3924,138 @@ pub async fn store_sync_selections(
     })
 }
 
-/// Return the union of all currently selected location IDs.
-#[tauri::command]
-#[specta::specta]
-pub fn store_get_selected_ids_list(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-) -> AppResult<Vec<u32>> {
-    with_store!(webview, state, |store| {
-        Ok(store.selections.ids.iter().collect())
-    })
-}
-
-#[derive(serde::Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+/// `pick_spaced`'s answer: the picked ids plus the spacing achieved (count mode) or
+/// enforced (distance mode). Internal -- the wire shape is `QueryResult::Spaced`.
 pub struct SpacedPickResult {
     pub ids: Vec<u32>,
     pub distance_m: i32,
 }
 
-/// Pick an evenly spaced subset of `scope`, or of the current selection when `scope` is
-/// null. Exactly one of `target_count` (thin to N, maximizing spacing) or `min_distance_m`
-/// (keep as many as fit at that spacing) must be provided.
+/// What one scoped traversal accumulates. Every variant is a projection of the same
+/// pass over the location view, so a new question is a variant, not a new command.
+#[derive(serde::Deserialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum Select {
+    /// Ids of everything in scope.
+    Ids,
+    /// Full rows, dumped to a temp JSON file. The last resort -- prefer a projection.
+    Rows,
+    /// `n` ids drawn uniformly at random, without replacement.
+    Sample { n: u32 },
+    /// An evenly spaced subset: exactly one of `target_count` (thin to N, maximizing
+    /// spacing) or `min_distance_m` (keep as many as fit at that spacing).
+    Spaced {
+        target_count: Option<u32>,
+        min_distance_m: Option<u32>,
+    },
+    /// Group by a derived key, returning `{ key, ids, bin }` per group.
+    GroupBy {
+        field: String,
+        key: selections::KeySpec,
+    },
+    /// Group by a derived key, returning counts only.
+    CountBy {
+        field: String,
+        key: selections::KeySpec,
+    },
+    /// Distinct values of a field.
+    Values { field: String },
+    /// How many rows carry each top-level `extra` key.
+    Coverage,
+    /// Bounding box `[west, south, east, north]` of the scope.
+    Bounds,
+}
+
+#[derive(serde::Serialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum QueryResult {
+    Ids { ids: Vec<u32> },
+    Rows { locations: Vec<Location> },
+    /// Rows too large for the IPC channel, staged for `mma-buf://`. Same answer as
+    /// `Rows`; the transport is chosen by size and callers shouldn't care which arrives.
+    RowsFile { path: String },
+    /// `Spaced` ids plus the spacing achieved (count mode) or enforced (distance mode).
+    Spaced { ids: Vec<u32>, distance_m: i32 },
+    Groups { groups: Vec<selections::PartitionBucket> },
+    Counts { counts: Vec<(String, u32)> },
+    Values { values: Vec<String> },
+    Bounds { bounds: Option<[f64; 4]> },
+}
+
+/// Above this many rows, `Select::Rows` stages a file instead of answering over IPC.
+const ROWS_INLINE_MAX: usize = 1024;
+
+/// Read the scoped location set through one projection. The single read primitive:
+/// `scope` says which locations, `select` says what to bring back.
 #[tauri::command]
 #[specta::specta]
-pub fn store_pick_spaced(
+pub fn store_query(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
-    scope: Option<SelectionProps>,
-    target_count: Option<u32>,
-    min_distance_m: Option<u32>,
-) -> AppResult<SpacedPickResult> {
+    scope: Scope,
+    select: Select,
+) -> AppResult<QueryResult> {
     let _t = std::time::Instant::now();
     with_store!(webview, state, |store| {
-        let result = store.pick_spaced(scope.as_ref(), target_count, min_distance_m)?;
-        let mode = if target_count.is_some() {
-            "count"
-        } else {
-            "distance"
+        let view = store.loc_view();
+        // Rows materializes through `collect`, which resolves the scope itself (it owns
+        // the ids fast path) -- resolving here too would resolve a Props scope twice.
+        let resolved = (!matches!(select, Select::Rows))
+            .then(|| scope.resolve(&view, &store.selections.ids))
+            .flatten();
+        let set = resolved.as_deref();
+        let result = match &select {
+            Select::Ids => QueryResult::Ids {
+                ids: selections::scoped_ids(&view, set),
+            },
+            Select::Sample { n } => QueryResult::Ids {
+                ids: selections::sample(selections::scoped_ids(&view, set), *n as usize),
+            },
+            Select::Spaced {
+                target_count,
+                min_distance_m,
+            } => {
+                let r = store.pick_spaced(set, *target_count, *min_distance_m)?;
+                QueryResult::Spaced {
+                    ids: r.ids,
+                    distance_m: r.distance_m,
+                }
+            }
+            Select::GroupBy { field, key } => QueryResult::Groups {
+                groups: selections::partition(&view, field, key, set),
+            },
+            Select::CountBy { field, key } => QueryResult::Counts {
+                counts: selections::count_by(&view, field, key, set),
+            },
+            Select::Values { field } => QueryResult::Values {
+                values: selections::distinct_values(&view, field, set),
+            },
+            Select::Coverage => QueryResult::Counts {
+                counts: selections::extra_key_coverage(&view, set),
+            },
+            Select::Bounds => QueryResult::Bounds {
+                // The whole-map box is maintained incrementally; scoped boxes scan.
+                bounds: match set {
+                    None => store.cached_bounds(),
+                    Some(set) => store.compute_bounds(Some(set)),
+                },
+            },
+            Select::Rows => {
+                let locations = store.collect(&scope);
+                if locations.len() <= ROWS_INLINE_MAX {
+                    QueryResult::Rows { locations }
+                } else {
+                    let map_id_str = store.map_id.as_deref().unwrap_or("default");
+                    let path = storage::temp_dir()?.join(format!("mma_rows_{map_id_str}.json"));
+                    std::fs::write(&path, serde_json::to_vec(&locations)?)?;
+                    QueryResult::RowsFile {
+                        path: path.to_string_lossy().into_owned(),
+                    }
+                }
+            }
         };
-        log::debug!(
-            "[cmd] store_pick_spaced mode={} scoped={} picked={} distance_m={} total={}ms",
-            mode,
-            scope.is_some(),
-            result.ids.len(),
-            result.distance_m,
-            _t.elapsed().as_millis()
-        );
+        log::debug!("[cmd] store_query total={}ms", _t.elapsed().as_millis());
         Ok(result)
-    })
-}
-
-/// Resolve a single selection to its matching location IDs without persisting it.
-/// Used by plugins and one-off queries (e.g., tag merge, export filtered).
-#[tauri::command]
-#[specta::specta]
-pub fn store_resolve_selection(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    props: SelectionProps,
-) -> AppResult<Vec<u32>> {
-    with_store!(webview, state, |store| {
-        let view = store.loc_view();
-        Ok(selections::resolve(&view, &props))
-    })
-}
-
-/// Group locations by a derived key, returning `{ key, ids, bin }` per group.
-/// `scope` restricts to a selection; `None` partitions the whole map.
-// Powers gradient and apply-as-tags without materializing location data into JS.
-#[tauri::command]
-#[specta::specta]
-pub fn store_partition(
-    webview: tauri::Webview,
-    state: tauri::State<'_, StoreState>,
-    field: String,
-    key: selections::KeySpec,
-    scope: selections::Scope,
-) -> AppResult<Vec<selections::PartitionBucket>> {
-    with_store!(webview, state, |store| {
-        let view = store.loc_view();
-        let scope_set = match scope {
-            selections::Scope::All => None,
-            selections::Scope::Selected => Some(&store.selections.ids),
-        };
-        Ok(selections::partition(&view, &field, &key, scope_set))
     })
 }
 
@@ -4036,20 +4127,18 @@ pub async fn store_merge_duplicates(
 pub async fn store_prune_duplicates(
     webview: tauri::Webview,
     state: tauri::State<'_, StoreState>,
-    ids: Vec<u32>,
+    scope: Scope,
     distance: f64,
     keep_tag_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
     with_store!(webview, state, |store| {
-        let locs: Vec<Location> = ids
-            .iter()
-            .filter_map(|&id| store.get_loc_by_id(id))
-            .collect();
+        let locs: Vec<Location> = store.collect(&scope);
         let keep: HashSet<u32> = keep_tag_ids.into_iter().collect();
         let prune_ids: HashSet<u32> = selections::prune_duplicates(&locs, distance, &keep)
             .into_iter()
             .collect();
+        let total = locs.len();
         let remove: Vec<Location> = locs
             .into_iter()
             .filter(|l| prune_ids.contains(&l.id))
@@ -4058,7 +4147,7 @@ pub async fn store_prune_duplicates(
         log::debug!(
             "[cmd] store_prune_duplicates pruned={} of {} total={}ms",
             remove.len(),
-            ids.len(),
+            total,
             _t.elapsed().as_millis()
         );
         Ok(store.apply_undoable(remove, Vec::new()))

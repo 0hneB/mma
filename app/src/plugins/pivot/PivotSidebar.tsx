@@ -67,7 +67,7 @@ async function computePivot(
 		}));
 		idSets = await Promise.all(
 			sels.map((s: Selection) =>
-				MMA.cmd.storeResolveSelection(s.props).then((ids: number[]) => new Set(ids)),
+				MMA.scopeIds({ kind: "props", props: s.props }).then((ids: number[]) => new Set(ids)),
 			),
 		);
 	} else {
@@ -88,7 +88,7 @@ async function computePivot(
 		rowDefs = resolvedRows.map((r) => ({ label: r.label, color: r.color }));
 		idSets = await Promise.all(
 			resolvedRows.map((r) =>
-				MMA.cmd.storeResolveSelection(r.props).then((ids: number[]) => new Set(ids)),
+				MMA.scopeIds({ kind: "props", props: r.props }).then((ids: number[]) => new Set(ids)),
 			),
 		);
 	}
