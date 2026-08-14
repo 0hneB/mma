@@ -176,22 +176,32 @@ fn run_operation(
             save_data_files_downloaded(&country_folder, &files_to_download)?;
         }
         Operation::Updates { .. } => {
+            // Fetch concurrently, then append in listing order: several deltas can target the
+            // same data file, so the appends stay serial and ordered. Keeping the appends out
+            // of the cancellable phase also keeps a cancel from leaving deltas applied but
+            // unrecorded, which would re-append them on the next run.
+            let updates_folder = country_folder.join("updates");
+            run_limited(
+                &files_to_download,
+                10,
+                cancel,
+                |r2| {
+                    download_file(agent, COUNTRY_UPDATES_BUCKET, r2, &updates_folder)?;
+                    emit(
+                        progress,
+                        Event::FileDownloaded {
+                            country_code: cc.to_string(),
+                            name: key_stem(&r2.key).to_string(),
+                            bytes: r2.size.unwrap_or(0),
+                        },
+                    );
+                    Ok(())
+                },
+            )?;
             for r2 in &files_to_download {
-                if let Some(c) = cancel {
-                    c.check()?;
-                }
-                download_update_file(agent, &country_folder, r2)?;
-                emit(
-                    progress,
-                    Event::FileDownloaded {
-                        country_code: cc.to_string(),
-                        name: key_stem(&r2.key).to_string(),
-                        bytes: r2.size.unwrap_or(0),
-                    },
-                );
+                append_update_file(&country_folder, r2)?;
             }
             save_update_files_downloaded(&country_folder, &files_to_download)?;
-            let updates_folder = country_folder.join("updates");
             if updates_folder.exists() {
                 std::fs::remove_dir_all(&updates_folder)?;
             }
@@ -334,14 +344,10 @@ fn download_data_files(
         },
     )
 }
-fn download_update_file(
-    agent: &ureq::Agent,
-    country_folder: &Path,
-    r2: &R2Object,
-) -> anyhow::Result<()> {
-    let updates_folder = country_folder.join("updates");
-    let update_path = download_file(agent, COUNTRY_UPDATES_BUCKET, r2, &updates_folder)?;
-    let file_name = update_path.file_name().unwrap().to_string_lossy();
+/// Appends an already-fetched delta onto the data file it belongs to.
+fn append_update_file(country_folder: &Path, r2: &R2Object) -> anyhow::Result<()> {
+    let file_name = downloaded_file_name(r2);
+    let update_path = country_folder.join("updates").join(&file_name);
     let data_path = country_folder.join(remove_date_prefix(&file_name));
     let bytes = std::fs::read(&update_path)?;
     let mut data = std::fs::OpenOptions::new()
@@ -358,7 +364,7 @@ fn download_file(
     folder: &Path,
 ) -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(folder)?;
-    let dest = folder.join(format!("{}{FILE_EXTENSION}", key_stem(& r2.key)));
+    let dest = folder.join(downloaded_file_name(r2));
     let url = format!("{BASE_URL}/{bucket}/{}", r2.key);
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 1..=3u32 {
@@ -584,6 +590,10 @@ fn escape_dotnet(s: &str) -> String {
         }
     }
     out
+}
+/// What `download_file` names a fetched object on disk.
+fn downloaded_file_name(r2: &R2Object) -> String {
+    format!("{}{FILE_EXTENSION}", key_stem(&r2.key))
 }
 fn key_stem(key: &str) -> &str {
     let name = key.rsplit(['/', '\\']).next().unwrap_or(key);

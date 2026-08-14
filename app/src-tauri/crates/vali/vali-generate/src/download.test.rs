@@ -1,4 +1,6 @@
-use super::{downloaded_country_codes, outdated, MetadataFile, NetDateTime, R2Object};
+use super::{
+    append_update_file, downloaded_country_codes, outdated, MetadataFile, NetDateTime, R2Object,
+};
 
 fn time(s: &str) -> NetDateTime {
     NetDateTime::parse(s).expect("valid timestamp")
@@ -10,6 +12,12 @@ fn remote(key: &str, uploaded: &str) -> R2Object {
         uploaded: time(uploaded),
         size: Some(10),
     }
+}
+
+fn temp_dir(tag: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("{tag}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
 }
 
 fn local(name: &str, written: &str) -> MetadataFile {
@@ -54,10 +62,40 @@ fn matching_ignores_the_key_prefix_and_one_extension() {
     assert_eq!(outdated(&r, &[local("lyon", "2026-06-01T00:00:00Z")]).len(), 1);
 }
 
+/// Deltas are fetched concurrently but must land in listing order, since several can target
+/// the same data file.
+#[test]
+fn updates_append_to_their_data_file_in_listing_order() {
+    let country = temp_dir("vali-append");
+    std::fs::create_dir_all(country.join("updates")).unwrap();
+    std::fs::write(country.join("paris.bin"), b"base").unwrap();
+    std::fs::write(country.join("updates").join("2026-01-01-paris.bin"), b"-jan").unwrap();
+    std::fs::write(country.join("updates").join("2026-02-01-paris.bin"), b"-feb").unwrap();
+
+    for key in ["FR/2026-01-01-paris.bin", "FR/2026-02-01-paris.bin"] {
+        append_update_file(&country, &remote(key, "2026-03-01T00:00:00Z")).unwrap();
+    }
+
+    let out = std::fs::read(country.join("paris.bin")).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "base-jan-feb");
+    let _ = std::fs::remove_dir_all(&country);
+}
+
+#[test]
+fn an_update_with_no_existing_data_file_creates_one() {
+    let country = temp_dir("vali-append-new");
+    std::fs::create_dir_all(country.join("updates")).unwrap();
+    std::fs::write(country.join("updates").join("2026-01-01-lyon.bin"), b"delta").unwrap();
+
+    append_update_file(&country, &remote("FR/2026-01-01-lyon.bin", "2026-03-01T00:00:00Z")).unwrap();
+
+    assert_eq!(std::fs::read(country.join("lyon.bin")).unwrap(), b"delta");
+    let _ = std::fs::remove_dir_all(&country);
+}
+
 #[test]
 fn only_countries_holding_data_files_are_scanned() {
-    let dir = std::env::temp_dir().join(format!("vali-stale-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir = temp_dir("vali-stale");
     std::fs::create_dir_all(dir.join("FR")).unwrap();
     std::fs::create_dir_all(dir.join("DE")).unwrap();
     std::fs::create_dir_all(dir.join("not-a-country")).unwrap();
