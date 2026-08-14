@@ -3,6 +3,7 @@ import type { Scope, PartitionBucket, KeySpec, Location } from "@/bindings.gen";
 import { compareNatural } from "@/lib/util/util";
 import { compareMonthOrder } from "@/lib/util/date";
 import { resolveSavedSelectionIds } from "./savedSelections";
+import type { ReadonlyIdSet } from "@/lib/render/CellManager";
 
 import { useMapState, getMapState, groupBy, scopeIds } from "./useMapStore";
 
@@ -34,9 +35,7 @@ export function applyScope(scope: Scope, pool: Location[]): Location[] {
 }
 
 /** The id-set a scope narrows to, or null for "all". Saved and props scopes resolve async. */
-export async function resolveScopeIds(
-	scope: SourceScope,
-): Promise<{ has(id: number): boolean; size: number } | null> {
+export async function resolveScopeIds(scope: SourceScope): Promise<ReadonlyIdSet | null> {
 	switch (scope.kind) {
 		case "all":
 			return null;

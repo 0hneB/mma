@@ -28,7 +28,7 @@ const EVENT_DEFS = {
 	"location:remove": event<number[]>(),
 	"location:update": event<Update<LocationPatch_Deserialize>[]>(),
 	/** Location data changed in bulk without per-location patches (e.g. a Rust-side
-	 *  field op). Anything mirroring location data must refetch. */
+	 *  field op). Anything derived from location data must re-query. */
 	"location:invalidate": event<void>(),
 	"tag:add": event<Tag[]>(),
 	"tag:remove": event<number[]>(),

@@ -607,7 +607,7 @@ export async function deleteField(key: string) {
 
 /** Rewrite an `extra` field across the whole map in Rust. Not undoable. The per-location
  *  patches never exist in JS -- which is the point -- so instead of `location:update` this
- *  emits a coarse `location:invalidate` (live mirrors refetch) and refreshes the open
+ *  emits a coarse `location:invalidate` (derived views re-query) and refreshes the open
  *  editor's location. */
 async function applyFieldOp(op: FieldOp): Promise<MutationResult> {
 	const r = await mutate(() => cmd.storeApplyFieldOp({ kind: "all" }, op, false));

@@ -1,5 +1,5 @@
 import { HeatmapLayer } from "@deck.gl/aggregation-layers";
-import type { DeckOverlayHandle, LatLng, LocationStore, SourceScope } from "mma-plugin-types";
+import type { DeckOverlayHandle, LatLng, SourceScope } from "mma-plugin-types";
 import {
 	DEFAULT_GRADIENT_ID,
 	gradientIdFromLegacyIndex,
@@ -63,7 +63,6 @@ function loadGradients(): HeatmapGradient[] {
 }
 
 let overlay: DeckOverlayHandle | null = null;
-let locStore: LocationStore | null = null;
 let layers: HeatmapLayerSettings[] = loadLayers();
 let customGradients: HeatmapGradient[] = loadGradients();
 let onSettingsChange: (() => void) | null = null;
@@ -135,11 +134,9 @@ export function removeCustomGradient(id: string) {
 }
 
 async function sourceData(source: SourceScope): Promise<LatLng[]> {
-	if (!locStore) return [];
-	const pool = locStore.get();
 	const ids = await MMA.resolveScopeIds(source);
-	const subset = ids ? pool.filter((l) => ids.has(l.id)) : pool;
-	return subset.map((l) => ({ lat: l.lat, lng: l.lng }));
+	const locs = await MMA.fetchLocations(ids ? { kind: "ids", ids: [...ids] } : { kind: "all" });
+	return locs.map((l) => ({ lat: l.lat, lng: l.lng }));
 }
 
 let rebuildToken = 0;
@@ -175,8 +172,6 @@ export async function init(): Promise<() => void> {
 	const host = MMA.getMapHost();
 	if (!host) throw new Error("No map instance");
 
-	locStore = await MMA.createLocationStore();
-
 	overlay = host.createDeckOverlay();
 	void rebuild();
 
@@ -184,14 +179,17 @@ export async function init(): Promise<() => void> {
 		void rebuild();
 		onSettingsChange?.();
 	};
-	const unsubStore = locStore.onChange(onChange);
-	const unsubSel = MMA.on("selection:change", onChange);
+	const events = [
+		"location:add",
+		"location:remove",
+		"location:update",
+		"location:invalidate",
+		"selection:change",
+	] as const;
+	const unsubs = events.map((e) => MMA.on(e, onChange));
 
 	return () => {
-		unsubStore();
-		unsubSel();
-		locStore?.destroy();
-		locStore = null;
+		unsubs.forEach((u) => u());
 		if (overlay) {
 			overlay.finalize();
 			overlay = null;
