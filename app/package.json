@@ -95,7 +95,7 @@
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
 		"typescript-eslint": "^8.58.2",
 		"vite": "^7.3.2",
-		"vitest": "^3.2.4",
+		"vitest": "^4.1.10",
 		"webdriverio": "^9.27.1"
 	}
 }
