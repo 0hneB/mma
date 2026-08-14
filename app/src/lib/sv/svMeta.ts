@@ -128,10 +128,10 @@ export function imageKeyToPanoId(key: any[]): string {
 	pbf.writeVarintField(1, type);
 	pbf.writeStringField(2, id);
 	const buf = pbf.finish();
-	return btoa(String.fromCharCode(...buf))
-		.replace(/\+/g, "-")
-		.replace(/\//g, "_")
-		.replace(/=+$/, "");
+	// Spreading into fromCharCode blows the argument limit on a long id.
+	let bin = "";
+	for (const byte of buf) bin += String.fromCharCode(byte);
+	return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function buildGetMetadataRequest(panoIds: string[]): GetMetadataRequest {
