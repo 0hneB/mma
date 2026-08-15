@@ -82,7 +82,7 @@ export function PanoView({
 				if (dh < 0) dh += 360;
 				const isNorth = Math.abs(dh) < 2 || Math.abs(dh - 360) < 2;
 				const target = isNorth
-					? { heading: 0, pitch: Math.max(pov.pitch - 40, -90) }
+					? { heading: 0, pitch: -90 }
 					: { heading: 0, pitch: pov.pitch };
 				cancelTweenRef.current = tweenPov(pano, target);
 			},
