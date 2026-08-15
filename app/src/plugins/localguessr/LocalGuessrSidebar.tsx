@@ -109,7 +109,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 		view.phase === "config"
 			? null
 			: createPortal(
-					<div className="lg-overlay" role="dialog" aria-modal="true">
+					<div className="lg-overlay" role="dialog" aria-modal="true" data-plugin-overlay>
 						{view.phase === "summary" ? (
 							<Summary
 								session={view.session}

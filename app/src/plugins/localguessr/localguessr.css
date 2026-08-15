@@ -26,18 +26,11 @@
 
 /* ---- Game overlay ---- */
 
-/* Portaled to body. .page-map-editor sets no z-index, so its .split-handle (10)
-   escapes to the root and has to be matched here. */
 .lg-overlay {
 	position: fixed;
 	inset: 0;
 	z-index: 10;
 	background: var(--surface-0);
-}
-
-/* Belongs to the editor underneath; its col-resize cursor is meaningless here. */
-body:has(.lg-overlay) .split-handle {
-	display: none;
 }
 
 .lg-round {

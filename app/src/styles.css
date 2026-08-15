@@ -5149,6 +5149,14 @@ body {
 	display: none;
 }
 
+/* Generic: any plugin overlay portaled to body with data-plugin-overlay
+   suppresses the editor shell underneath. */
+body:has([data-plugin-overlay]) .split-handle,
+body:has([data-plugin-overlay]) .embed-controls,
+body:has([data-plugin-overlay]) .map-meta {
+	display: none;
+}
+
 .file-drop-overlay {
 	position: absolute;
 	inset: 0;
