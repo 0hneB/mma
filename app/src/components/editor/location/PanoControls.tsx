@@ -45,7 +45,7 @@ import { t } from "@/lib/i18n";
 
 // --- Compass ---
 
-function Compass({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
+export function Compass({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const ref = useRef<HTMLDivElement>(null);
 	usePanoEvent(panorama, "pov_changed", () => {
 		ref.current?.style.setProperty("--heading", `${(-panorama.getPov().heading).toFixed(2)}deg`);
@@ -75,7 +75,7 @@ const TAPE_DEG_WIDTH = 180;
 const TAPE_PX_PER_DEG = 1.5;
 const TAPE_WIDTH_PX = TAPE_DEG_WIDTH * TAPE_PX_PER_DEG;
 
-function CompassTape({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
+export function CompassTape({ panorama }: { panorama: google.maps.StreetViewPanorama }) {
 	const innerRef = useRef<HTMLDivElement>(null);
 	usePanoEvent(panorama, "pov_changed", () => {
 		if (innerRef.current)

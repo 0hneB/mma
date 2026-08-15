@@ -4,10 +4,10 @@ import { Button } from "@/components/primitives/Button";
 import { Icon } from "@/components/primitives/Icon";
 import { Flag } from "@/components/primitives/Flag";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import { mdiClose, mdiHome, mdiNavigation, mdiCar, mdiCarOff, mdiTagOutline } from "@mdi/js";
+import { mdiClose, mdiHome, mdiNavigation, mdiBookmarkOutline, mdiBookmark, mdiCar, mdiCarOff, mdiTagOutline } from "@mdi/js";
 import { cmd } from "@/lib/commands";
 import { getSettings, setSetting } from "@/store/settings";
-import { sendHideCar } from "@/components/editor/location/PanoControls";
+import { sendHideCar, Compass, CompassTape } from "@/components/editor/location/PanoControls";
 import { usePluginState } from "@/plugins/registry";
 import { t } from "@/lib/i18n";
 import type { LatLng } from "@/types";
@@ -114,6 +114,8 @@ export function RoundPlayer({
 	const panoRef = useRef<PanoHandle>(null);
 	const [guess, setGuess] = useState<LatLng | null>(null);
 	const [submitting, setSubmitting] = useState(false);
+	const [hasCheckpoint, setHasCheckpoint] = useState(false);
+	const [panorama, setPanorama] = useState<Parameters<typeof Compass>[0]["panorama"] | null>(null);
 	const [hideCar, setHideCar] = useState(!getSettings().showCar);
 	// Persisted: the tag bar is a working preference, not per-round state.
 	const [showTags, setShowTags] = usePluginState<boolean>("localguessr", "showTags", false);
@@ -123,6 +125,7 @@ export function RoundPlayer({
 	useEffect(() => {
 		setGuess(null);
 		setSubmitting(false);
+		setHasCheckpoint(false);
 	}, [game.index]);
 
 	useEffect(() => {
@@ -191,6 +194,16 @@ export function RoundPlayer({
 			if (showResult) return;
 			if (e.key === "r") return act(() => panoRef.current?.returnToSpawn());
 			if (e.key === "n") return act(() => panoRef.current?.pointNorth());
+			if (e.key === "c" && game.config.movementMode === "moving") {
+				return act(() => {
+					if (panoRef.current?.setCheckpoint()) setHasCheckpoint(true);
+				});
+			}
+			if (e.key === "b" && game.config.movementMode === "moving") {
+				return act(() => {
+					if (panoRef.current?.returnToCheckpoint()) setHasCheckpoint(false);
+				});
+			}
 			if (e.key === "h") {
 				return act(() => {
 					setHideCar((v) => {
@@ -218,8 +231,16 @@ export function RoundPlayer({
 					round={round}
 					movementMode={game.config.movementMode}
 					preload={showResult ? (game.locations[game.index + 1] ?? null) : null}
+					onPanorama={setPanorama}
 				/>
 			</div>
+
+			{!showResult && panorama && (
+				<div className="lg-round__compass">
+					<Compass panorama={panorama} />
+					<CompassTape panorama={panorama} />
+				</div>
+			)}
 
 			<header className="lg-hud">
 				<div className="lg-hud__item">
@@ -284,6 +305,24 @@ export function RoundPlayer({
 							<Icon path={mdiNavigation} size={20} />
 						</button>
 					</Tooltip>
+					{game.config.movementMode === "moving" && (
+						<Tooltip content={hasCheckpoint ? t("Return to checkpoint (B)") : t("Set checkpoint (C)")} side="right">
+							<button
+								type="button"
+								className={`lg-round__tool${hasCheckpoint ? " is-active" : ""}`}
+								onClick={() => {
+									if (hasCheckpoint) {
+										if (panoRef.current?.returnToCheckpoint()) setHasCheckpoint(false);
+									} else {
+										if (panoRef.current?.setCheckpoint()) setHasCheckpoint(true);
+									}
+								}}
+								aria-label={hasCheckpoint ? t("Return to checkpoint") : t("Set checkpoint")}
+							>
+								<Icon path={hasCheckpoint ? mdiBookmark : mdiBookmarkOutline} size={20} />
+							</button>
+						</Tooltip>
+					)}
 					<Tooltip content={hideCar ? t("Show car (H)") : t("Hide car (H)")} side="right">
 						<button
 							type="button"

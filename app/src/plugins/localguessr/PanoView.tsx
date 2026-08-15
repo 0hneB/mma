@@ -10,6 +10,9 @@ import type { MovementMode, RoundLocation } from "./game";
 export interface PanoHandle {
 	returnToSpawn: () => void;
 	pointNorth: () => void;
+	setCheckpoint: () => boolean;
+	returnToCheckpoint: () => boolean;
+	getPanorama: () => google.maps.StreetViewPanorama | null;
 }
 
 function toLocation(round: RoundLocation) {
@@ -61,6 +64,7 @@ export function PanoView({
 	spawnRef.current = round;
 	const stagedRef = useRef<{ round: RoundLocation; resolved: ResolvedPano } | null>(null);
 	const cancelTweenRef = useRef<(() => void) | null>(null);
+	const checkpointRef = useRef<{ panoId: string; heading: number; pitch: number } | null>(null);
 
 	useImperativeHandle(
 		ref,
@@ -86,6 +90,23 @@ export function PanoView({
 					: { heading: 0, pitch: pov.pitch };
 				cancelTweenRef.current = tweenPov(pano, target);
 			},
+			setCheckpoint: () => {
+				const pano = getPanorama();
+				if (!pano) return false;
+				const pov = pano.getPov();
+				checkpointRef.current = { panoId: pano.getPano(), heading: pov.heading, pitch: pov.pitch };
+				return true;
+			},
+			returnToCheckpoint: () => {
+				const pano = getPanorama();
+				const cp = checkpointRef.current;
+				if (!pano || !cp) return false;
+				pano.setPano(cp.panoId);
+				pano.setPov({ heading: cp.heading, pitch: cp.pitch });
+				checkpointRef.current = null;
+				return true;
+			},
+			getPanorama,
 		}),
 		[],
 	);
