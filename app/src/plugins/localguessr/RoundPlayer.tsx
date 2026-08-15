@@ -20,6 +20,7 @@ import {
 	streakHit,
 	type Game,
 	type RoundResult,
+	type StreakMode,
 } from "./game";
 import { GuessMap } from "./GuessMap";
 import { PanoView, type PanoHandle } from "./PanoView";
@@ -69,9 +70,12 @@ function Timer({
 	);
 }
 
-function streakMessage(result: RoundResult, results: RoundResult[], streak: number): string | null {
+function streakMessage(result: RoundResult, results: RoundResult[], streak: number, streakMode: StreakMode): string | null {
 	if (result.streakHit === null) return null;
-	const place = (g: GeoResult | null) => g?.admin?.trim() || g?.country || t("somewhere unknown");
+	const place = (g: GeoResult | null) =>
+		streakMode === "state"
+			? g?.admin?.trim() || g?.country || t("somewhere unknown")
+			: g?.country || t("somewhere unknown");
 	if (result.streakHit) {
 		return t("Correct: {place}. Streak: {n}", { place: place(result.truth), n: streak });
 	}
@@ -326,9 +330,9 @@ export function RoundPlayer({
 								</span>
 							</div>
 						)}
-						{streakMessage(lastResult, game.results, game.streak) && (
+						{streakMessage(lastResult, game.results, game.streak, game.config.streakMode) && (
 							<div className="lg-result-bar__streak">
-								{streakMessage(lastResult, game.results, game.streak)}
+								{streakMessage(lastResult, game.results, game.streak, game.config.streakMode)}
 							</div>
 						)}
 
