@@ -1,4 +1,6 @@
 import { Button } from "@/components/primitives/Button";
+import { Icon } from "@/components/primitives/Icon";
+import { mdiCheckCircle, mdiCloseCircle } from "@mdi/js";
 import { t } from "@/lib/i18n";
 import { formatElapsed, formatRoundDistance, type Session } from "./game";
 import { Flag } from "@/components/primitives/Flag";
@@ -49,10 +51,8 @@ export function Summary({
 							{[r.truth?.admin, r.truth?.country].filter(Boolean).join(", ")}
 						</span>
 						{r.streakHit !== null && (
-							<span
-								className={`lg-summary__row-streak${r.streakHit ? " is-hit" : " is-miss"}`}
-							>
-								{r.streakHit ? t("hit") : t("miss")}
+							<span className={`lg-summary__row-streak${r.streakHit ? " is-hit" : " is-miss"}`}>
+								<Icon path={r.streakHit ? mdiCheckCircle : mdiCloseCircle} size={16} />
 							</span>
 						)}
 						<TagButton locationIds={[r.location.id]} />
