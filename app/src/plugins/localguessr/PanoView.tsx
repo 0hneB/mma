@@ -8,6 +8,7 @@ import type { MovementMode, RoundLocation } from "./game";
 
 export interface PanoHandle {
 	returnToSpawn: () => void;
+	pointNorth: () => void;
 }
 
 function toLocation(round: RoundLocation) {
@@ -69,6 +70,11 @@ export function PanoView({
 				if (spawn.panoId) pano.setPano(spawn.panoId);
 				else pano.setPosition({ lat: spawn.lat, lng: spawn.lng });
 				pano.setPov({ heading: spawn.heading, pitch: spawn.pitch });
+			},
+			pointNorth: () => {
+				const pano = getPanorama();
+				if (!pano) return;
+				pano.setPov({ heading: 0, pitch: pano.getPov().pitch });
 			},
 		}),
 		[],

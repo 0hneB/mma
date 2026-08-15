@@ -4,7 +4,7 @@ import { Button } from "@/components/primitives/Button";
 import { Icon } from "@/components/primitives/Icon";
 import { Flag } from "@/components/primitives/Flag";
 import { Tooltip } from "@/components/primitives/Tooltip";
-import { mdiClose, mdiHome, mdiCar, mdiCarOff, mdiTagOutline } from "@mdi/js";
+import { mdiClose, mdiHome, mdiNavigation, mdiCar, mdiCarOff, mdiTagOutline } from "@mdi/js";
 import { cmd } from "@/lib/commands";
 import { getSettings, setSetting } from "@/store/settings";
 import { sendHideCar } from "@/components/editor/location/PanoControls";
@@ -176,6 +176,7 @@ export function RoundPlayer({
 			// warmed next round by then, not this one.
 			if (showResult) return;
 			if (e.key === "r") return act(() => panoRef.current?.returnToSpawn());
+			if (e.key === "n") return act(() => panoRef.current?.pointNorth());
 			if (e.key === "h") {
 				return act(() => {
 					setHideCar((v) => {
@@ -256,6 +257,16 @@ export function RoundPlayer({
 							aria-label={t("Return to start")}
 						>
 							<Icon path={mdiHome} size={20} />
+						</button>
+					</Tooltip>
+					<Tooltip content={t("Point north (N)")} side="right">
+						<button
+							type="button"
+							className="lg-round__tool"
+							onClick={() => panoRef.current?.pointNorth()}
+							aria-label={t("Point north")}
+						>
+							<Icon path={mdiNavigation} size={20} />
 						</button>
 					</Tooltip>
 					<Tooltip content={hideCar ? t("Show car (H)") : t("Hide car (H)")} side="right">
