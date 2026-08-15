@@ -85,8 +85,6 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 							placeholder={t("Tag name")}
 							autoFocus
 							disabled={busy}
-							pickOnEnter={false}
-							portal
 						/>
 						<div className="lg-tag-dialog__actions">
 							<Button type="button" onClick={() => setOpen(false)} disabled={busy}>
