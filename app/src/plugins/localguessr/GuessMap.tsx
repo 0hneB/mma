@@ -20,6 +20,7 @@ import { clamp, range } from "@/types/util";
 import { DEFAULT_PREFS, type MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 import { fetchBounds } from "@/store/useMapStore";
 import { t } from "@/lib/i18n";
+import type { Scope } from "@/bindings.gen";
 import type { LatLng, MapTypeKey } from "@/types";
 
 // Sizing mirrors the pano viewer minimap. Grows in layout, never by transform --
@@ -57,6 +58,7 @@ export function GuessMap({
 	truth,
 	showResult,
 	roundKey,
+	scope,
 	onGuess,
 	onSubmit,
 	submitting,
@@ -66,6 +68,7 @@ export function GuessMap({
 	showResult: boolean;
 	/** Changes per round; refits the camera without reacting to guess placement. */
 	roundKey: string;
+	scope: Scope;
 	onGuess: (p: LatLng) => void;
 	onSubmit: () => void;
 	submitting: boolean;
@@ -127,7 +130,7 @@ export function GuessMap({
 						camera: { center: { lat: 20, lng: 0 }, zoom: 1.5 },
 						scaleControl: false,
 					}),
-					fetchBounds({ kind: "all" }),
+					fetchBounds(scope),
 				]);
 				if (cancelled) {
 					host.destroy();

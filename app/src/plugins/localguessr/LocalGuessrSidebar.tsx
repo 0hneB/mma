@@ -120,6 +120,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 							<RoundPlayer
 								game={view.game}
 								showResult={view.phase === "result"}
+								scope={scopeCtl.scope}
 								onResult={(result) => dispatch({ type: "result", result })}
 								onNext={next}
 								onFinish={() => dispatch({ type: "finish" })}

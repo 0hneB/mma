@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GeoResult } from "@/bindings.gen";
+import type { GeoResult, Scope } from "@/bindings.gen";
 import { Button } from "@/components/primitives/Button";
 import { Icon } from "@/components/primitives/Icon";
 import { Flag } from "@/components/primitives/Flag";
@@ -92,6 +92,7 @@ function streakMessage(result: RoundResult, results: RoundResult[], streak: numb
 export function RoundPlayer({
 	game,
 	showResult,
+	scope,
 	onResult,
 	onNext,
 	onFinish,
@@ -99,6 +100,7 @@ export function RoundPlayer({
 }: {
 	game: Game;
 	showResult: boolean;
+	scope: Scope;
 	onResult: (result: RoundResult) => void;
 	onNext: () => void;
 	onFinish: () => void;
@@ -300,6 +302,7 @@ export function RoundPlayer({
 					truth={showResult ? { lat: round.lat, lng: round.lng } : null}
 					showResult={showResult}
 					roundKey={`${game.startedAt}:${game.index}`}
+					scope={scope}
 					onGuess={setGuess}
 					onSubmit={() => void submit(guess)}
 					submitting={submitting}
