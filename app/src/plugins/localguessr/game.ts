@@ -5,7 +5,7 @@ import { computeScore } from "@/lib/geo/scoring";
 
 export type MovementMode = "moving" | "noMove" | "nmpz";
 export type RoundMode = "classic" | "infinite";
-export type TimerMode = "off" | "countdown";
+export type TimerMode = "off" | "countdown" | "countup";
 export type StreakMode = "off" | "country" | "state";
 
 export interface GameConfig {

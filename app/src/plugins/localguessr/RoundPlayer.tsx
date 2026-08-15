@@ -26,36 +26,44 @@ import { PanoView, type PanoHandle } from "./PanoView";
 import { RoundTagBar } from "./RoundTagBar";
 
 function Timer({
+	mode,
 	limit,
 	startedAt,
 	running,
 	onExpire,
 }: {
+	mode: "countdown" | "countup";
 	limit: number;
 	startedAt: number;
 	running: boolean;
 	onExpire: () => void;
 }) {
-	const [left, setLeft] = useState(limit);
+	const [display, setDisplay] = useState(mode === "countdown" ? limit : 0);
 	const onExpireRef = useRef(onExpire);
 	onExpireRef.current = onExpire;
 
 	useEffect(() => {
 		if (!running) return;
 		const tick = () => {
-			const remaining = Math.max(0, limit - Math.floor((Date.now() - startedAt) / 1000));
-			setLeft(remaining);
-			if (remaining === 0) onExpireRef.current();
+			const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+			if (mode === "countdown") {
+				const remaining = Math.max(0, limit - elapsed);
+				setDisplay(remaining);
+				if (remaining === 0) onExpireRef.current();
+			} else {
+				setDisplay(elapsed);
+			}
 		};
 		tick();
 		const id = setInterval(tick, 250);
 		return () => clearInterval(id);
-	}, [limit, startedAt, running]);
+	}, [mode, limit, startedAt, running]);
 
-	const mins = Math.floor(left / 60);
-	const secs = left % 60;
+	const mins = Math.floor(display / 60);
+	const secs = display % 60;
+	const low = mode === "countdown" && display <= 10;
 	return (
-		<span className={left <= 10 ? "lg-timer lg-timer--low" : "lg-timer"}>
+		<span className={low ? "lg-timer lg-timer--low" : "lg-timer"}>
 			{mins}:{String(secs).padStart(2, "0")}
 		</span>
 	);
@@ -228,11 +236,12 @@ export function RoundPlayer({
 						<span className="lg-hud__value">{game.streak}</span>
 					</div>
 				)}
-				{game.config.timerMode === "countdown" && !showResult && (
+				{game.config.timerMode !== "off" && !showResult && (
 					<div className="lg-hud__item">
 						<span className="lg-hud__label">{t("Time")}</span>
 						<span className="lg-hud__value">
 							<Timer
+								mode={game.config.timerMode}
 								limit={game.config.timeLimit}
 								startedAt={game.roundStartedAt}
 								running={!showResult && !submitting}

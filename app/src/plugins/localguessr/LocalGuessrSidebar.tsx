@@ -180,6 +180,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 									onChange={(e) => patch({ timerMode: e.target.value as TimerMode })}
 								>
 									<option value="off">{t("No timer")}</option>
+									<option value="countup">{t("Count up")}</option>
 									<option value="countdown">{t("Countdown")}</option>
 								</NSelect>
 							</Field>
