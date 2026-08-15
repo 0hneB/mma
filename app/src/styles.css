@@ -4597,6 +4597,7 @@ body {
 }
 
 .settings-gear {
+	position: relative;
 	color: #999;
 	background: none;
 	border: none;
@@ -6316,7 +6317,8 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 .feedback-reports__status--dismissed {
 	color: var(--gray-6);
 }
-.feedback-reports__badge {
+.feedback-reports__badge,
+.settings-nav-item__badge {
 	min-width: 1.15rem;
 	padding: 0 0.35rem;
 	border-radius: 999px;
@@ -6324,4 +6326,27 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 	text-align: center;
 	background: var(--action);
 	color: var(--on-action);
+}
+.settings-nav-item__badge {
+	margin-left: auto;
+}
+/* Unread reply on a filed report. Presence only -- the count lives on the settings rail. */
+.feedback-dot {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 0.3rem;
+	border-radius: 50%;
+	background: var(--action);
+	vertical-align: 0.1em;
+}
+.settings-gear .feedback-dot {
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	margin: 0;
+}
+/* The gear is deliberately dim; an indicator on it must not be. */
+.settings-gear:has(.feedback-dot) {
+	opacity: 1;
 }

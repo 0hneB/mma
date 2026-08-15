@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
 	buildIssueBody,
 	parseReportBody,
@@ -7,8 +7,10 @@ import {
 	type ReportInput,
 } from "@/lib/feedback/body";
 import { changedFrom, type Diagnostics } from "@/lib/feedback/diagnostics";
-import { submitReport } from "@/lib/feedback/submit";
-import { getReports, reportStatus, type SubmittedReport } from "@/store/feedback";
+import { refreshStoredReports, submitReport } from "@/lib/feedback/submit";
+import { cmd } from "@/lib/commands";
+import { setLocal } from "@/lib/hooks/useLocalStorage";
+import { getReports, reportStatus, unreadReplyCount, type SubmittedReport } from "@/store/feedback";
 import { DEFAULTS as SETTINGS_DEFAULTS, PRIVATE_SETTINGS } from "@/store/settings";
 import { reportKind } from "../../../workers/feedback/src/index";
 import { leadingZeroBits } from "../../../workers/feedback/src/verify";
@@ -18,6 +20,12 @@ vi.mock("@/lib/commands", async (orig) => ({
 	cmd: {
 		githubCreateIssue: vi.fn(async () => ({ number: 7, url: "https://x/7" })),
 		feedbackRequestLabel: vi.fn(async () => null),
+		githubMe: vi.fn(async () => ({ login: "me", avatarUrl: null })),
+		githubIssueThread: vi.fn(async () => ({
+			state: "open" as const,
+			stateReason: null,
+			comments: [{ author: "maintainer", body: "b", createdAt: "2026-08-14T00:00:00Z" }],
+		})),
 	},
 }));
 
@@ -281,6 +289,46 @@ describe("report status", () => {
 		const filed = await submitReport({ kind: "bug", title: "t", description: "d" }, "body", false);
 		expect(reportStatus(filed)?.tone).toBe("open");
 		expect(reportStatus(getReports()[0])?.tone).toBe("open");
+	});
+});
+
+// The unread indicator is only as good as the counts behind it, and it is refreshed for every
+// stored report at once.
+describe("refreshing filed reports", () => {
+	const stored = (number: number): SubmittedReport => ({
+		number,
+		url: `https://github.com/x/y/issues/${number}`,
+		title: `t${number}`,
+		kind: "bug",
+		submittedAt: "2026-08-14T00:00:00Z",
+		anonymous: false,
+		seenReplies: 0,
+		replies: 0,
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("asks who the user is once, not once per report", async () => {
+		// The login is what filters the reporter's own comments out of the reply count; resolving
+		// it inside the per-report fetch made a refresh N identical round trips.
+		setLocal("feedbackReports", [stored(1), stored(2), stored(3)]);
+		await refreshStoredReports();
+		expect(vi.mocked(cmd.githubMe)).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(cmd.githubIssueThread)).toHaveBeenCalledTimes(3);
+	});
+
+	it("records what it finds as unread", async () => {
+		setLocal("feedbackReports", [stored(1)]);
+		await refreshStoredReports();
+		expect(unreadReplyCount(getReports())).toBe(1);
+	});
+
+	it("touches the network only when something has been filed", async () => {
+		setLocal("feedbackReports", []);
+		await refreshStoredReports();
+		expect(vi.mocked(cmd.githubMe)).not.toHaveBeenCalled();
 	});
 });
 

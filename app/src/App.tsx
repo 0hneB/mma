@@ -14,7 +14,7 @@ import {
 } from "@/store/router";
 import { MapList, BulkActions } from "@/components/map-list/MapList";
 import { StatsForNerds } from "@/components/dialogs/StatsForNerds";
-import { SettingsPage } from "@/components/dialogs/SettingsPage";
+import { SettingsPage, UnreadReplyDot } from "@/components/dialogs/SettingsPage";
 import { PluginMarketplace } from "@/components/dialogs/PluginMarketplace";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Manual } from "@/components/manual/Manual";
@@ -206,6 +206,7 @@ function AppChrome() {
 						title={t("Settings")}
 					>
 						<Icon path={mdiCog} />
+						<UnreadReplyDot />
 					</button>
 				</div>
 			)}

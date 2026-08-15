@@ -47,6 +47,7 @@ import { toast, progressToast } from "@/lib/util/toast";
 import { parseMapQuery, mapMatchesQuery, toggleLabelInQuery } from "./mapQuery";
 import { t, msg } from "@/lib/i18n";
 import { Trans } from "@/components/primitives/Trans";
+import { UnreadReplyDot } from "@/components/dialogs/SettingsPage";
 
 // --- What's new (latest release notes) ---
 
@@ -1308,13 +1309,17 @@ export function MapList() {
 							<Trans
 								msg="This is a work in progress. Report bugs {here}"
 								here={
-									<button
-										type="button"
-										className="link-button"
-										onClick={() => openAppDialog("feedback")}
-									>
-										{t("here")}
-									</button>
+									<>
+										{/* The dot sits beside the link, not inside it: the link is underlined. */}
+										<button
+											type="button"
+											className="link-button"
+											onClick={() => openAppDialog("feedback")}
+										>
+											{t("here")}
+										</button>
+										<UnreadReplyDot />
+									</>
 								}
 							/>
 							.

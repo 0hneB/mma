@@ -14,6 +14,7 @@ import { loadSession, saveSession } from "@/store/session";
 import { openMapWindow, openMapWindowIds, closeAllMapWindows } from "@/lib/window";
 import { cmd } from "@/lib/commands";
 import { checkForUpdate } from "@/lib/util/updateCheck";
+import { refreshStoredReports } from "@/lib/feedback/submit";
 import { blockBrowserAccelerators } from "@/lib/hooks/useHotkey";
 import "@/api";
 import "@/store/commandDefs";
@@ -99,6 +100,8 @@ async function boot() {
 		.catch(() => {});
 
 	setTimeout(checkForUpdate, 5000);
+	// Every window shares the same stored reports, so one window refreshes them.
+	if (isMainWindow) setTimeout(() => void refreshStoredReports(), 5000);
 }
 
 /** Reopen the maps recorded when the session last ended, skipping any since deleted. */

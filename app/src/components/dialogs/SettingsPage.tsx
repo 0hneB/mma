@@ -30,8 +30,8 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import type { DeviceCodeInfo, GhUser } from "@/bindings.gen";
 import { collectDiagnostics } from "@/lib/feedback/diagnostics";
-import { refreshReports } from "@/lib/feedback/submit";
-import { markRepliesSeen, reportStatus, useReports } from "@/store/feedback";
+import { refreshStoredReports } from "@/lib/feedback/submit";
+import { markRepliesSeen, reportStatus, unreadReplyCount, useReports } from "@/store/feedback";
 import { openDialog as openAppDialog } from "@/store/dialogBus";
 import {
 	mdiAlertCircleOutline,
@@ -1272,10 +1272,9 @@ function FeedbackBody() {
 			.finally(() => setChecking(false));
 	}, []);
 
+	// Also refreshed at startup; opening the section re-checks for anything since.
 	useEffect(() => {
-		if (reports.length) void refreshReports(reports);
-		// Refreshing on every `reports` change would loop: the refresh writes to that store.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		void refreshStoredReports();
 	}, []);
 
 	const signIn = async () => {
@@ -1379,6 +1378,14 @@ function FeedbackBody() {
 	);
 }
 
+/** Presence-only marker for replies the user has not read, for the entry points that lead
+ *  here from the app chrome. The count itself belongs on the Feedback section. */
+export function UnreadReplyDot() {
+	const [reports] = useReports();
+	if (unreadReplyCount(reports) === 0) return null;
+	return <span className="feedback-dot" />;
+}
+
 type Section = {
 	id: string;
 	title: string;
@@ -1440,6 +1447,8 @@ function SectionShell({
 
 export function SettingsPage({ open, onOpenChange }: DialogProps) {
 	const [selected, setSelected] = useState<string>(SECTIONS[0].id);
+	const [reports] = useReports();
+	const unread = unreadReplyCount(reports);
 	const [query, setQuery] = useState("");
 	const q = query.trim().toLowerCase();
 	const searching = q !== "";
@@ -1479,6 +1488,9 @@ export function SettingsPage({ open, onOpenChange }: DialogProps) {
 							>
 								<Icon path={s.icon} size={16} className="settings-nav-item__icon" />
 								{t(s.title)}
+								{s.id === "feedback" && unread > 0 && (
+									<span className="settings-nav-item__badge">{unread}</span>
+								)}
 							</button>
 						))}
 					</div>
