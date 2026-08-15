@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Tag } from "@/bindings.gen";
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
@@ -23,15 +23,6 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 		() => tags.filter((tag) => !query || tag.name.toLowerCase().includes(query)).slice(0, 10),
 		[tags, query],
 	);
-
-	// Defer focus so the portal dropdown measures after dialog layout settles.
-	useEffect(() => {
-		if (!open) return;
-		const id = requestAnimationFrame(() => {
-			formRef.current?.querySelector<HTMLInputElement>("input")?.focus();
-		});
-		return () => cancelAnimationFrame(id);
-	}, [open]);
 
 	const apply = useCallback(
 		async (tagName: string) => {
@@ -78,6 +69,13 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 							: t("Tag {n} locations", { n: locationIds.length })
 					}
 					className="lg-tag-dialog"
+					// TODO: deferred focus is a workaround for portal measuring before dialog layout settles
+				onOpenAutoFocus={(e) => {
+						e.preventDefault();
+						setTimeout(() => {
+							formRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+						}, 100);
+					}}
 				>
 					<form
 						ref={formRef}
