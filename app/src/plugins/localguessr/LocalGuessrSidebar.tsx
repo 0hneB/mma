@@ -26,7 +26,7 @@ import {
 	type TimerMode,
 	type View,
 } from "./game";
-import { clearSavedGame, getSavedGame, saveGame } from "./storage";
+import { clearSavedGame, getGlobalStreak, getSavedGame, saveGame, setGlobalStreak } from "./storage";
 import { RoundPlayer } from "./RoundPlayer";
 import { Summary } from "./Summary";
 import "./localguessr.css";
@@ -50,10 +50,13 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 
 	const patch = (p: Partial<GameConfig>) => setStored({ ...config, ...p });
 
-	// The in-flight game survives closing the sidebar; a finished one is cleared.
 	useEffect(() => {
-		if (view.phase === "playing" || view.phase === "result") saveGame(view.game);
-		else clearSavedGame();
+		if (view.phase === "playing" || view.phase === "result") {
+			saveGame(view.game);
+			setGlobalStreak(view.game.config.streakMode, view.game.streak);
+		} else {
+			clearSavedGame();
+		}
 		setResumable(view.phase === "config" ? getSavedGame() : null);
 	}, [view]);
 
@@ -78,7 +81,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 					locations,
 					index: 0,
 					results: [],
-					streak: 0,
+					streak: getGlobalStreak(config.streakMode),
 					startedAt: Date.now(),
 					roundStartedAt: Date.now(),
 				},
@@ -208,6 +211,11 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 									<option value="state">{t("State or region")}</option>
 								</NSelect>
 							</Field>
+							{config.streakMode !== "off" && getGlobalStreak(config.streakMode) > 0 && (
+								<p className="lg-sidebar__streak">
+									{t("Current streak: {n}", { n: getGlobalStreak(config.streakMode) })}
+								</p>
+							)}
 						</Section>
 
 						{resumable && (

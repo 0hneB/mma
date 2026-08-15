@@ -8,6 +8,13 @@
 	flex: 1;
 }
 
+.lg-sidebar__streak {
+	margin: 0;
+	font-size: 12px;
+	color: var(--text-2);
+	font-variant-numeric: tabular-nums;
+}
+
 .lg-sidebar__resume {
 	display: flex;
 	align-items: center;
