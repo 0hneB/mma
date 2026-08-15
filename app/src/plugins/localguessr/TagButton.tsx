@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Tag } from "@/bindings.gen";
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
@@ -16,6 +16,7 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 	const [name, setName] = useState("");
 	const [busy, setBusy] = useState(false);
 	const tags = useMapState(getVisibleTags);
+	const formRef = useRef<HTMLFormElement>(null);
 
 	const query = name.trim().toLowerCase();
 	const suggestions = useMemo(
@@ -23,25 +24,37 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 		[tags, query],
 	);
 
-	const apply = async (tagName: string) => {
-		const trimmed = tagName.trim();
-		if (!trimmed || busy || locationIds.length === 0) return;
-		setBusy(true);
-		try {
-			await createTags([trimmed], { kind: "ids", ids: locationIds });
-			toast(
-				locationIds.length === 1
-					? t("Tagged with {tag}", { tag: trimmed })
-					: t("Tagged {n} locations with {tag}", { n: locationIds.length, tag: trimmed }),
-			);
-			setName("");
-			setOpen(false);
-		} catch (e) {
-			toast(e instanceof Error ? e.message : t("Could not add the tag"));
-		} finally {
-			setBusy(false);
-		}
-	};
+	// Defer focus so the portal dropdown measures after dialog layout settles.
+	useEffect(() => {
+		if (!open) return;
+		const id = requestAnimationFrame(() => {
+			formRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+		});
+		return () => cancelAnimationFrame(id);
+	}, [open]);
+
+	const apply = useCallback(
+		async (tagName: string) => {
+			const trimmed = tagName.trim();
+			if (!trimmed || busy || locationIds.length === 0) return;
+			setBusy(true);
+			try {
+				await createTags([trimmed], { kind: "ids", ids: locationIds });
+				toast(
+					locationIds.length === 1
+						? t("Tagged with {tag}", { tag: trimmed })
+						: t("Tagged {n} locations with {tag}", { n: locationIds.length, tag: trimmed }),
+				);
+				setName("");
+				setOpen(false);
+			} catch (e) {
+				toast(e instanceof Error ? e.message : t("Could not add the tag"));
+			} finally {
+				setBusy(false);
+			}
+		},
+		[busy, locationIds],
+	);
 
 	if (locationIds.length === 0) return null;
 
@@ -67,6 +80,7 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 					className="lg-tag-dialog"
 				>
 					<form
+						ref={formRef}
 						className="lg-tag-dialog__form"
 						onSubmit={(e) => {
 							e.preventDefault();
@@ -83,8 +97,8 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 							)}
 							getKey={(tag) => tag.id}
 							placeholder={t("Tag name")}
-							autoFocus
 							disabled={busy}
+							portal
 						/>
 						<div className="lg-tag-dialog__actions">
 							<Button type="button" onClick={() => setOpen(false)} disabled={busy}>
