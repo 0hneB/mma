@@ -140,6 +140,7 @@ export function GuessMap({
 				host.setCursor("crosshair");
 				hostRef.current = host;
 				overlayRef.current = host.createDeckOverlay();
+				fitToLocations();
 				setReady(true);
 			} catch {
 				if (!cancelled) setReady(false);
@@ -222,8 +223,9 @@ export function GuessMap({
 		if (!host) return;
 		host.resize();
 		const b = boundsRef.current;
-		if (b) host.fitBounds({ west: b[0], south: b[1], east: b[2], north: b[3] }, undefined, { snap: true });
-		else host.moveCamera({ center: { lat: 20, lng: 0 }, zoom: 1.5 });
+		if (!b) return;
+		host.fitBounds({ west: b[0], south: b[1], east: b[2], north: b[3] }, 0, { snap: true });
+		host.setZoom((host.getZoom() ?? 1) + 1);
 	}, []);
 
 	// The only thing that moves the play camera.
