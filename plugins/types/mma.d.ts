@@ -91,6 +91,53 @@ declare const commands: {
     discordPresenceSet: (activity: PresenceActivity) => Promise<null>;
     discordPresenceClear: () => Promise<null>;
     /**
+     *  Begin device-flow sign-in. Returns the code to show the user; call
+     *  [`github_poll_login`] afterwards to wait for them to finish authorizing.
+     */
+    githubStartLogin: () => Promise<DeviceCodeInfo>;
+    /**
+     *  Wait for the user to authorize the code from [`github_start_login`], then store the token.
+     *  Resolves with the signed-in account.
+     */
+    githubPollLogin: () => Promise<GhUser>;
+    /**  The signed-in user, or `None` when there is no session (or it was rejected). */
+    githubMe: () => Promise<GhUser | null>;
+    githubLogout: () => Promise<null>;
+    /**  Local-only check: is a token stored? Says nothing about its validity. */
+    githubHasSession: () => Promise<boolean>;
+    /**
+     *  File an issue as the signed-in user.
+     *
+     *  Labels are sent even though only accounts with push access may set them: GitHub drops them
+     *  silently for everyone else rather than failing, so sending costs nothing and they land for
+     *  maintainers. Closing the gap for outside reporters is the worker's job.
+     */
+    githubCreateIssue: (title: string, body: string, labels: string[]) => Promise<IssueRef>;
+    /**  One of our issues and its comments, read as the signed-in user. */
+    githubIssueThread: (number: number) => Promise<IssueThread>;
+    /**  The tail of `mma.log`, scrubbed. Empty string when there is no log yet. */
+    feedbackLogTail: () => Promise<string>;
+    /**  Whether the anonymous tier is available in this build. */
+    feedbackAnonymousAvailable: () => Promise<boolean>;
+    /**
+     *  File an issue through the worker, without any account. The worker applies the labels
+     *  (a bot has push access, so it can) and returns the reply token.
+     */
+    feedbackSubmitAnonymous: (title: string, body: string, installId: string) => Promise<AnonIssueRef>;
+    /**
+     *  Ask the worker to label an issue the user filed themselves.
+     *
+     *  GitHub drops labels sent by a reporter without push access, so a signed-in outside
+     *  contributor's report arrives bare. The worker's installation token has push access and
+     *  re-applies them. Best-effort: a report that is filed but unlabelled is not worth failing.
+     */
+    feedbackRequestLabel: (number: number) => Promise<null>;
+    /**
+     *  State and replies for an anonymous report. Only comments the maintainer addressed to the
+     *  reporter come back; the worker filters the rest out.
+     */
+    feedbackAnonymousThread: (number: number, token: string) => Promise<IssueThread>;
+    /**
      *  Start (or re-key) the remote API server. Idempotent: a running server just
      *  picks up the new key. Returns the base URL.
      */
@@ -631,6 +678,15 @@ declare const KNOWN_FIELDS: readonly [{
     readonly circularPeriod: null;
     readonly defaultOff: true;
 }];
+type AnonIssueRef = {
+    number: number;
+    url: string;
+    /**
+     *  Grants read access to this one issue's relayed comments. Not a credential for anything
+     *  else, which is why it is safe to keep in local storage.
+     */
+    token: string;
+};
 type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker";
 /**
  *  A swap-removal from a render cell. JS must move the last element into `cell_index`
@@ -722,6 +778,13 @@ type DbStats = {
 type DbTableInfo = {
     name: string;
     rows: number;
+};
+/**  What the user needs in order to authorize: the code to type and where to type it. */
+type DeviceCodeInfo = {
+    userCode: string;
+    verificationUri: string;
+    /**  Seconds until `user_code` stops working. */
+    expiresIn: number;
 };
 /**
  *  Preview data for importing a file into the currently open map.
@@ -865,6 +928,10 @@ type GgUser = {
     /**  Avatar pin path (e.g. `pin/<hash>.png`), served under `/images/` on geoguessr.com. */
     pin: string | null;
 };
+type GhUser = {
+    login: string;
+    avatarUrl: string | null;
+};
 /**
  *  Summary of a single map found during bulk import preview.
  *  Shown in the import dialog so the user can select which maps to import.
@@ -891,6 +958,30 @@ type ImportedMapInfo = {
     name: string;
     locationCount: number;
     tagCount: number;
+};
+type IssueComment = {
+    author: string;
+    body: string;
+    /**  ISO-8601, as GitHub returns it. */
+    createdAt: string;
+};
+type IssueRef = {
+    number: number;
+    url: string;
+};
+type IssueState = "open" | "closed";
+/**
+ *  What became of a report, and what has been said on it. One shape for both transports so a
+ *  signed-in and an anonymous report render identically.
+ */
+type IssueThread = {
+    state: IssueState;
+    /**
+     *  `completed`, `not_planned` or `reopened`. Absent on an open issue, and on issues closed
+     *  before GitHub recorded a reason.
+     */
+    stateReason: string | null;
+    comments: IssueComment[];
 };
 /**  How a field value becomes a group key. Wire-mirrors the JS `KeySpec`. */
 type KeySpec = 
@@ -3660,4 +3751,4 @@ declare global {
 }
 
 export { BUILTIN_FIELDS, KNOWN_FIELDS, MMA as MMAApi, PanoType, commands, events };
-export type { CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExportProgress, ExternalMutation, ExtraFieldDef, ExtraFieldType, FieldCount, FieldOp, FilterOp, FirstSyncMode, GeoResult, GgUser, ImportPreviewEntry, ImportProgress, ImportedMapInfo, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MergeWinner, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, QueryResult, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Select, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SidecarDone, SidecarLine, SidecarLog, SidecarProgress, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiCountryStatus, ValiLocation, ValiLocation_Deserialize, ValiProgress, VirtualTag };
+export type { AnonIssueRef, CameraType, CellRemoval, CommitDelta, CommitDiff, CommitInfo, ComparisonType, Conflict, ConflictKind, CopyToMapResult, DataLocation, DatePart, DbStats, DbTableInfo, DeviceCodeInfo, EditorImportPreview, EditorImportResult, ExportOpts, ExportProgress, ExternalMutation, ExtraFieldDef, ExtraFieldType, FieldCount, FieldOp, FilterOp, FirstSyncMode, GeoResult, GgUser, GhUser, ImportPreviewEntry, ImportProgress, ImportedMapInfo, IssueComment, IssueRef, IssueState, IssueThread, KeySpec, Location, LocationPatch, LocationPatch_Deserialize, MapData, MapExtra, MapKeyAction, MapKeyBinding, MapMeta, MapMetaPatch, MapMetaPatch_Deserialize, MapSettings, MergeWinner, MutationResult, NormalizedSyncLocation, NumericBinning, PartitionBucket, PluginManifest, PluginManifest_Deserialize, PluginSidecar, PluginSidecar_Deserialize, PolygonGeometry, PresenceActivity, PullCreate, PullUpdate, QueryResult, RemoteMappingRow, RenderDelta, RenderEntry, RenderPatchEntry, RenderRequest, ResolutionSide, ReviewCreate, ReviewSession, ReviewUpdate, SaveResult, Scope, ScoreBounds, SeenEntry, SeenFilter, SeenMapInfo, SeenWriteEntry, SelPaint, Select, Selection, SelectionInput, SelectionProps, SelectionSync, SideCounts, SidecarDone, SidecarLine, SidecarLog, SidecarProgress, StoreStatus, SummaryResult, SyncPatch, SyncReconcileResult, Tag, TagPatch, Update, ValiCountryStatus, ValiLocation, ValiLocation_Deserialize, ValiProgress, VirtualTag };

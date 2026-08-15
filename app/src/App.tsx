@@ -38,6 +38,8 @@ import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
 import "@/plugins";
 import { t } from "@/lib/i18n";
+import { ReportDialog } from "@/components/dialogs/ReportDialog";
+import { useDialogState } from "@/store/dialogBus";
 
 // Dynamic import (deck.gl/luma.gl out of the initial bundle) WITHOUT React.lazy/Suspense —
 // a Suspense boundary makes React 19 render the editor in a low-priority lane (~260ms/open).
@@ -111,6 +113,7 @@ function AppChrome() {
 	const update = useUpdateState();
 	const [showStats, setShowStats] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
+	const [feedbackOpen, setFeedbackOpen] = useDialogState("feedback");
 	const [showPlugins, setShowPlugins] = useState(false);
 	const [manualSearchOpen, setManualSearchOpen] = useState(false);
 
@@ -208,6 +211,7 @@ function AppChrome() {
 			)}
 			{showStats && <StatsForNerds onClose={() => setShowStats(false)} />}
 			<SettingsPage open={showSettings} onOpenChange={setShowSettings} />
+			{feedbackOpen && <ReportDialog onClose={() => setFeedbackOpen(false)} />}
 			<PluginMarketplace open={showPlugins} onOpenChange={setShowPlugins} />
 			<ManualSearch open={manualSearchOpen} onOpenChange={setManualSearchOpen} />
 			{manualChapter !== null && (

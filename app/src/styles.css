@@ -6115,3 +6115,213 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 .mma-vector-canvas {
 	cursor: crosshair;
 }
+
+/* --- Feedback --- */
+
+/* A button that reads as inline text. Inherits colour so it matches whatever it sits in. */
+.link-button {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+	text-decoration: underline;
+}
+.link-button:hover {
+	opacity: 0.75;
+}
+
+.report-dialog {
+	display: flex;
+	flex-direction: column;
+	width: min(34rem, 92vw);
+}
+
+.report-dialog:has(.report-dialog__area) {
+	height: min(40rem, 85vh);
+}
+.report-dialog:has(.report-dialog__area) .modal__content {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+/* Everything except the flexible region keeps its natural height, always. */
+.report-dialog__kinds,
+.report-dialog__meta,
+.report-dialog__actions {
+	flex-shrink: 0;
+}
+.report-dialog__area {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+/* Kind picker sits apart from the fields it governs. */
+.report-dialog__kinds {
+	display: flex;
+	gap: 1.5rem;
+	margin: 0.25rem 0 1.25rem;
+}
+.report-dialog__kind,
+.report-dialog__option {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+}
+
+.report-dialog__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	flex: 1;
+	min-height: 0;
+}
+.report-dialog__body {
+	flex: 2;
+	min-height: 4rem;
+	padding: 0.5rem 0.6rem;
+	resize: none;
+	font-family: inherit;
+	line-height: 1.45;
+}
+.report-dialog__body--steps {
+	flex: 1;
+	min-height: 3rem;
+}
+
+/* Everything below the fields is about the submission, not its content. */
+.report-dialog__meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	margin-top: 1.25rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--border-subtle);
+}
+.report-dialog__attachments {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.report-dialog__nudge {
+	margin: -0.25rem 0 0;
+	color: var(--text-3);
+	font-size: 0.8rem;
+	line-height: 1.4;
+}
+/* Holds its space while everything is attached, so checking a box moves nothing. */
+.report-dialog__nudge--idle {
+	visibility: hidden;
+}
+.report-dialog__identity {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+.report-dialog__muted {
+	color: var(--text-2);
+	font-size: 0.85rem;
+	line-height: 1.4;
+}
+.report-dialog__sent {
+	color: var(--text-2);
+	line-height: 1.5;
+	margin: 0.25rem 0 1.5rem;
+}
+.report-dialog__toggle {
+	align-self: flex-start;
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	font-size: 0.85rem;
+	color: var(--text-3);
+	cursor: pointer;
+	text-decoration: underline;
+}
+.report-dialog__toggle:hover {
+	color: var(--text-2);
+}
+.report-dialog__preview {
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	line-height: 1.5;
+	padding: 0.75rem;
+	border-radius: var(--radius-1);
+	background: var(--surface-1, rgb(0 0 0 / 0.25));
+	color: var(--text-2);
+}
+.report-dialog__error,
+.feedback-error {
+	font-size: 0.85rem;
+	line-height: 1.4;
+	color: var(--destructive);
+	margin: 0;
+}
+.report-dialog__actions {
+	display: flex;
+	gap: 0.5rem;
+	justify-content: flex-end;
+	margin-top: 1.5rem;
+}
+
+.feedback-account {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-bottom: 0.5rem;
+}
+.feedback-account__avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+}
+.feedback-reports {
+	list-style: none;
+	padding: 0;
+	margin: 0.75rem 0 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+.feedback-reports__item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+/* GitHub's own status vocabulary, so a report reads the same here as on the issue page. */
+.feedback-reports__status {
+	display: flex;
+	flex-shrink: 0;
+}
+.feedback-reports__status--open {
+	color: var(--green-7);
+}
+.feedback-reports__status--done {
+	color: var(--purple-7);
+}
+.feedback-reports__status--dismissed {
+	color: var(--gray-6);
+}
+.feedback-reports__badge {
+	min-width: 1.15rem;
+	padding: 0 0.35rem;
+	border-radius: 999px;
+	font-size: 0.7rem;
+	text-align: center;
+	background: var(--action);
+	color: var(--on-action);
+}

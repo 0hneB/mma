@@ -27,6 +27,12 @@ import {
 } from "@/lib/util/hotkeys";
 import { Icon } from "@/components/primitives/Icon";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import type { DeviceCodeInfo, GhUser } from "@/bindings.gen";
+import { collectDiagnostics } from "@/lib/feedback/diagnostics";
+import { refreshReports } from "@/lib/feedback/submit";
+import { markRepliesSeen, reportStatus, useReports } from "@/store/feedback";
+import { openDialog as openAppDialog } from "@/store/dialogBus";
 import {
 	mdiAlertCircleOutline,
 	mdiApplicationOutline,
@@ -34,6 +40,7 @@ import {
 	mdiGoogleStreetView,
 	mdiKeyboardOutline,
 	mdiMapOutline,
+	mdiMessageAlertOutline,
 	mdiPencilOutline,
 	mdiPuzzleOutline,
 	mdiRefresh,
@@ -1230,7 +1237,143 @@ function AdvancedBody() {
 			<Aux match="log file logs diagnostics">
 				<div style={{ display: "flex", gap: 8 }}>
 					<Button onClick={() => cmd.openLogFile()}>{t("Open log file")}</Button>
+					<CopyDiagnosticsButton />
 				</div>
+			</Aux>
+		</>
+	);
+}
+
+function CopyDiagnosticsButton() {
+	const [copied, setCopied] = useState(false);
+	const copy = async () => {
+		const diagnostics = await collectDiagnostics();
+		await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
+	return (
+		<Button onClick={() => void copy()}>{copied ? t("Copied") : t("Copy diagnostics")}</Button>
+	);
+}
+
+function FeedbackBody() {
+	const [user, setUser] = useState<GhUser | null>(null);
+	const [checking, setChecking] = useState(true);
+	const [code, setCode] = useState<DeviceCodeInfo | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [reports] = useReports();
+
+	useEffect(() => {
+		void cmd
+			.githubMe()
+			.then(setUser)
+			.catch(() => setUser(null))
+			.finally(() => setChecking(false));
+	}, []);
+
+	useEffect(() => {
+		if (reports.length) void refreshReports(reports);
+		// Refreshing on every `reports` change would loop: the refresh writes to that store.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	const signIn = async () => {
+		setError(null);
+		try {
+			const info = await cmd.githubStartLogin();
+			setCode(info);
+			await openExternal(info.verificationUri);
+			setUser(await cmd.githubPollLogin());
+		} catch (e) {
+			setError(String(e));
+		} finally {
+			setCode(null);
+		}
+	};
+
+	return (
+		<>
+			<GroupHeading>{t("Account")}</GroupHeading>
+			<Aux match="github sign in account anonymous">
+				<div className="feedback-account">
+					{checking ? (
+						<span className="text-muted">{t("Checking sign-in...")}</span>
+					) : user ? (
+						<>
+							{user.avatarUrl && (
+								<img className="feedback-account__avatar" src={user.avatarUrl} alt="" />
+							)}
+							<span>{user.login}</span>
+							<Button
+								onClick={() => {
+									void cmd.githubLogout().then(() => setUser(null));
+								}}
+							>
+								{t("Sign out")}
+							</Button>
+						</>
+					) : (
+						<>
+							<span className="text-muted">
+								{t("Not signed in. Reports are filed anonymously and replies arrive here.")}
+							</span>
+							<Button onClick={() => void signIn()}>{t("Sign in with GitHub")}</Button>
+						</>
+					)}
+				</div>
+				{code && (
+					<p className="text-muted">
+						{t("Enter code {code} in your browser to finish signing in.", {
+							code: code.userCode,
+						})}
+					</p>
+				)}
+				{error && <p className="feedback-error">{error}</p>}
+			</Aux>
+
+			<GroupHeading>{t("Reports")}</GroupHeading>
+			<Aux match="report bug feedback issue replies">
+				<div style={{ display: "flex", gap: 8 }}>
+					<Button variant="primary" onClick={() => openAppDialog("feedback")}>
+						{t("Send feedback")}
+					</Button>
+				</div>
+				{reports.length === 0 ? (
+					<p className="text-muted">{t("Nothing sent yet.")}</p>
+				) : (
+					<ul className="feedback-reports">
+						{reports.map((r) => {
+							const status = reportStatus(r);
+							return (
+								<li key={r.number} className="feedback-reports__item">
+									{status && (
+										<span
+											className={`feedback-reports__status feedback-reports__status--${status.tone}`}
+											title={t(status.label)}
+										>
+											<Icon path={status.icon} size={16} />
+										</span>
+									)}
+									<button
+										type="button"
+										className="link-button"
+										onClick={() => {
+											markRepliesSeen(r.number);
+											void openExternal(r.url);
+										}}
+									>
+										{r.title}
+									</button>
+									{r.replies > r.seenReplies && (
+										<span className="feedback-reports__badge">{r.replies - r.seenReplies}</span>
+									)}
+									<span className="text-muted">{new Date(r.submittedAt).toLocaleDateString()}</span>
+								</li>
+							);
+						})}
+					</ul>
+				)}
 			</Aux>
 		</>
 	);
@@ -1255,7 +1398,13 @@ const SECTIONS: Section[] = [
 		icon: mdiApplicationOutline,
 		Body: ApplicationBody,
 	},
-	{ id: "integrations", title: msg("Integrations"), icon: mdiPuzzleOutline, Body: IntegrationsBody },
+	{
+		id: "integrations",
+		title: msg("Integrations"),
+		icon: mdiPuzzleOutline,
+		Body: IntegrationsBody,
+	},
+	{ id: "feedback", title: msg("Feedback"), icon: mdiMessageAlertOutline, Body: FeedbackBody },
 	{ id: "advanced", title: msg("Advanced"), icon: mdiWrenchOutline, Body: AdvancedBody },
 ];
 

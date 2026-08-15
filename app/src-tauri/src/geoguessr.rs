@@ -8,13 +8,13 @@
 //!
 //! The token lives in the OS credential store, never the app DB.
 
-use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::storage;
 use crate::types::AppResult;
+use crate::util::blocking;
 
 pub(crate) const ORIGIN: &str = "https://www.geoguessr.com";
 const SECRET_NAME: &str = "geoguessr";
@@ -36,29 +36,15 @@ pub struct GgUser {
 // Session state
 // ---------------------------------------------------------------------------
 
-/// Outer `None` = not yet read from the credential store; inner `None` = no session.
-fn cell() -> &'static Mutex<Option<Option<String>>> {
-    static S: OnceLock<Mutex<Option<Option<String>>>> = OnceLock::new();
-    S.get_or_init(|| Mutex::new(None))
-}
+/// The `_ncfa` cookie, cached from the credential store.
+static SESSION: storage::SessionCell = storage::SessionCell::new(SECRET_NAME);
 
-/// Current `_ncfa`, read from the credential store on first use. A load failure is propagated
-/// and NOT cached, so the next call retries rather than reporting "signed out" until restart.
 fn session() -> AppResult<Option<String>> {
-    let mut g = cell().lock()?;
-    if g.is_none() {
-        *g = Some(storage::secret::get(SECRET_NAME)?);
-    }
-    Ok(g.clone().unwrap_or_default())
+    SESSION.get()
 }
 
 fn set_session(ncfa: Option<String>) -> AppResult<()> {
-    match ncfa.as_deref() {
-        Some(v) => storage::secret::set(SECRET_NAME, v)?,
-        None => storage::secret::delete(SECRET_NAME)?,
-    }
-    *cell().lock()? = Some(ncfa);
-    Ok(())
+    SESSION.set(ncfa)
 }
 
 // ---------------------------------------------------------------------------
@@ -167,12 +153,6 @@ fn fetch_me() -> AppResult<Option<GgUser>> {
     }
     let body: serde_json::Value = resp.json().map_err(|e| format!("profiles decode: {e}"))?;
     Ok(parse_profile(&body))
-}
-
-async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> AppResult<T> {
-    tauri::async_runtime::spawn_blocking(f)
-        .await
-        .map_err(|e| format!("task failed: {e}").into())
 }
 
 // ---------------------------------------------------------------------------

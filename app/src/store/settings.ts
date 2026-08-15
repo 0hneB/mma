@@ -114,7 +114,7 @@ export type BorderDetail = keyof typeof BORDER_DETAILS;
 export type SubdivisionDetail = keyof typeof SUBDIVISION_DETAILS;
 export type PreviewAspectRatio = keyof typeof PREVIEW_ASPECT_RATIOS;
 
-const DEFAULTS = {
+export const DEFAULTS = {
 	showCameraBadges: true,
 	showLinksControl: true,
 	clickToGo: true,
@@ -225,6 +225,12 @@ const DEFAULTS = {
 	hasSeenWelcome: false,
 };
 export type AppSettings = typeof DEFAULTS;
+
+/** Settings holding private information that should not be exfiltrated. */
+export const PRIVATE_SETTINGS: ReadonlySet<keyof AppSettings> = new Set([
+	"nominatimApiKey",
+	"remoteApiKey",
+]);
 
 /** App settings mirrored to CSS custom properties on `:root`. Add an entry to expose a
  *  setting to CSS; `useCssVarSettings` (App.tsx) keeps them in sync reactively. */

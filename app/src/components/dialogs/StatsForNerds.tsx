@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { cmd } from "@/lib/commands";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { useDomEvent } from "@/lib/hooks/useDomEvent";
+import { webglRenderer } from "@/lib/feedback/diagnostics";
 import { google } from "@/lib/sv/opensv";
 import { fmt, localeFormat } from "@/lib/util/format";
 import { getMapState } from "@/store/useMapStore";
@@ -69,20 +70,6 @@ async function gatherStats(): Promise<Stats> {
 		seconds: secs % 60,
 	});
 
-	let webglRenderer = "unknown";
-	try {
-		const canvas = document.createElement("canvas");
-		const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
-		if (gl) {
-			const ext = gl.getExtension("WEBGL_debug_renderer_info");
-			webglRenderer = ext
-				? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
-				: gl.getParameter(gl.RENDERER);
-		}
-	} catch {
-		// ignored
-	}
-
 	return {
 		appVersion: typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev",
 		buildMode: import.meta.env.MODE,
@@ -95,7 +82,7 @@ async function gatherStats(): Promise<Stats> {
 		journalMode: dbStats.journalMode,
 		foreignKeys: dbStats.foreignKeys ? "ON" : "OFF",
 		opensvVersion: google?.maps?.version ?? "not loaded",
-		webglRenderer,
+		webglRenderer: webglRenderer(),
 		userAgent: navigator.userAgent,
 		viewport: `${window.innerWidth}x${window.innerHeight}`,
 		devicePixelRatio: window.devicePixelRatio,

@@ -1,0 +1,17 @@
+name = "mma-feedback"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+workers_dev = false
+
+[[routes]]
+pattern = "feedback.ccmdi.com"
+custom_domain = true
+
+[vars]
+GITHUB_REPO = "ccmdi/mma"
+
+# Secrets (set with `wrangler secret put <NAME>`, never in this file):
+#   GITHUB_APP_ID    numeric id of the GitHub App
+#   GITHUB_APP_KEY   its private key, PKCS#8 PEM
+#   WORKER_SECRET    signing key for reply tokens

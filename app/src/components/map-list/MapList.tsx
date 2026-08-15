@@ -15,6 +15,7 @@ import { openMapWindow } from "@/lib/window";
 import { log, fireAndForget } from "@/lib/util/log";
 import { cmpVersion } from "@/lib/util/util";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { openDialog as openAppDialog } from "@/store/dialogBus";
 import { cmd } from "@/lib/commands";
 import { mmaBufUrl, downloadBlob } from "@/lib/util/util";
 import * as Collapsible from "@radix-ui/react-collapsible";
@@ -764,9 +765,7 @@ function ImportPreviewModal({
 									t({ one: ", {n} tag", other: ", {n} tags" }, { n: entry.tagCount })}
 								{entry.folder && ` [${entry.folder}]`}
 							</span>
-							{entry.isDuplicate && (
-								<span className="import-preview__badge">{t("duplicate")}</span>
-							)}
+							{entry.isDuplicate && <span className="import-preview__badge">{t("duplicate")}</span>}
 						</li>
 					))}
 				</ul>
@@ -1309,9 +1308,13 @@ export function MapList() {
 							<Trans
 								msg="This is a work in progress. Report bugs {here}"
 								here={
-									<a target="_blank" href="https://github.com/ccmdi/mma/issues">
+									<button
+										type="button"
+										className="link-button"
+										onClick={() => openAppDialog("feedback")}
+									>
 										{t("here")}
-									</a>
+									</button>
 								}
 							/>
 							.

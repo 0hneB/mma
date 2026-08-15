@@ -8,6 +8,10 @@ editor_files/
 mma_files/
 mma.html
 
+# Worker secrets
+.dev.vars
+.wrangler/
+
 # IDE / editor
 .idea/
 

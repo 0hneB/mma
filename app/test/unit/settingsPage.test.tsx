@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { initLocale } from "@/lib/i18n";
+import { setLocal } from "@/lib/hooks/useLocalStorage";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 vi.stubGlobal("__APP_VERSION__", "0.0.0-test");
@@ -21,7 +22,16 @@ vi.mock("@/lib/commands", () => ({
 		getDataLocation: vi.fn().mockResolvedValue({ path: "/data", default_path: "/data" }),
 		openDataFolder: vi.fn(),
 		openLogFile: vi.fn(),
+		githubMe: vi.fn().mockResolvedValue(null),
+		// Unreachable on purpose: a report keeps the state it was last told, rather than losing
+		// its status the moment a refresh fails.
+		githubIssueThread: vi.fn().mockRejectedValue(new Error("offline")),
 	},
+}));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
+// The log plugin invokes Tauri, which is absent here.
+vi.mock("@/lib/util/log", () => ({
+	log: { trace: vi.fn(), debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
 const { SettingsPage } = await import("@/components/dialogs/SettingsPage");
@@ -55,10 +65,9 @@ const qa = (sel: string) => [...document.querySelectorAll(sel)];
 function search(text: string) {
 	const input = q(".settings-rail__search") as HTMLInputElement;
 	act(() => {
-		const setter = Object.getOwnPropertyDescriptor(
-			HTMLInputElement.prototype,
-			"value",
-		)!.set!.bind(input);
+		const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
+			input,
+		);
 		setter(text);
 		input.dispatchEvent(new Event("input", { bubbles: true }));
 	});
@@ -112,5 +121,47 @@ describe("settings search", () => {
 		const titles = qa(".setting-row__title").map((n) => n.textContent?.toLowerCase() ?? "");
 		expect(titles.length).toBeGreaterThan(0);
 		for (const title of titles) expect(title).toContain("crosshair");
+	});
+});
+
+// The report list is the only place a filed report's fate is visible in the app.
+describe("feedback reports", () => {
+	beforeAll(async () => {
+		await initLocale("en");
+	});
+
+	it("marks each report with the state GitHub reported", async () => {
+		// setLocal, not localStorage: the store keeps an in-memory authority that is read once.
+		setLocal("feedbackReports", [
+			{
+				number: 5,
+				url: "u",
+				title: "open one",
+				kind: "bug",
+				submittedAt: "2026-08-14T00:00:00Z",
+				anonymous: false,
+				seenReplies: 0,
+				replies: 0,
+				state: "open",
+				stateReason: null,
+			},
+			{
+				number: 4,
+				url: "u",
+				title: "declined one",
+				kind: "bug",
+				submittedAt: "2026-08-14T00:00:00Z",
+				anonymous: false,
+				seenReplies: 0,
+				replies: 0,
+				state: "closed",
+				stateReason: "not_planned",
+			},
+		]);
+		await mount();
+		search("feedback");
+		expect(qa(".feedback-reports__status--open").length).toBe(1);
+		expect(qa(".feedback-reports__status--dismissed").length).toBe(1);
+		expect(q(".feedback-reports__status--open svg")).not.toBeNull();
 	});
 });

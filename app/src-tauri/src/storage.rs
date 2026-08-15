@@ -590,6 +590,41 @@ pub(crate) mod secret {
     }
 }
 
+/// A named secret cached in memory: read from the credential store on first use, then held
+/// for the process lifetime. Outer `None` = not yet read; inner `None` = no session.
+pub(crate) struct SessionCell {
+    name: &'static str,
+    cached: std::sync::Mutex<Option<Option<String>>>,
+}
+
+impl SessionCell {
+    pub(crate) const fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            cached: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// A load failure is propagated and NOT cached, so the next call retries rather than
+    /// reporting "signed out" until restart.
+    pub(crate) fn get(&self) -> AppResult<Option<String>> {
+        let mut g = self.cached.lock()?;
+        if g.is_none() {
+            *g = Some(secret::get(self.name)?);
+        }
+        Ok(g.clone().unwrap_or_default())
+    }
+
+    pub(crate) fn set(&self, value: Option<String>) -> AppResult<()> {
+        match value.as_deref() {
+            Some(v) => secret::set(self.name, v)?,
+            None => secret::delete(self.name)?,
+        }
+        *self.cached.lock()? = Some(value);
+        Ok(())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Arrow IPC
 // ---------------------------------------------------------------------------

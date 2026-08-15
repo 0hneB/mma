@@ -40,9 +40,11 @@ mod util;
 mod location_store;
 mod borders;
 mod export;
+mod feedback;
 mod gdoc;
 mod geocoder;
 mod geoguessr;
+mod github;
 mod import;
 mod map_meta;
 mod plugins;
@@ -288,7 +290,10 @@ fn list_user_plugins() -> Vec<PluginManifest> {
         if let Ok(content) = std::fs::read_to_string(&manifest_path) {
             match serde_json::from_str::<PluginManifest>(&content) {
                 Ok(mut manifest) => {
-                    let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+                    let folder_name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown");
                     if manifest.id.is_empty() {
                         manifest.id = folder_name.to_string();
                     }
@@ -599,6 +604,20 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             geocoder::reverse_geocode,
             presence::discord_presence_set,
             presence::discord_presence_clear,
+            // --- Feedback ---
+            github::github_start_login,
+            github::github_poll_login,
+            github::github_me,
+            github::github_logout,
+            github::github_has_session,
+            github::github_create_issue,
+            github::github_issue_thread,
+            feedback::feedback_log_tail,
+            feedback::feedback_anonymous_available,
+            feedback::feedback_submit_anonymous,
+            feedback::feedback_request_label,
+            feedback::feedback_anonymous_thread,
+            // --- Remote API ---
             remote_api::remote_api_start,
             remote_api::remote_api_stop,
             remote_api::remote_api_respond,

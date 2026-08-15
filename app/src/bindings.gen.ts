@@ -82,6 +82,50 @@ export const commands = {
 	discordPresenceSet: (activity: PresenceActivity) => __TAURI_INVOKE<null>("discord_presence_set", { activity }),
 	discordPresenceClear: () => __TAURI_INVOKE<null>("discord_presence_clear"),
 	/**
+	 *  Begin device-flow sign-in. Returns the code to show the user; call
+	 *  [`github_poll_login`] afterwards to wait for them to finish authorizing.
+	 */
+	githubStartLogin: () => __TAURI_INVOKE<DeviceCodeInfo>("github_start_login"),
+	/**
+	 *  Wait for the user to authorize the code from [`github_start_login`], then store the token.
+	 *  Resolves with the signed-in account.
+	 */
+	githubPollLogin: () => __TAURI_INVOKE<GhUser>("github_poll_login"),
+	/**  The signed-in user, or `None` when there is no session (or it was rejected). */
+	githubMe: () => __TAURI_INVOKE<GhUser | null>("github_me"),
+	githubLogout: () => __TAURI_INVOKE<null>("github_logout"),
+	/**  Local-only check: is a token stored? Says nothing about its validity. */
+	githubHasSession: () => __TAURI_INVOKE<boolean>("github_has_session"),
+	/**
+	 *  File an issue as the signed-in user.
+	 * 
+	 *  Labels are sent even though only accounts with push access may set them: GitHub drops them
+	 *  silently for everyone else rather than failing, so sending costs nothing and they land for
+	 *  maintainers. Closing the gap for outside reporters is the worker's job.
+	 */
+	githubCreateIssue: (title: string, body: string, labels: string[]) => __TAURI_INVOKE<IssueRef>("github_create_issue", { title, body, labels }),
+	/**  One of our issues and its comments, read as the signed-in user. */
+	githubIssueThread: (number: number) => __TAURI_INVOKE<IssueThread>("github_issue_thread", { number }),
+	/**  The tail of `mma.log`, scrubbed. Empty string when there is no log yet. */
+	feedbackLogTail: () => __TAURI_INVOKE<string>("feedback_log_tail"),
+	/**  Whether the anonymous tier is available in this build. */
+	feedbackAnonymousAvailable: () => __TAURI_INVOKE<boolean>("feedback_anonymous_available"),
+	/**
+	 *  File an issue through the worker, without any account. The worker applies the labels
+	 *  (a bot has push access, so it can) and returns the reply token.
+	 */
+	feedbackSubmitAnonymous: (title: string, body: string, installId: string) => __TAURI_INVOKE<AnonIssueRef>("feedback_submit_anonymous", { title, body, installId }),
+	/**
+	 *  Ask the worker to label an issue the user filed themselves.
+	 * 
+	 *  GitHub drops labels sent by a reporter without push access, so a signed-in outside
+	 *  contributor's report arrives bare. The worker's installation token has push access and
+	 *  re-applies them. Best-effort: a report that is filed but unlabelled is not worth failing.
+	 */
+	feedbackRequestLabel: (number: number) => __TAURI_INVOKE<null>("feedback_request_label", { number }),
+	/**  State and replies for an anonymous report, relayed by the worker. */
+	feedbackAnonymousThread: (number: number, token: string) => __TAURI_INVOKE<IssueThread>("feedback_anonymous_thread", { number, token }),
+	/**
 	 *  Start (or re-key) the remote API server. Idempotent: a running server just
 	 *  picks up the new key. Returns the base URL.
 	 */
@@ -419,6 +463,16 @@ export const BUILTIN_FIELDS = [{"key":"lat","label":"Latitude","type":"number","
 export const KNOWN_FIELDS = [{"key":"altitude","type":"number","label":"Altitude","values":[],"labels":[],"circularPeriod":null,"defaultOff":false},{"key":"countryCode","type":"string","label":"Country code","values":[],"labels":[],"circularPeriod":null,"defaultOff":false},{"key":"cameraType","type":"enum","label":"Camera type","values":["gen1","gen2","gen4","badcam","tripod","trekker"],"labels":[["gen1","Gen 1"],["gen2","Gen 2/3"],["gen4","Gen 4"],["badcam","Bad cam"],["tripod","Tripod"],["trekker","Trekker"]],"circularPeriod":null,"defaultOff":false},{"key":"panoType","type":"enum","label":"Pano type","values":["2","3","10"],"labels":[["2","Official"],["3","Unknown"],["10","User uploaded"]],"circularPeriod":null,"defaultOff":false},{"key":"imageDate","type":"month","label":"Image date","values":[],"labels":[],"circularPeriod":null,"defaultOff":false},{"key":"datetime","type":"date","label":"Exact date","values":[],"labels":[],"circularPeriod":null,"defaultOff":true},{"key":"timezone","type":"enum","label":"Timezone","values":[],"labels":[],"circularPeriod":null,"defaultOff":true},{"key":"drivingDirection","type":"number","label":"Driving direction","values":[],"labels":[],"circularPeriod":360.0,"defaultOff":true},{"key":"uploaderName","type":"string","label":"Uploader","values":[],"labels":[],"circularPeriod":null,"defaultOff":true},{"key":"coverageDates","type":"array","label":"Coverage dates","values":[],"labels":[],"circularPeriod":null,"defaultOff":true},{"key":"subdivision","type":"string","label":"Subdivision","values":[],"labels":[],"circularPeriod":null,"defaultOff":true}] as const;
 
 /* Types */
+export type AnonIssueRef = {
+	number: number,
+	url: string,
+	/**
+	 *  Grants read access to this one issue's relayed comments. Not a credential for anything
+	 *  else, which is why it is safe to keep in local storage.
+	 */
+	token: string,
+};
+
 export type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker";
 
 /**
@@ -515,6 +569,14 @@ export type DbStats = {
 export type DbTableInfo = {
 	name: string,
 	rows: number,
+};
+
+/**  What the user needs in order to authorize: the code to type and where to type it. */
+export type DeviceCodeInfo = {
+	userCode: string,
+	verificationUri: string,
+	/**  Seconds until `user_code` stops working. */
+	expiresIn: number,
 };
 
 /**
@@ -660,6 +722,11 @@ export type GgUser = {
 	pin: string | null,
 };
 
+export type GhUser = {
+	login: string,
+	avatarUrl: string | null,
+};
+
 /**
  *  Summary of a single map found during bulk import preview.
  *  Shown in the import dialog so the user can select which maps to import.
@@ -688,6 +755,34 @@ export type ImportedMapInfo = {
 	name: string,
 	locationCount: number,
 	tagCount: number,
+};
+
+export type IssueComment = {
+	author: string,
+	body: string,
+	/**  ISO-8601, as GitHub returns it. */
+	createdAt: string,
+};
+
+export type IssueRef = {
+	number: number,
+	url: string,
+};
+
+export type IssueState = "open" | "closed";
+
+/**
+ *  What became of a report, and what has been said on it. One shape for both transports so a
+ *  signed-in and an anonymous report render identically.
+ */
+export type IssueThread = {
+	state: IssueState,
+	/**
+	 *  `completed`, `not_planned` or `reopened`. Absent on an open issue, and on issues closed
+	 *  before GitHub recorded a reason.
+	 */
+	stateReason: string | null,
+	comments: IssueComment[],
 };
 
 /**  How a field value becomes a group key. Wire-mirrors the JS `KeySpec`. */

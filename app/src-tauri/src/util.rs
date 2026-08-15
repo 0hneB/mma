@@ -110,13 +110,30 @@ pub fn hex_to_rgb(hex: &str) -> Option<[u8; 3]> {
 
 /// SHA-256 hash of `bytes` as a lowercase hex string.
 pub fn sha256_hex(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
+    let digest = sha256(bytes);
     let mut s = String::with_capacity(digest.len() * 2);
-    for b in digest.iter() {
+    for b in digest {
         use std::fmt::Write;
-        write!(&mut s, "{:02x}", b).unwrap();
+        write!(&mut s, "{b:02x}").unwrap();
     }
     s
+}
+
+/// SHA-256 digest of `bytes`.
+pub fn sha256(bytes: &[u8]) -> [u8; 32] {
+    Sha256::digest(bytes).into()
+}
+
+/// Run a blocking body off the async runtime's worker thread.
+///
+/// The HTTP clients are `reqwest::blocking`, so every command that reaches the network needs
+/// this; awaiting one inline would stall the runtime.
+pub async fn blocking<T: Send + 'static>(
+    f: impl FnOnce() -> T + Send + 'static,
+) -> crate::types::AppResult<T> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| format!("task failed: {e}").into())
 }
 
 #[cfg(test)]
