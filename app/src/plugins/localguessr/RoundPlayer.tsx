@@ -236,10 +236,14 @@ export function RoundPlayer({
 			</div>
 
 			{!showResult && panorama && (
-				<div className="lg-round__compass">
-					<Compass panorama={panorama} />
-					<CompassTape panorama={panorama} />
-				</div>
+				<>
+					<div className="lg-round__compass">
+						<Compass panorama={panorama} />
+					</div>
+					<div className="lg-round__compass-tape">
+						<CompassTape panorama={panorama} />
+					</div>
+				</>
 			)}
 
 			<header className="lg-hud">

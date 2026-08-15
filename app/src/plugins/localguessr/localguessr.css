@@ -89,9 +89,15 @@
 	bottom: 12px;
 	left: 12px;
 	z-index: 3;
-	display: flex;
-	align-items: flex-end;
-	gap: 8px;
+	pointer-events: none;
+}
+
+.lg-round__compass-tape {
+	position: absolute;
+	top: 56px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 3;
 	pointer-events: none;
 }
 
