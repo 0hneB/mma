@@ -10,8 +10,25 @@ function hex(buffer: ArrayBuffer): string {
 	return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function sha256Hex(text: string): Promise<string> {
-	return hex(await crypto.subtle.digest("SHA-256", encoder.encode(text)));
+export async function sha256Hex(data: string | ArrayBuffer): Promise<string> {
+	const bytes = typeof data === "string" ? encoder.encode(data) : data;
+	return hex(await crypto.subtle.digest("SHA-256", bytes));
+}
+
+/** The image formats an attachment may be, identified by magic bytes rather than by what the
+ *  client claims. A caller that could name its own content type could park anything at a
+ *  github.com URL. */
+export function imageType(bytes: ArrayBuffer): string | null {
+	const b = new Uint8Array(bytes);
+	const starts = (...sig: number[]) => sig.every((v, i) => b[i] === v);
+	if (starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return "image/png";
+	if (starts(0xff, 0xd8, 0xff)) return "image/jpeg";
+	if (starts(0x47, 0x49, 0x46, 0x38)) return "image/gif";
+	// RIFF....WEBP
+	if (starts(0x52, 0x49, 0x46, 0x46) && [0x57, 0x45, 0x42, 0x50].every((v, i) => b[8 + i] === v)) {
+		return "image/webp";
+	}
+	return null;
 }
 
 export async function hmacHex(secret: string, message: string): Promise<string> {

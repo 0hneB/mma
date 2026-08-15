@@ -7,7 +7,7 @@
  *  Signed-in users never touch this worker -- the app talks to GitHub directly as them. */
 
 import { addLabels, createIssue, getIssue, relayedComments } from "./github";
-import { hmacHex, safeEqual, sha256Hex, verifyPow } from "./verify";
+import { hmacHex, imageType, safeEqual, sha256Hex, verifyPow } from "./verify";
 
 export interface Env {
 	/** Numeric id of the GitHub App. */
@@ -18,6 +18,10 @@ export interface Env {
 	GITHUB_REPO: string;
 	/** Signing key for reply tokens. Rotating it invalidates every outstanding token. */
 	WORKER_SECRET: string;
+	/** Images referenced by report bodies. GitHub's own attachment store is unreachable from
+	 *  here -- it rejects both App installation and user-to-server tokens -- so the images a
+	 *  reporter attaches live in a bucket and are served back by the route below. */
+	ATTACHMENTS: R2Bucket;
 }
 
 /** Must match `POW_BITS` in `app/src-tauri/src/feedback.rs`. */
@@ -25,6 +29,17 @@ const POW_BITS = 20;
 
 const MAX_TITLE = 200;
 const MAX_BODY = 65_000;
+
+/** Per attachment. Generous for a screenshot, small enough that the proof of work above is a
+ *  real cost per megabyte stored. The app caps the count. */
+const MAX_ATTACHMENT = 5 * 1024 * 1024;
+
+const EXTENSIONS: Record<string, string> = {
+	"image/png": "png",
+	"image/jpeg": "jpg",
+	"image/gif": "gif",
+	"image/webp": "webp",
+};
 
 /** Marks a body as one of ours. The label route will touch nothing without it. */
 const MARKER = "<!-- mma-report ";
@@ -97,6 +112,61 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
 	return json({ ...issue, token: await replyToken(env, issue.number) });
 }
 
+/** A display name that cannot carry markup into the alt text of the reference. The extension
+ *  comes from the sniffed type, never from what the client claimed. */
+function safeName(raw: string | null, contentType: string): string {
+	const stem =
+		(raw ?? "")
+			.replace(/\.[^.]*$/, "")
+			.replace(/[^\w.-]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 60) || "attachment";
+	return `${stem}.${EXTENSIONS[contentType]}`;
+}
+
+/** Store an image and hand back the URL to reference it by.
+ *
+ *  Separate from the report itself because the body has to carry the URLs, so the upload has
+ *  to happen first. Both tiers come through here: the app cannot reach any image host of its
+ *  own, and GitHub's is closed to us. */
+async function handleUpload(request: Request, env: Env): Promise<Response> {
+	const bytes = await request.arrayBuffer();
+	if (!bytes.byteLength) return bad("empty attachment");
+	if (bytes.byteLength > MAX_ATTACHMENT) return bad("attachment too large", 413);
+
+	const contentType = imageType(bytes);
+	if (!contentType) return bad("not an image");
+
+	const url = new URL(request.url);
+	const digest = await sha256Hex(bytes);
+	const nonce = Number(url.searchParams.get("nonce"));
+	if (!(await verifyPow(digest, nonce, POW_BITS))) {
+		return bad("insufficient proof of work", 429);
+	}
+
+	// Content-addressed: replaying the same bytes (their proof of work is replayable too)
+	// overwrites the same object instead of storing another copy.
+	const key = `${digest}.${EXTENSIONS[contentType]}`;
+	await env.ATTACHMENTS.put(key, bytes, { httpMetadata: { contentType } });
+	return json({
+		url: `${url.origin}/attachments/${key}`,
+		name: safeName(url.searchParams.get("name"), contentType),
+	});
+}
+
+/** Serve a stored image. Keys are ours and immutable, so this is cacheable forever and needs
+ *  no authentication -- the URL is the capability, and it only exists inside an issue body. */
+async function handleAttachment(key: string, env: Env): Promise<Response> {
+	const object = await env.ATTACHMENTS.get(key);
+	if (!object) return bad("not found", 404);
+	return new Response(object.body, {
+		headers: {
+			"Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+			"Cache-Control": "public, max-age=31536000, immutable",
+		},
+	});
+}
+
 /** Apply our labels to an issue the app filed as the signed-in user.
  *
  *  GitHub silently drops labels from reporters without push access, so an outside contributor's
@@ -133,6 +203,15 @@ export default {
 
 		if (request.method === "POST" && url.pathname === "/reports") {
 			return handleSubmit(request, env).catch((e) => bad(String(e), 502));
+		}
+
+		if (request.method === "POST" && url.pathname === "/uploads") {
+			return handleUpload(request, env).catch((e) => bad(String(e), 502));
+		}
+
+		const attachment = url.pathname.match(/^\/attachments\/([\w-]+\.\w+)$/);
+		if (request.method === "GET" && attachment) {
+			return handleAttachment(attachment[1], env).catch((e) => bad(String(e), 502));
 		}
 
 		const label = url.pathname.match(/^\/reports\/(\d+)\/label$/);

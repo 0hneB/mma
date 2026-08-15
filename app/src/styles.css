@@ -6140,7 +6140,7 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 }
 
 .report-dialog:has(.report-dialog__area) {
-	height: min(40rem, 85vh);
+	height: min(50rem, 88vh);
 }
 .report-dialog:has(.report-dialog__area) .modal__content {
 	display: flex;
@@ -6154,10 +6154,18 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 .report-dialog__actions {
 	flex-shrink: 0;
 }
+/* Absorbs slack so the dialog is never bottom-heavy, but never shrinks below what it needs --
+   `flex-shrink: 0` is what stops a squeezed textarea from painting over the rows beneath it.
+   If everything together outgrows the dialog, the content scrolls instead. */
 .report-dialog__area {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
+	flex: 1 0 auto;
+}
+/* The preview is unbounded text rather than fields with minimums, so here the slot is the
+   bound and the content scrolls inside it -- the opposite of what the form wants. */
+.report-dialog__area:has(.report-dialog__preview) {
+	flex: 1 1 0;
 	min-height: 0;
 }
 
@@ -6184,7 +6192,7 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 }
 .report-dialog__body {
 	flex: 2;
-	min-height: 4rem;
+	min-height: 7rem;
 	padding: 0.5rem 0.6rem;
 	resize: none;
 	font-family: inherit;
@@ -6192,7 +6200,67 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 }
 .report-dialog__body--steps {
 	flex: 1;
-	min-height: 3rem;
+	min-height: 4.5rem;
+}
+
+/* Thumbnails sit between what the user wrote and how it will be sent, at a fixed height so
+   attaching an image does not resize the dialog. */
+.report-dialog__images {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+	flex-shrink: 0;
+}
+.report-dialog__image {
+	position: relative;
+	width: 4rem;
+	height: 3rem;
+}
+.report-dialog__image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: var(--radius-1);
+	border: 1px solid var(--border-subtle);
+	background: var(--surface-1);
+}
+/* Square and small: the base .icon-button is a 2rem-wide band, which reads as a pill here. */
+.report-dialog__image-remove {
+	position: absolute;
+	top: -0.3rem;
+	right: -0.3rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.05rem;
+	height: 1.05rem;
+	min-width: 0;
+	padding: 0;
+	line-height: 1;
+	border-radius: 50%;
+	background: var(--surface-3);
+	border: 1px solid var(--border-subtle);
+	color: var(--text-2);
+}
+.report-dialog__image-remove:hover {
+	color: var(--text-1);
+}
+.report-dialog__image-add {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 4rem;
+	height: 3rem;
+	border: 1px dashed var(--border-subtle);
+	border-radius: var(--radius-1);
+	background: none;
+	color: var(--text-3);
+	cursor: pointer;
+}
+.report-dialog__image-add:hover {
+	color: var(--text-2);
+	border-color: var(--text-3);
 }
 
 /* Everything below the fields is about the submission, not its content. */
@@ -6249,9 +6317,13 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 .report-dialog__toggle:hover {
 	color: var(--text-2);
 }
+/* A definite height, not a minimum: the body it shows is unbounded, and a content-sized box
+   here would push the dialog open instead of scrolling inside it. */
 .report-dialog__preview {
 	flex: 1;
+	height: 12rem;
 	min-height: 0;
+	max-height: 100%;
 	margin: 0;
 	overflow: auto;
 	white-space: pre-wrap;
@@ -6270,6 +6342,13 @@ div:has(> div.gmnoprint > div.gm-style-cc [title="Keyboard shortcuts"]) {
 	line-height: 1.4;
 	color: var(--destructive);
 	margin: 0;
+}
+/* Its slot is always there, two lines tall, and a longer message scrolls inside it -- so no
+   error, however long, moves anything else. */
+.report-dialog__error {
+	height: 2.4rem;
+	overflow-y: auto;
+	flex-shrink: 0;
 }
 .report-dialog__actions {
 	display: flex;

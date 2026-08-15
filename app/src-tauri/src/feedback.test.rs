@@ -92,3 +92,15 @@ fn leading_zero_bits_counts_across_bytes() {
     assert_eq!(leading_zero_bits(&d), 11);
     assert_eq!(leading_zero_bits(&[0u8; 32]), 256);
 }
+
+#[test]
+fn image_sniffing_ignores_what_the_file_is_called() {
+    // The name reaches the issue as alt text, but never decides whether bytes are an image.
+    assert!(super::is_image(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]));
+    assert!(super::is_image(&[0xff, 0xd8, 0xff, 0xe0]));
+    assert!(super::is_image(b"GIF89a...."));
+    assert!(super::is_image(b"RIFF\0\0\0\0WEBPVP8 "));
+    assert!(!super::is_image(b"RIFF\0\0\0\0WAVEfmt "));
+    assert!(!super::is_image(b"<html>hi</html>"));
+    assert!(!super::is_image(b""));
+}

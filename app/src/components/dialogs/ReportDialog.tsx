@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { mdiGithub, mdiOpenInNew } from "@mdi/js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { mdiClose, mdiGithub, mdiImagePlus, mdiOpenInNew } from "@mdi/js";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
@@ -13,10 +13,17 @@ import {
 	type ReportInput,
 	type ReportKind,
 } from "@/lib/feedback/body";
+import {
+	MAX_ATTACHMENTS,
+	stageImage,
+	uploadImages,
+	type StagedImage,
+} from "@/lib/feedback/attachments";
 import { collectDiagnostics, type Diagnostics } from "@/lib/feedback/diagnostics";
 import { isSignedIn, submitReport } from "@/lib/feedback/submit";
 import { msg, t } from "@/lib/i18n";
 import { log } from "@/lib/util/log";
+import { errText } from "@/lib/util/util";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import type { SubmittedReport } from "@/store/feedback";
 
@@ -24,6 +31,9 @@ const KINDS: Array<{ value: ReportKind; label: string }> = [
 	{ value: "bug", label: msg("Something is broken") },
 	{ value: "idea", label: msg("Suggestion") },
 ];
+
+/** Stands in for an image's URL in the preview: it has none until the report is sent. */
+const PENDING_URL = "uploaded when you send";
 
 const ATTACHMENTS: Array<{ key: keyof Attachments; label: string }> = [
 	{ key: "diagnostics", label: msg("App version, system and plugins") },
@@ -42,6 +52,10 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 		log: true,
 	});
 	const [showPreview, setShowPreview] = useState(false);
+	const [images, setImages] = useState<StagedImage[]>([]);
+	// One staging dir for the dialog's lifetime, created on the first attachment.
+	const session = useRef<string | null>(null);
+	const fileInput = useRef<HTMLInputElement>(null);
 
 	const [signedIn, setSignedIn] = useState(false);
 	const [anonAvailable, setAnonAvailable] = useState(true);
@@ -74,14 +88,58 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 		})();
 	}, []);
 
+	// Staged copies and their object URLs are the dialog's to clean up -- on close, and only on
+	// close. Keyed on `images` this would discard the staging dir the moment a second image was
+	// added, and the next write would land in a directory that no longer exists.
+	const staged = useRef<StagedImage[]>([]);
+	staged.current = images;
+	useEffect(
+		() => () => {
+			staged.current.forEach((i) => URL.revokeObjectURL(i.preview));
+			if (session.current) void cmd.storeUploadAbort(session.current).catch(() => {});
+		},
+		[],
+	);
+
+	const addImages = async (files: FileList | null) => {
+		if (!files?.length) return;
+		setError(null);
+		try {
+			session.current ??= await cmd.storeUploadBegin();
+			const room = MAX_ATTACHMENTS - images.length;
+			const staged: StagedImage[] = [];
+			for (const [i, file] of [...files].slice(0, room).entries()) {
+				staged.push(await stageImage(session.current, file, images.length + i));
+			}
+			setImages((prev) => [...prev, ...staged]);
+		} catch (e) {
+			setError(errText(e));
+		}
+	};
+
+	const removeImage = (image: StagedImage) => {
+		URL.revokeObjectURL(image.preview);
+		setImages((prev) => prev.filter((i) => i.id !== image.id));
+	};
+
 	const anonymous = !signedIn;
 	const input = useMemo<ReportInput>(
 		() => ({ kind, title: title.trim(), description, steps }),
 		[kind, title, description, steps],
 	);
+	// The preview is composed before anything is uploaded, so it stands in for the URLs the
+	// images will get rather than pretending to know them.
 	const body = useMemo(
-		() => (diagnostics ? buildIssueBody(input, diagnostics, { anonymous, attach, logTail }) : ""),
-		[input, diagnostics, anonymous, attach, logTail],
+		() =>
+			diagnostics
+				? buildIssueBody(input, diagnostics, {
+						anonymous,
+						attach,
+						logTail,
+						images: images.map((i) => ({ name: i.name, url: PENDING_URL })),
+					})
+				: "",
+		[input, diagnostics, anonymous, attach, logTail, images],
 	);
 
 	const blocked = !title.trim() || !description.trim() || !diagnostics;
@@ -92,9 +150,15 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 		setSending(true);
 		setError(null);
 		try {
-			setSent(await submitReport(input, body, anonymous));
+			// Images have to exist before the body can point at them, so they go first -- and a
+			// failure here stops the report rather than filing one with broken references.
+			const uploaded = images.length && diagnostics ? await uploadImages(images) : [];
+			const finalBody = diagnostics
+				? buildIssueBody(input, diagnostics, { anonymous, attach, logTail, images: uploaded })
+				: body;
+			setSent(await submitReport(input, finalBody, anonymous));
 		} catch (e) {
-			setError(String(e));
+			setError(errText(e));
 		} finally {
 			setSending(false);
 		}
@@ -144,7 +208,12 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent title={t("Send feedback")} className="report-dialog">
+			<DialogContent
+				title={t("Send feedback")}
+				className="report-dialog"
+				// Pasting a screenshot is how most people have one to hand.
+				onPaste={(e) => void addImages(e.clipboardData.files)}
+			>
 				<div className="report-dialog__kinds">
 					{KINDS.map((k) => (
 						<label key={k.value} className="report-dialog__kind">
@@ -193,6 +262,43 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 					)}
 				</div>
 
+				<div className="report-dialog__images">
+					{images.map((image) => (
+						<div key={image.id} className="report-dialog__image">
+							<img src={image.preview} alt={image.name} title={image.name} />
+							<button
+								type="button"
+								className="icon-button report-dialog__image-remove"
+								title={t("Remove")}
+								onClick={() => removeImage(image)}
+							>
+								<Icon path={mdiClose} size={12} />
+							</button>
+						</div>
+					))}
+					{images.length < MAX_ATTACHMENTS && (
+						<button
+							type="button"
+							className="report-dialog__image-add"
+							onClick={() => fileInput.current?.click()}
+							title={t("Attach an image, or paste one")}
+						>
+							<Icon path={mdiImagePlus} size={20} />
+						</button>
+					)}
+					<input
+						ref={fileInput}
+						type="file"
+						accept="image/png,image/jpeg,image/gif,image/webp"
+						multiple
+						hidden
+						onChange={(e) => {
+							void addImages(e.target.files);
+							e.target.value = "";
+						}}
+					/>
+				</div>
+
 				<div className="report-dialog__meta">
 					<div className="report-dialog__attachments">
 						{ATTACHMENTS.map(({ key, label }) => (
@@ -239,7 +345,8 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 						{showPreview ? t("Back to the form") : t("Show exactly what will be sent")}
 					</button>
 
-					{error && <p className="report-dialog__error">{error}</p>}
+					{/* Always present: an error appearing must not resize the writing area. */}
+					<p className="report-dialog__error">{error}</p>
 				</div>
 
 				<div className="report-dialog__actions">

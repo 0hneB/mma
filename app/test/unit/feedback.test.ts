@@ -185,6 +185,22 @@ describe("issue body", () => {
 		expect(parsed?.diagnostics?.map?.changedSettings).toEqual({});
 	});
 
+	it("references attached images in the order the user arranged them", () => {
+		const body = buildIssueBody(input, diagnostics, {
+			anonymous: false,
+			attach: ALL,
+			images: [
+				{ name: "first.png", url: "https://example.test/a.png" },
+				{ name: "second.png", url: "https://example.test/b.png" },
+			],
+		});
+		expect(body).toContain("![first.png](https://example.test/a.png)");
+		expect(body).toContain("![second.png](https://example.test/b.png)");
+		expect(body.indexOf("first.png")).toBeLessThan(body.indexOf("second.png"));
+		// A screenshot is read before the diagnostics, so it goes above them.
+		expect(body.indexOf("first.png")).toBeLessThan(body.indexOf("<summary>Diagnostics"));
+	});
+
 	it("returns null for a body with no machine block", () => {
 		expect(parseReportBody("just a normal issue someone filed by hand")).toBeNull();
 	});

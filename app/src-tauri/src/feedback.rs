@@ -183,6 +183,72 @@ pub async fn feedback_submit_anonymous(
     .await?
 }
 
+/// An image the reporter attached, once it is somewhere the issue can point at.
+#[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentRef {
+    pub url: String,
+    /// Alt text for the reference. The worker decides it -- a client-supplied name reaches the
+    /// rendered issue.
+    pub name: String,
+}
+
+/// Largest image the worker will take. Checked here too so an oversized file fails instantly
+/// instead of after a megabyte of upload.
+const MAX_ATTACHMENT: u64 = 5 * 1024 * 1024;
+
+/// Whether `bytes` begins like an image format the worker accepts. Sniffed rather than trusted
+/// from the extension, matching what the worker does with the same bytes.
+fn is_image(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a])
+        || bytes.starts_with(&[0xff, 0xd8, 0xff])
+        || bytes.starts_with(b"GIF8")
+        || (bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP".as_slice()))
+}
+
+/// Store an image and return the URL a report body can reference it by.
+///
+/// The proof of work is bound to the bytes, so it costs the same per image as a report costs
+/// per body -- which is what keeps an open upload route from being free hosting.
+#[tauri::command]
+#[specta::specta]
+pub async fn feedback_upload_attachment(path: String, name: String) -> AppResult<AttachmentRef> {
+    if WORKER_URL.is_empty() {
+        return Err("attachments are not configured in this build".into());
+    }
+    blocking(move || {
+        let meta = std::fs::metadata(&path)?;
+        if meta.len() > MAX_ATTACHMENT {
+            return Err("image is too large (5 MB maximum)".into());
+        }
+        let bytes = std::fs::read(&path)?;
+        if !is_image(&bytes) {
+            return Err("that file is not a PNG, JPEG, GIF or WebP".into());
+        }
+        let nonce = solve_pow(&crate::util::sha256_hex(&bytes), POW_BITS);
+        let name = percent_encoding::utf8_percent_encode(
+            &name,
+            percent_encoding::NON_ALPHANUMERIC,
+        )
+        .to_string();
+        let resp = crate::proxy_client()
+            .post(format!("{WORKER_URL}/uploads?name={name}&nonce={nonce}"))
+            .header("Content-Type", "application/octet-stream")
+            .body(bytes)
+            .send()?;
+        let status = resp.status();
+        if !status.is_success() {
+            let detail = resp.text().unwrap_or_default();
+            return Err(format!("upload rejected ({status}): {detail}").into());
+        }
+        let uploaded = resp.json::<AttachmentRef>()?;
+        // The staged copy has served its purpose; leaving it would keep a screenshot in temp.
+        let _ = std::fs::remove_file(&path);
+        Ok(uploaded)
+    })
+    .await?
+}
+
 /// Ask the worker to label an issue the user filed themselves.
 ///
 /// GitHub drops labels sent by a reporter without push access, so a signed-in outside

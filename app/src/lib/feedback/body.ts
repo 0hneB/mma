@@ -108,12 +108,23 @@ export interface Attachments {
 export function buildIssueBody(
 	input: ReportInput,
 	diagnostics: Diagnostics,
-	opts: { anonymous: boolean; logTail?: string; attach: Attachments },
+	opts: {
+		anonymous: boolean;
+		logTail?: string;
+		attach: Attachments;
+		/** Images already stored, in the order they should appear. */
+		images?: Array<{ url: string; name: string }>;
+	},
 ): string {
 	const parts = [input.description.trim()];
 
 	if (input.kind === "bug" && input.steps?.trim()) {
 		parts.push(`### Steps to reproduce\n\n${input.steps.trim()}`);
+	}
+
+	// Above the diagnostics: a screenshot is the part a human reads first.
+	if (opts.images?.length) {
+		parts.push(opts.images.map((i) => `![${i.name}](${i.url})`).join("\n\n"));
 	}
 
 	if (opts.attach.diagnostics) {

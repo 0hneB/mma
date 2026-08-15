@@ -116,6 +116,13 @@ export const commands = {
 	 */
 	feedbackSubmitAnonymous: (title: string, body: string, installId: string) => __TAURI_INVOKE<AnonIssueRef>("feedback_submit_anonymous", { title, body, installId }),
 	/**
+	 *  Store an image and return the URL a report body can reference it by.
+	 * 
+	 *  The proof of work is bound to the bytes, so it costs the same per image as a report costs
+	 *  per body -- which is what keeps an open upload route from being free hosting.
+	 */
+	feedbackUploadAttachment: (path: string, name: string) => __TAURI_INVOKE<AttachmentRef>("feedback_upload_attachment", { path, name }),
+	/**
 	 *  Ask the worker to label an issue the user filed themselves.
 	 * 
 	 *  GitHub drops labels sent by a reporter without push access, so a signed-in outside
@@ -471,6 +478,16 @@ export type AnonIssueRef = {
 	 *  else, which is why it is safe to keep in local storage.
 	 */
 	token: string,
+};
+
+/**  An image the reporter attached, once it is somewhere the issue can point at. */
+export type AttachmentRef = {
+	url: string,
+	/**
+	 *  Alt text for the reference. The worker decides it -- a client-supplied name reaches the
+	 *  rendered issue.
+	 */
+	name: string,
 };
 
 export type CameraType = "gen1" | "gen2" | "gen4" | "badcam" | "tripod" | "trekker";

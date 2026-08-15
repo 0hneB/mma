@@ -104,6 +104,7 @@
 	"Assign document links": "ドキュメントリンクを割り当て",
 	"Assign document links...": "ドキュメントリンクを割り当て...",
 	"Assigned to {name} (click heading with this tag armed to remove)": "{name} に割り当て済み（このタグを選んだ状態で見出しをクリックすると解除）",
+	"Attach an image, or paste one": "画像を添付または貼り付け",
 	"Attaching these makes bugs far easier to fix!": "添付すると不具合の修正がぐんと楽になります！",
 	"Auto": "自動",
 	"Automatic based on locations": "地点に基づいて自動",

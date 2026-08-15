@@ -8,6 +8,10 @@ workers_dev = false
 pattern = "feedback.ccmdi.com"
 custom_domain = true
 
+[[r2_buckets]]
+binding = "ATTACHMENTS"
+bucket_name = "mma-feedback"
+
 [vars]
 GITHUB_REPO = "ccmdi/mma"
 

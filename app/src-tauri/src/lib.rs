@@ -615,6 +615,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             feedback::feedback_log_tail,
             feedback::feedback_anonymous_available,
             feedback::feedback_submit_anonymous,
+            feedback::feedback_upload_attachment,
             feedback::feedback_request_label,
             feedback::feedback_anonymous_thread,
             // --- Remote API ---
