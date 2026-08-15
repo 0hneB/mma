@@ -1,6 +1,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { createLocation, LocationFlag } from "@/types";
 import { getPanorama, singletonDiv, applyResolved } from "@/lib/sv/panoSingleton";
+import { tweenPov } from "@/lib/sv/tweenPov";
 import { loadOpenSV, google } from "@/lib/sv/opensv";
 import { resolvePano, type ResolvedPano } from "@/lib/sv/lookup";
 import { t } from "@/lib/i18n";
@@ -59,6 +60,7 @@ export function PanoView({
 	const spawnRef = useRef(round);
 	spawnRef.current = round;
 	const stagedRef = useRef<{ round: RoundLocation; resolved: ResolvedPano } | null>(null);
+	const cancelTweenRef = useRef<(() => void) | null>(null);
 
 	useImperativeHandle(
 		ref,
@@ -74,7 +76,15 @@ export function PanoView({
 			pointNorth: () => {
 				const pano = getPanorama();
 				if (!pano) return;
-				pano.setPov({ heading: 0, pitch: pano.getPov().pitch });
+				cancelTweenRef.current?.();
+				const pov = pano.getPov();
+				let dh = pov.heading % 360;
+				if (dh < 0) dh += 360;
+				const isNorth = Math.abs(dh) < 2 || Math.abs(dh - 360) < 2;
+				const target = isNorth
+					? { heading: 0, pitch: Math.max(pov.pitch - 40, -90) }
+					: { heading: 0, pitch: pov.pitch };
+				cancelTweenRef.current = tweenPov(pano, target);
 			},
 		}),
 		[],
