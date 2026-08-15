@@ -166,6 +166,14 @@ export function formatRoundDistance(meters: number): string {
 	return meters >= 1000 ? KM.format(meters / 1000) : M.format(meters);
 }
 
+export function formatElapsed(ms: number): string {
+	const secs = Math.round(ms / 1000);
+	if (secs < 60) return `${secs}s`;
+	const mins = Math.floor(secs / 60);
+	const rem = secs % 60;
+	return rem > 0 ? `${mins}m ${rem}s` : `${mins}m`;
+}
+
 export function currentRound(game: Game): RoundLocation | null {
 	return game.locations[game.index] ?? null;
 }

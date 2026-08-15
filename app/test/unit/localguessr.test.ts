@@ -3,6 +3,7 @@ import type { GeoResult } from "@/bindings.gen";
 import {
 	bestStreak,
 	currentRound,
+	formatElapsed,
 	formatRoundDistance,
 	isLastRound,
 	reduce,
@@ -131,6 +132,20 @@ describe("formatRoundDistance", () => {
 		expect(formatRoundDistance(999)).toBe("999 m");
 		expect(formatRoundDistance(12.4)).toBe("12 m");
 		expect(formatRoundDistance(0)).toBe("0 m");
+	});
+});
+
+describe("formatElapsed", () => {
+	it("formats sub-minute as seconds", () => {
+		expect(formatElapsed(0)).toBe("0s");
+		expect(formatElapsed(4_500)).toBe("5s");
+		expect(formatElapsed(59_000)).toBe("59s");
+	});
+
+	it("formats minutes with remainder", () => {
+		expect(formatElapsed(60_000)).toBe("1m");
+		expect(formatElapsed(90_000)).toBe("1m 30s");
+		expect(formatElapsed(185_000)).toBe("3m 5s");
 	});
 });
 

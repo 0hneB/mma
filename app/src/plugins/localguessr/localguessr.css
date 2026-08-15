@@ -449,7 +449,7 @@ body:has(.lg-overlay) .split-handle {
 
 .lg-summary__row {
 	display: grid;
-	grid-template-columns: 32px 64px 88px 1fr auto auto;
+	grid-template-columns: 32px 64px 88px auto 1fr auto auto;
 	align-items: center;
 	gap: 10px;
 	padding: 8px 10px;
@@ -463,8 +463,13 @@ body:has(.lg-overlay) .split-handle {
 }
 
 .lg-summary__row-score,
-.lg-summary__row-dist {
+.lg-summary__row-dist,
+.lg-summary__row-time {
 	font-variant-numeric: tabular-nums;
+}
+
+.lg-summary__row-time {
+	color: var(--text-2);
 }
 
 .lg-summary__row-place {
