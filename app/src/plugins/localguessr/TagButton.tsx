@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
+import type { Tag } from "@/bindings.gen";
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogContent } from "@/components/primitives/Dialog";
-import { TextInput } from "@/components/primitives/TextInput";
+import { SuggestInput } from "@/components/primitives/SuggestInput";
+import { TagPill } from "@/components/primitives/TagPill";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiTagPlusOutline } from "@mdi/js";
 import { t } from "@/lib/i18n";
 import { toast } from "@/lib/util/toast";
+import { displayTagName } from "@/store/selections";
 import { createTags, getVisibleTags, useMapState } from "@/store/useMapStore";
 
-/**
- * Tag the locations a round just showed you, without leaving the game. This is the
- * loop the plugin exists for: play your own map, mark what needs fixing in place.
- */
 export function TagButton({ locationIds, label }: { locationIds: number[]; label?: string }) {
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState("");
@@ -20,23 +19,20 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 
 	const query = name.trim().toLowerCase();
 	const suggestions = useMemo(
-		() =>
-			tags
-				.filter((tag) => !query || tag.name.toLowerCase().includes(query))
-				.slice(0, 10),
+		() => tags.filter((tag) => !query || tag.name.toLowerCase().includes(query)).slice(0, 10),
 		[tags, query],
 	);
 
-	const apply = async (raw: string) => {
-		const tagName = raw.trim();
-		if (!tagName || busy || locationIds.length === 0) return;
+	const apply = async (tagName: string) => {
+		const trimmed = tagName.trim();
+		if (!trimmed || busy || locationIds.length === 0) return;
 		setBusy(true);
 		try {
-			await createTags([tagName], { kind: "ids", ids: locationIds });
+			await createTags([trimmed], { kind: "ids", ids: locationIds });
 			toast(
 				locationIds.length === 1
-					? t("Tagged with {tag}", { tag: tagName })
-					: t("Tagged {n} locations with {tag}", { n: locationIds.length, tag: tagName }),
+					? t("Tagged with {tag}", { tag: trimmed })
+					: t("Tagged {n} locations with {tag}", { n: locationIds.length, tag: trimmed }),
 			);
 			setName("");
 			setOpen(false);
@@ -77,29 +73,21 @@ export function TagButton({ locationIds, label }: { locationIds: number[]; label
 							void apply(name);
 						}}
 					>
-						<TextInput
+						<SuggestInput<Tag>
 							value={name}
-							onChange={(e) => setName(e.target.value)}
+							onChange={setName}
+							suggestions={suggestions}
+							onPick={(tag) => void apply(tag.name)}
+							renderItem={(tag) => (
+								<TagPill small color={tag.color} label={displayTagName(tag.name)} />
+							)}
+							getKey={(tag) => tag.id}
 							placeholder={t("Tag name")}
 							autoFocus
 							disabled={busy}
+							pickOnEnter={false}
+							portal
 						/>
-						{suggestions.length > 0 && (
-							<div className="lg-tag-dialog__chips">
-								{suggestions.map((tag) => (
-									<button
-										key={tag.id}
-										type="button"
-										className="lg-tag-dialog__chip"
-										disabled={busy}
-										style={{ borderColor: tag.color || undefined }}
-										onClick={() => void apply(tag.name)}
-									>
-										{tag.name}
-									</button>
-								))}
-							</div>
-						)}
 						<div className="lg-tag-dialog__actions">
 							<Button type="button" onClick={() => setOpen(false)} disabled={busy}>
 								{t("Cancel")}

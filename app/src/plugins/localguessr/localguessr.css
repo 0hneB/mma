@@ -526,26 +526,6 @@
 	min-width: 320px;
 }
 
-.lg-tag-dialog__chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-}
-
-.lg-tag-dialog__chip {
-	padding: 4px 8px;
-	border: 1px solid var(--border-strong);
-	border-radius: var(--radius-1);
-	background: transparent;
-	color: var(--text-1);
-	font-size: 12px;
-	cursor: pointer;
-}
-
-.lg-tag-dialog__chip:hover {
-	background: var(--surface-3);
-}
-
 .lg-tag-dialog__actions {
 	display: flex;
 	justify-content: flex-end;
