@@ -400,6 +400,7 @@
 	"Enrichment": "エンリッチメント",
 	"Enrichment only: adds data fields, no panel of its own": "エンリッチメント専用: データフィールドを追加し、独自のパネルは持ちません",
 	"Enter code {code} in your browser to finish signing in.": "サインインを完了するには、ブラウザーでコード {code} を入力してください。",
+	"Enter opens location at map center": "Enterでマップ中央の地点を開く",
 	"Enum": "列挙",
 	"Enum values": "列挙値",
 	"Equirectangular (full panorama)": "正距円筒図法（パノラマ全体）",
@@ -938,6 +939,8 @@
 	"Resume": "再開",
 	"Retry": "再試行",
 	"Retry loading maps": "マップの読み込みを再試行",
+	"Return to checkpoint": "チェックポイントに戻る",
+	"Return to checkpoint (B)": "チェックポイントに戻る（B）",
 	"Return to spawn": "初期位置に戻る",
 	"Return to spawn (R)": "初期位置に戻る（R）",
 	"Return to spawn button": "初期位置に戻るボタン",
@@ -1043,6 +1046,8 @@
 	"Send feedback": "フィードバックを送る",
 	"Sending...": "送信中...",
 	"Set": "設定",
+	"Set checkpoint": "チェックポイントを設定",
+	"Set checkpoint (C)": "チェックポイントを設定（C）",
 	"Set field": "フィールドを設定",
 	"Set field on {n} locations.": {
 		"other": "{n} 件の地点にフィールドを設定しました。"
@@ -1268,6 +1273,7 @@
 	"What the Street View and marker opacity hotkeys restore a hidden layer to.": "ストリートビューとマーカーの不透明度ホットキーで、非表示のレイヤーを戻す不透明度です。",
 	"What would you like?": "どのようなものをご希望ですか？",
 	"What's new": "新機能",
+	"With no location open, Enter opens the location at the center of the map.": "地点を開いていないとき、Enterでマップ中央の地点を開きます。",
 	"Without an API key, requests may be rate-limited by Nominatim's usage policy.": "API キーがない場合、Nominatim の利用規約によりリクエストが制限されることがあります。",
 	"World map (ACW, {distance})": "世界地図（ACW、{distance}）",
 	"Year": "年",

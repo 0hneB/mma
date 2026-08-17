@@ -400,6 +400,7 @@
 	"Enrichment": "元数据扩展",
 	"Enrichment only: adds data fields, no panel of its own": "仅元数据扩展：添加数据字段，无独立面板",
 	"Enter code {code} in your browser to finish signing in.": "在浏览器中输入代码 {code} 以完成登录。",
+	"Enter opens location at map center": "回车打开地图中心的位置",
 	"Enum": "枚举",
 	"Enum values": "枚举值",
 	"Equirectangular (full panorama)": "等距圆柱（完整全景）",
@@ -938,6 +939,8 @@
 	"Resume": "继续",
 	"Retry": "重试",
 	"Retry loading maps": "重试加载地图",
+	"Return to checkpoint": "返回检查点",
+	"Return to checkpoint (B)": "返回检查点 (B)",
 	"Return to spawn": "返回起点",
 	"Return to spawn (R)": "返回出生点 (R)",
 	"Return to spawn button": "返回出生点按钮",
@@ -1043,6 +1046,8 @@
 	"Send feedback": "发送反馈",
 	"Sending...": "正在发送...",
 	"Set": "设置",
+	"Set checkpoint": "设置检查点",
+	"Set checkpoint (C)": "设置检查点 (C)",
 	"Set field": "设置字段",
 	"Set field on {n} locations.": {
 		"other": "已在 {n} 个位置上设置字段。"
@@ -1268,6 +1273,7 @@
 	"What the Street View and marker opacity hotkeys restore a hidden layer to.": "街景与标记透明度快捷键将隐藏图层恢复到的目标值。",
 	"What would you like?": "你希望增加什么？",
 	"What's new": "更新内容",
+	"With no location open, Enter opens the location at the center of the map.": "未打开位置时，回车打开地图中心的位置。",
 	"Without an API key, requests may be rate-limited by Nominatim's usage policy.": "若未配置 API 密钥，请求可能受 Nominatim 使用策略限流。",
 	"World map (ACW, {distance})": "世界地图（ACW，{distance}）",
 	"Year": "年份",

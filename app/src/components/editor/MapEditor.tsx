@@ -34,7 +34,7 @@ import { Dialog, DialogTrigger, DialogContent } from "@/components/primitives/Di
 import { useHotkey, useCommandHotkeys, isEditableElement } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
-import { useSettings } from "@/store/settings";
+import { useSettings, getSettings } from "@/store/settings";
 import {
 	parseMapsUrl,
 	parseCoordinates,
@@ -268,6 +268,7 @@ export function MapEditor() {
 		function onKeyDown(e: KeyboardEvent) {
 			if (e.key !== "Enter" || e.repeat) return;
 			if (isEditableElement(e.target)) return;
+			if (!getSettings().enterOpensCenter) return;
 			if (getMapState().activeLocation) return;
 			showMapCursorRef.current = true;
 			setShowMapCursor(true);

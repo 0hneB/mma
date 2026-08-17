@@ -569,6 +569,13 @@ function MapBody() {
 				setting="followActiveInReview"
 				label={t("Center map on active location during review")}
 			/>
+			<SettingRow
+				setting="enterOpensCenter"
+				label={t("Enter opens location at map center")}
+				description={t(
+					"With no location open, Enter opens the location at the center of the map.",
+				)}
+			/>
 
 			<GroupHeading>{t("Markers")}</GroupHeading>
 			<SettingRow
