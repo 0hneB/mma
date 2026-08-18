@@ -99,6 +99,10 @@ async function replyToken(env: Env, number: number): Promise<string> {
 }
 
 async function handleSubmit(request: Request, env: Env): Promise<Response> {
+	// Ceiling well above any legal payload (title + body + JSON escaping)
+	const declared = Number(request.headers.get("Content-Length"));
+	if (!Number.isInteger(declared) || declared > 512 * 1024) return bad("report too large", 413);
+
 	let payload: ReportRequest;
 	try {
 		payload = (await request.json()) as ReportRequest;
@@ -148,18 +152,23 @@ function safeName(raw: string | null, contentType: string): string {
  *  to happen first. Both tiers come through here: the app cannot reach any image host of its
  *  own, and GitHub's is closed to us. */
 async function handleUpload(request: Request, env: Env): Promise<Response> {
-	const bytes = await request.arrayBuffer();
-	if (!bytes.byteLength) return bad("empty attachment");
-	if (bytes.byteLength > MAX_ATTACHMENT) return bad("attachment too large", 413);
-
-	const contentType = imageType(bytes);
-	if (!contentType) return bad("not an image");
-
 	const url = new URL(request.url);
 	const challenge = url.searchParams.get("challenge") ?? "";
 	if (!(await validChallenge(env.WORKER_SECRET, challenge))) {
 		return bad("expired or invalid challenge", 429);
 	}
+	const declared = Number(request.headers.get("Content-Length"));
+	if (!Number.isInteger(declared) || declared <= 0) return bad("missing content length", 411);
+	if (declared > MAX_ATTACHMENT) return bad("attachment too large", 413);
+
+	const bytes = await request.arrayBuffer();
+	if (!bytes.byteLength) return bad("empty attachment");
+	// the header is a claim that must be checked
+	if (bytes.byteLength > MAX_ATTACHMENT) return bad("attachment too large", 413);
+
+	const contentType = imageType(bytes);
+	if (!contentType) return bad("not an image");
+
 	const digest = await sha256Hex(bytes);
 	const nonce = Number(url.searchParams.get("nonce"));
 	if (!(await verifyPow(`${challenge}:${digest}`, nonce, POW_BITS))) {
@@ -184,6 +193,7 @@ async function handleAttachment(key: string, env: Env): Promise<Response> {
 	return new Response(object.body, {
 		headers: {
 			"Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+			"X-Content-Type-Options": "nosniff",
 			"Cache-Control": "public, max-age=31536000, immutable",
 		},
 	});
@@ -228,7 +238,7 @@ export default {
 			const { success } = await env.RATE.limit({ key: ip });
 			if (!success) return bad("rate limited", 429);
         }
-		
+
 		if (request.method === "GET" && url.pathname === "/challenge") {
 			return json({ challenge: await mintChallenge(env.WORKER_SECRET) });
 		}
