@@ -227,6 +227,15 @@ fn is_image(bytes: &[u8]) -> bool {
         || (bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP".as_slice()))
 }
 
+/// Whether `path` is a file the report dialog staged: a direct child of a valid upload
+/// session dir (see [`crate::export::upload_session_dir`]). The upload command is reachable
+/// from plugins, so an unconstrained path would read -- and then delete -- anything on disk.
+pub(crate) fn is_staged_upload(path: &std::path::Path) -> bool {
+    path.parent()
+        .and_then(|p| p.to_str())
+        .is_some_and(|p| crate::export::upload_session_dir(p).is_ok())
+}
+
 /// Store an image and return the URL a report body can reference it by.
 ///
 /// The proof of work is bound to the bytes, so it costs the same per image as a report costs
@@ -238,6 +247,9 @@ pub async fn feedback_upload_attachment(path: String, name: String) -> AppResult
         return Err("attachments are not configured in this build".into());
     }
     blocking(move || {
+        if !is_staged_upload(std::path::Path::new(&path)) {
+            return Err("attachment is not a staged upload".into());
+        }
         let meta = std::fs::metadata(&path)?;
         if meta.len() > MAX_ATTACHMENT {
             return Err("image is too large (5 MB maximum)".into());
