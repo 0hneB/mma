@@ -115,6 +115,8 @@ export interface Issue {
 	body?: string;
 	state?: string;
 	state_reason?: string | null;
+	/** Present when the "issue" is actually a pull request -- the issues API serves both. */
+	pull_request?: unknown;
 }
 
 export async function getIssue(env: Env, number: number): Promise<Issue> {

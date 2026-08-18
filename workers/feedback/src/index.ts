@@ -203,11 +203,21 @@ async function handleAttachment(key: string, env: Env): Promise<Response> {
  *
  *  GitHub silently drops labels from reporters without push access, so an outside contributor's
  *  report arrives bare however the app sends it. The installation token has push access, so the
- *  worker finishes the job. Authorization is the marker itself: this only ever adds a fixed
- *  label set, and only to an issue whose body already identifies as an app report -- so it
- *  cannot be used to label anything else in the repository. */
-async function handleLabel(number: number, env: Env): Promise<Response> {
+ *  worker finishes the job. The marker scopes the effect (a fixed label set, only on bodies
+ *  that identify as app reports) but anyone can paste a marker, so it is not authorization --
+ *  the proof of work is what prices the call, since each one spends GitHub API budget. */
+async function handleLabel(number: number, url: URL, env: Env): Promise<Response> {
+	const challenge = url.searchParams.get("challenge") ?? "";
+	if (!(await validChallenge(env.WORKER_SECRET, challenge))) {
+		return bad("expired or invalid challenge", 429);
+	}
+	const nonce = Number(url.searchParams.get("nonce"));
+	if (!(await verifyPow(`${challenge}:label:${number}`, nonce, POW_BITS))) {
+		return bad("insufficient proof of work", 429);
+	}
 	const issue = await getIssue(env, number);
+	// The labels endpoint would happily label a pull request; nothing of ours is one.
+	if (issue.pull_request) return bad("not an app report", 403);
 	const kind = reportKind(issue.body ?? "");
 	if (!kind) return bad("not an app report", 403);
 	await addLabels(env, number, ["via:app", KIND_LABELS[kind]]);
@@ -258,7 +268,7 @@ export default {
 
 		const label = url.pathname.match(/^\/reports\/(\d+)\/label$/);
 		if (request.method === "POST" && label) {
-			return handleLabel(Number(label[1]), env).catch((e) => bad(String(e), 502));
+			return handleLabel(Number(label[1]), url, env).catch((e) => bad(String(e), 502));
 		}
 
 		const replies = url.pathname.match(/^\/reports\/(\d+)$/);

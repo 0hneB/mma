@@ -286,13 +286,21 @@ pub async fn feedback_request_label(number: u32) -> AppResult<()> {
         return Ok(());
     }
     blocking(move || {
-        match crate::proxy_client()
-            .post(format!("{WORKER_URL}/reports/{number}/label"))
-            .send()
-        {
-            Ok(resp) if resp.status().is_success() => {}
-            Ok(resp) => log::debug!("[feedback] label request returned {}", resp.status()),
-            Err(e) => log::debug!("[feedback] label request failed: {e}"),
+        let request = || -> AppResult<()> {
+            let challenge = fetch_challenge()?;
+            let nonce = solve_pow(&format!("{challenge}:label:{number}"), POW_BITS);
+            let resp = crate::proxy_client()
+                .post(format!(
+                    "{WORKER_URL}/reports/{number}/label?challenge={challenge}&nonce={nonce}"
+                ))
+                .send()?;
+            if !resp.status().is_success() {
+                return Err(format!("label request returned {}", resp.status()).into());
+            }
+            Ok(())
+        };
+        if let Err(e) = request() {
+            log::debug!("[feedback] label request failed: {e}");
         }
         Ok(())
     })
