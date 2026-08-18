@@ -327,9 +327,10 @@ pub async fn feedback_anonymous_thread(number: u32, token: String) -> AppResult<
         return Err("anonymous reporting is unavailable in this build".into());
     }
     blocking(move || {
-        // The token is hex, so it needs no escaping.
+        // In a header rather than the URL, which lands in request logs along the way.
         let resp = crate::proxy_client()
-            .get(format!("{WORKER_URL}/reports/{number}?token={token}"))
+            .get(format!("{WORKER_URL}/reports/{number}"))
+            .header("Authorization", format!("Bearer {token}"))
             .send()?;
         if !resp.status().is_success() {
             return Err(format!("could not read the report ({})", resp.status()).into());

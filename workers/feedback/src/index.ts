@@ -277,7 +277,10 @@ export default {
 
 		const replies = url.pathname.match(/^\/reports\/(\d+)$/);
 		if (request.method === "GET" && replies) {
-			const token = url.searchParams.get("token");
+			// A header rather than a query parameter: URLs end up in request logs, and the
+			// token is a bearer credential for this issue's thread.
+			const auth = request.headers.get("Authorization") ?? "";
+			const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
 			if (!token) return bad("missing token", 403);
 			return handleReplies(Number(replies[1]), token, env).catch((e) => bad(String(e), 502));
 		}
