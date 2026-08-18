@@ -30,6 +30,10 @@ export interface Env {
 	 *  here -- it rejects both App installation and user-to-server tokens -- so the images a
 	 *  reporter attaches live in a bucket and are served back by the route below. */
 	ATTACHMENTS: R2Bucket;
+	/** Per-IP request ceiling. The proof of work prices a single request; this caps how many
+	 *  of them one address can spend, so neither the bucket nor the GitHub API budget can be
+	 *  drained from a loop. */
+	RATE: RateLimit;
 }
 
 /** Must match `POW_BITS` in `app/src-tauri/src/feedback.rs`. */
@@ -219,6 +223,12 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 
+		if (!(request.method === "GET" && url.pathname.startsWith("/attachments/"))) {
+			const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+			const { success } = await env.RATE.limit({ key: ip });
+			if (!success) return bad("rate limited", 429);
+        }
+		
 		if (request.method === "GET" && url.pathname === "/challenge") {
 			return json({ challenge: await mintChallenge(env.WORKER_SECRET) });
 		}

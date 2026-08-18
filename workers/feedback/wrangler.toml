@@ -15,6 +15,14 @@ bucket_name = "mma-feedback"
 [vars]
 GITHUB_REPO = "ccmdi/mma"
 
+[[ratelimits]]
+name = "RATE"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
 # Secrets (set with `wrangler secret put <NAME>`, never in this file):
 #   GITHUB_APP_ID    numeric id of the GitHub App
 #   GITHUB_APP_KEY   its private key, PKCS#8 PEM
