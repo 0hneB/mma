@@ -128,8 +128,13 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
 		return bad("insufficient proof of work", 429);
 	}
 
+	// Every body the app composes ends with the machine block. Its absence does not prove
+	// abuse, but a report without one did not come from the app, and only the app's reports
+	// are ours to file under this identity.
 	const kind = reportKind(body);
-	const labels = ["via:app", "anonymous", ...(kind ? [KIND_LABELS[kind]] : [])];
+	if (!kind) return bad("not an app report", 403);
+
+	const labels = ["via:app", "anonymous", KIND_LABELS[kind]];
 	const issue = await createIssue(env, title, body, labels);
 	return json({ ...issue, token: await replyToken(env, issue.number) });
 }
@@ -216,7 +221,6 @@ async function handleLabel(number: number, url: URL, env: Env): Promise<Response
 		return bad("insufficient proof of work", 429);
 	}
 	const issue = await getIssue(env, number);
-	// The labels endpoint would happily label a pull request; nothing of ours is one.
 	if (issue.pull_request) return bad("not an app report", 403);
 	const kind = reportKind(issue.body ?? "");
 	if (!kind) return bad("not an app report", 403);
