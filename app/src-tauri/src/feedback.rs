@@ -99,14 +99,32 @@ fn leading_zero_bits(digest: &[u8; 32]) -> u32 {
     n
 }
 
-/// The predicate the worker re-checks. `challenge` is the SHA-256 of the report body, so a
-/// solved nonce is bound to the exact text being submitted and cannot be replayed for another.
+/// The predicate the worker re-checks. `challenge` is the worker-minted challenge joined to
+/// the hash of the content being submitted, so a solved nonce is bound to that exact content
+/// and expires with the challenge.
 pub(crate) fn verify_pow(challenge: &str, nonce: u64, bits: u32) -> bool {
     leading_zero_bits(&sha256(format!("{challenge}:{nonce}").as_bytes())) >= bits
 }
 
 pub(crate) fn solve_pow(challenge: &str, bits: u32) -> u64 {
     (0u64..).find(|n| verify_pow(challenge, *n, bits)).unwrap()
+}
+
+/// A short-lived challenge minted by the worker. The proof of work is solved against
+/// `{challenge}:{content hash}`, so a solution is bound to both the content and the worker's
+/// expiry window -- it cannot be precomputed or stockpiled.
+fn fetch_challenge() -> AppResult<String> {
+    #[derive(serde::Deserialize)]
+    struct ChallengeResp {
+        challenge: String,
+    }
+    let resp = crate::proxy_client()
+        .get(format!("{WORKER_URL}/challenge"))
+        .send()?;
+    if !resp.status().is_success() {
+        return Err(format!("challenge request failed ({})", resp.status()).into());
+    }
+    Ok(resp.json::<ChallengeResp>()?.challenge)
 }
 
 // ---------------------------------------------------------------------------
@@ -161,15 +179,18 @@ pub async fn feedback_submit_anonymous(
         return Err("anonymous reporting is not configured in this build".into());
     }
     blocking(move || {
+        let title = scrub(&title);
         let body = scrub(&body);
-        let challenge = crate::util::sha256_hex(body.as_bytes());
-        let nonce = solve_pow(&challenge, POW_BITS);
+        let challenge = fetch_challenge()?;
+        let content = crate::util::sha256_hex(format!("{title}\0{body}").as_bytes());
+        let nonce = solve_pow(&format!("{challenge}:{content}"), POW_BITS);
         let resp = crate::proxy_client()
             .post(format!("{WORKER_URL}/reports"))
             .json(&serde_json::json!({
-                "title": scrub(&title),
+                "title": title,
                 "body": body,
                 "installId": install_id,
+                "challenge": challenge,
                 "nonce": nonce,
             }))
             .send()?;
@@ -225,14 +246,18 @@ pub async fn feedback_upload_attachment(path: String, name: String) -> AppResult
         if !is_image(&bytes) {
             return Err("that file is not a PNG, JPEG, GIF or WebP".into());
         }
-        let nonce = solve_pow(&crate::util::sha256_hex(&bytes), POW_BITS);
+        let challenge = fetch_challenge()?;
+        let digest = crate::util::sha256_hex(&bytes);
+        let nonce = solve_pow(&format!("{challenge}:{digest}"), POW_BITS);
         let name = percent_encoding::utf8_percent_encode(
             &name,
             percent_encoding::NON_ALPHANUMERIC,
         )
         .to_string();
         let resp = crate::proxy_client()
-            .post(format!("{WORKER_URL}/uploads?name={name}&nonce={nonce}"))
+            .post(format!(
+                "{WORKER_URL}/uploads?name={name}&challenge={challenge}&nonce={nonce}"
+            ))
             .header("Content-Type", "application/octet-stream")
             .body(bytes)
             .send()?;

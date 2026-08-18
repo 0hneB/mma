@@ -7,7 +7,15 @@
  *  Signed-in users never touch this worker -- the app talks to GitHub directly as them. */
 
 import { addLabels, createIssue, getIssue, relayedComments } from "./github";
-import { hmacHex, imageType, safeEqual, sha256Hex, verifyPow } from "./verify";
+import {
+	hmacHex,
+	imageType,
+	mintChallenge,
+	safeEqual,
+	sha256Hex,
+	validChallenge,
+	verifyPow,
+} from "./verify";
 
 export interface Env {
 	/** Numeric id of the GitHub App. */
@@ -67,6 +75,7 @@ interface ReportRequest {
 	title?: unknown;
 	body?: unknown;
 	installId?: unknown;
+	challenge?: unknown;
 	nonce?: unknown;
 }
 
@@ -93,16 +102,21 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
 		return bad("malformed request");
 	}
 
-	const { title, body, installId, nonce } = payload;
+	const { title, body, installId, challenge, nonce } = payload;
 	if (typeof title !== "string" || typeof body !== "string" || typeof installId !== "string") {
 		return bad("missing fields");
 	}
 	if (!title.trim() || !body.trim()) return bad("empty report");
 	if (title.length > MAX_TITLE || body.length > MAX_BODY) return bad("report too large", 413);
+	if (typeof challenge !== "string" || !(await validChallenge(env.WORKER_SECRET, challenge))) {
+		return bad("expired or invalid challenge", 429);
+	}
 	if (typeof nonce !== "number") return bad("missing proof of work");
 
-	// The work is bound to this exact body, so a solved nonce cannot be recycled.
-	if (!(await verifyPow(await sha256Hex(body), nonce, POW_BITS))) {
+	// The work is bound to this exact title+body pair and to the challenge's lifetime, so a
+	// solved nonce cannot be recycled for other content or stockpiled for later.
+	const content = await sha256Hex(`${title}\u0000${body}`);
+	if (!(await verifyPow(`${challenge}:${content}`, nonce, POW_BITS))) {
 		return bad("insufficient proof of work", 429);
 	}
 
@@ -138,14 +152,18 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 	if (!contentType) return bad("not an image");
 
 	const url = new URL(request.url);
+	const challenge = url.searchParams.get("challenge") ?? "";
+	if (!(await validChallenge(env.WORKER_SECRET, challenge))) {
+		return bad("expired or invalid challenge", 429);
+	}
 	const digest = await sha256Hex(bytes);
 	const nonce = Number(url.searchParams.get("nonce"));
-	if (!(await verifyPow(digest, nonce, POW_BITS))) {
+	if (!(await verifyPow(`${challenge}:${digest}`, nonce, POW_BITS))) {
 		return bad("insufficient proof of work", 429);
 	}
 
-	// Content-addressed: replaying the same bytes (their proof of work is replayable too)
-	// overwrites the same object instead of storing another copy.
+	// Content-addressed: replaying the same bytes within the challenge window overwrites the
+	// same object instead of storing another copy.
 	const key = `${digest}.${EXTENSIONS[contentType]}`;
 	await env.ATTACHMENTS.put(key, bytes, { httpMetadata: { contentType } });
 	return json({
@@ -200,6 +218,10 @@ async function handleReplies(number: number, token: string, env: Env): Promise<R
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
+
+		if (request.method === "GET" && url.pathname === "/challenge") {
+			return json({ challenge: await mintChallenge(env.WORKER_SECRET) });
+		}
 
 		if (request.method === "POST" && url.pathname === "/reports") {
 			return handleSubmit(request, env).catch((e) => bad(String(e), 502));

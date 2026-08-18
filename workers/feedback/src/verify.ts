@@ -31,6 +31,26 @@ export function imageType(bytes: ArrayBuffer): string | null {
 	return null;
 }
 
+/** How long a minted challenge stays valid. */
+export const CHALLENGE_TTL = 600;
+
+/** Mint an expiring, self-authenticating challenge: `ts.rand.sig`. Stateless -- the signature
+ *  is what proves the worker issued it, the timestamp is what expires it. */
+export async function mintChallenge(secret: string): Promise<string> {
+	const ts = Math.floor(Date.now() / 1000);
+	const rand = hex(crypto.getRandomValues(new Uint8Array(8)).buffer);
+	return `${ts}.${rand}.${await hmacHex(secret, `pow:${ts}.${rand}`)}`;
+}
+
+/** Whether `challenge` was minted by us and has not expired. */
+export async function validChallenge(secret: string, challenge: string): Promise<boolean> {
+	const m = /^(\d{1,12})\.([0-9a-f]{16})\.([0-9a-f]{64})$/.exec(challenge);
+	if (!m) return false;
+	const age = Math.floor(Date.now() / 1000) - Number(m[1]);
+	if (age < 0 || age > CHALLENGE_TTL) return false;
+	return safeEqual(m[3], await hmacHex(secret, `pow:${m[1]}.${m[2]}`));
+}
+
 export async function hmacHex(secret: string, message: string): Promise<string> {
 	const key = await crypto.subtle.importKey(
 		"raw",
@@ -51,8 +71,9 @@ export function leadingZeroBits(bytes: Uint8Array): number {
 	return n;
 }
 
-/** `challenge` is the SHA-256 of the submitted body, so a nonce is bound to the exact text
- *  it was solved for and cannot be reused for a different report. */
+/** `challenge` is a minted challenge joined to the hash of the submitted content, so a nonce
+ *  is bound both to the exact content it was solved for and to a window the worker controls:
+ *  once the minted half expires, the work is spent whether or not it was ever submitted. */
 export async function verifyPow(challenge: string, nonce: number, bits: number): Promise<boolean> {
 	if (!Number.isInteger(nonce) || nonce < 0) return false;
 	const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`${challenge}:${nonce}`));
