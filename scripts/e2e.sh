@@ -48,6 +48,24 @@ done
 
 COMPOSE="docker compose -f docker-compose.e2e.yml -f docker-compose.e2e.dev.yml"
 
+# Warn when baked sources are newer than the e2e image. Test specs, wdio config,
+# and scripts/ are live-mounted; anything else baked needs scripts/e2e-build.sh.
+IMAGE=$($COMPOSE config --images e2e 2>/dev/null | head -1)
+CREATED=$(docker image inspect --format '{{.Created}}' "$IMAGE" 2>/dev/null)
+if [ -n "$CREATED" ]; then
+	stamp=$(mktemp)
+	if touch -d "$CREATED" "$stamp" 2>/dev/null; then
+		stale=$(find app/src app/src-tauri/src app/src-tauri/Cargo.toml \
+			app/src-tauri/tauri.conf.json app/package.json app/public plugins \
+			-type f -newer "$stamp" -print -quit 2>/dev/null)
+		if [ -n "$stale" ]; then
+			echo "WARNING: the e2e image is STALE - $stale changed after it was built." >&2
+			echo "         Rebuild with: bash scripts/e2e-build.sh (test-only edits are live-mounted)." >&2
+		fi
+	fi
+	rm -f "$stamp"
+fi
+
 if [ "$BENCH" = "1" ]; then
 	if [ "${1:-}" = "--shard" ]; then
 		echo "--bench is never sharded: benchmark numbers must be comparable run to run." >&2
