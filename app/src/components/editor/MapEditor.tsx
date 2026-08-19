@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { events } from "@/bindings.gen";
 import {
 	useMapState,
@@ -40,6 +40,7 @@ import {
 } from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
+import { usePointerDrag } from "@/lib/hooks/usePointerDrag";
 import { useSettings, getSettings } from "@/store/settings";
 import {
 	parseMapsUrl,
@@ -136,52 +137,42 @@ function useFileDrop() {
 const SPLITHANDLE_RANGE = range([15, 85]);
 
 function SplitHandle({ onSplitChange }: { onSplitChange: (v: number) => void }) {
-	const onPointerDown = useCallback(
-		(e: React.PointerEvent) => {
-			e.preventDefault();
-			const el = e.currentTarget as HTMLElement;
-			el.setPointerCapture(e.pointerId);
-			const grid = el.parentElement;
-			if (!grid) return;
+	const onPointerDown = usePointerDrag((e) => {
+		const grid = (e.currentTarget as HTMLElement).parentElement;
+		if (!grid) return null;
 
-			const panoEl = grid.querySelector<HTMLElement>(".location-preview__panorama");
-			const embedEl = panoEl?.querySelector<HTMLElement>(".location-preview__embed");
-			if (panoEl && embedEl) {
-				embedEl.style.position = "absolute";
-				embedEl.style.width = `${panoEl.offsetWidth}px`;
-				embedEl.style.height = `${panoEl.offsetHeight}px`;
-			}
+		const panoEl = grid.querySelector<HTMLElement>(".location-preview__panorama");
+		const embedEl = panoEl?.querySelector<HTMLElement>(".location-preview__embed");
+		if (panoEl && embedEl) {
+			embedEl.style.position = "absolute";
+			embedEl.style.width = `${panoEl.offsetWidth}px`;
+			embedEl.style.height = `${panoEl.offsetHeight}px`;
+		}
 
-			const onMove = (ev: PointerEvent) => {
-				const rect = grid.getBoundingClientRect();
-				const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-				const available = rect.width - gap;
-				const pct = ((ev.clientX - rect.left - gap / 2) / available) * 100;
-				const clamped = clamp(pct, SPLITHANDLE_RANGE);
+		const pctAt = (ev: PointerEvent) => {
+			const rect = grid.getBoundingClientRect();
+			const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+			const pct = ((ev.clientX - rect.left - gap / 2) / (rect.width - gap)) * 100;
+			return clamp(pct, SPLITHANDLE_RANGE);
+		};
+		return {
+			onMove: (ev) => {
+				const clamped = pctAt(ev);
 				grid.style.gridTemplateColumns = `minmax(0, ${clamped}fr) minmax(0, ${100 - clamped}fr)`;
 				if (embedEl && panoEl) {
 					embedEl.style.width = `${panoEl.offsetWidth}px`;
 					embedEl.style.height = `${panoEl.offsetHeight}px`;
 				}
-			};
-			const ac = new AbortController();
-			const onUp = (ev: PointerEvent) => {
-				ac.abort();
+			},
+			onEnd: (ev) => {
 				if (embedEl) {
 					embedEl.style.width = "";
 					embedEl.style.height = "";
 				}
-				const rect = grid.getBoundingClientRect();
-				const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-				const available = rect.width - gap;
-				const pct = ((ev.clientX - rect.left - gap / 2) / available) * 100;
-				onSplitChange(clamp(pct, SPLITHANDLE_RANGE));
-			};
-			el.addEventListener("pointermove", onMove, { signal: ac.signal });
-			el.addEventListener("pointerup", onUp, { signal: ac.signal });
-		},
-		[onSplitChange],
-	);
+				onSplitChange(pctAt(ev));
+			},
+		};
+	});
 
 	return (
 		<div
