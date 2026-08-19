@@ -5,6 +5,7 @@
 	},
 	"include": [
 		"e2e/**/*.ts",
+		"perf/**/*.ts",
 		"unit/**/*.ts",
 		"unit/**/*.tsx",
 		"../src/**/*.ts",
