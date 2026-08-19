@@ -229,15 +229,22 @@ export function TagManager() {
 						{tagViewMode === "tree" && (
 							<Button onClick={() => setNewFolderParent("")}>{t("New folder")}</Button>
 						)}
-						<span className="tag-manager__sort button-group">
-							{(["default", "name", "amount"] as TagSortMode[]).map((mode) => (
+						<span className="tag-manager__sort button-group" role="radiogroup" aria-label={t("Sort tags")}>
+							{(
+								[
+									["default", t("default")],
+									["name", t("name")],
+									["amount", t("amount")],
+								] as [TagSortMode, string][]
+							).map(([mode, label]) => (
 								<Button
 									key={mode}
 									className="button-group__button"
+									role="radio"
 									aria-checked={sortMode === mode}
 									onClick={() => setSetting("tagSortMode", mode)}
 								>
-									{mode}
+									{label}
 								</Button>
 							))}
 						</span>
