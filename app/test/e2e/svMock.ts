@@ -212,6 +212,22 @@ export function installSvMock(): void {
 			const envelope = new Uint8Array([...fMsg(1, fVar(1, 0)), ...results]);
 			return new Response(envelope, { status: 200 });
 		}
+		if (url.includes("/maps/photometa/")) {
+			// Coverage-dot tile used by photometaSnap (map-click lookup): one dot at the
+			// tile center, shaped as parsePanoDots reads it (data[1][1][n][0] = info,
+			// info[0][1] = panoId, info[2][0] = [,,lat,lng]).
+			const m = /!6m3!1i(\d+)!2i(\d+)!3i(\d+)/.exec(url);
+			let entries: unknown[] = [];
+			if (m) {
+				const n = 2 ** +m[3];
+				const lng = ((+m[1] + 0.5) / n) * 360 - 180;
+				const lat =
+					(Math.atan(Math.sinh(Math.PI * (1 - (2 * (+m[2] + 0.5)) / n))) * 180) / Math.PI;
+				const pano = panoAtCoords(lat, lng);
+				if (pano) entries = [[[[null, pano], null, [[null, null, lat, lng]]]]];
+			}
+			return new Response(")]}'\n" + JSON.stringify([null, [null, entries]]), { status: 200 });
+		}
 		if (url.includes("SingleImageSearch")) {
 			// Any non-"no images" body counts as "image found", so resolveExactTimestamp's
 			// binary search always narrows downward and converges to a valid timestamp.
