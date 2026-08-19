@@ -954,6 +954,24 @@ export const getSelectedTagIds: () => ReadonlySet<number> = (() => {
 	);
 })();
 
+/** Tag ids of every Tag leaf in the active selection tree, in list order --
+ *  composite children included, ghosted selections excluded, ids may repeat.
+ *  Deep counterpart of getSelectedTagIds (top-level only, as a set). */
+export const getSelectedTagIdsDeep: () => readonly number[] = memoOnRefs(
+	() => [getActiveSelections()] as const,
+	(sels) => {
+		const out: number[] = [];
+		const walk = (list: Selection[]) => {
+			for (const s of list) {
+				if (s.props.type === "Tag") out.push(s.props.tagId);
+				if ("selections" in s.props) walk(s.props.selections);
+			}
+		};
+		walk(sels);
+		return out;
+	},
+);
+
 let virtualIdSeq = 0;
 /** Each preview gets a fresh negative id so its identity changes between previews (the pano viewer re-resolves on active-id change). */
 const freshVirtualId = () => --virtualIdSeq;
