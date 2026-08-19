@@ -30,15 +30,13 @@ if (!isWorker) {
 	};
 }
 
-/** Excluded from both suites: scratch and perf specs, run explicitly via --spec. */
+/** Excluded from both suites: scratch and the benchmark suite, run explicitly
+ *  (`scripts/e2e.sh --bench`, or `--spec`). */
 export const SHARED_EXCLUDES = [
 	"./test/e2e/scratch.test.ts",
-	"./test/e2e/benchmarks.test.ts",
-	"./test/e2e/speed-matrix.test.ts",
+	"./test/e2e/performance.test.ts",
+	// Wipes every map in the list during cleanup, so it can't share a run with other specs.
 	"./test/e2e/bulk-import-rust.test.ts",
-	"./test/e2e/perf-import.test.ts",
-	"./test/e2e/perf-sel.test.ts",
-	"./test/e2e/perf-render.test.ts",
 ];
 
 export const config: WebdriverIO.Config = {
