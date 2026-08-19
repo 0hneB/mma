@@ -174,6 +174,32 @@ fn overlay_update_stamps_modified_at_on_base_row() {
 }
 
 #[test]
+fn overlay_update_returns_the_location_as_stored() {
+    // The pair's `new` half feeds undo entries and selection membership re-tests, so it
+    // must be exactly what the store now holds -- including the modified_at stamp.
+    let l = loc(1, 10.0, 20.0);
+    let mut store = setup_store_with(&[l]);
+    store.bake_overlay();
+    let (_, new_loc) = store.overlay_update(1, &patch!(lat: 50.0)).unwrap();
+    assert!(new_loc.modified_at.is_some());
+    assert_eq!(new_loc, store.get_loc_by_id(1).unwrap());
+}
+
+#[test]
+fn overlay_update_noop_on_patched_row_stays_a_noop() {
+    let l = loc(1, 10.0, 20.0);
+    let mut store = setup_store_with(&[l]);
+    store.bake_overlay();
+    store.overlay_update(1, &patch!(lat: 50.0));
+    // Re-applying the identical patch must return an equal pair (no undo entry) and leave
+    // the stored row untouched.
+    let stored = store.get_loc_by_id(1).unwrap();
+    let (old, new_loc) = store.overlay_update(1, &patch!(lat: 50.0)).unwrap();
+    assert_eq!(old, new_loc);
+    assert_eq!(store.get_loc_by_id(1).unwrap(), stored);
+}
+
+#[test]
 fn collect_all_scope() {
     let locs = vec![loc(1, 10.0, 20.0), loc(2, 30.0, 40.0)];
     let store = setup_store_with(&locs);

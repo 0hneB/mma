@@ -1003,11 +1003,11 @@ impl Store {
 
     /// Apply a tags-only update: adjust tag counts, write the tags patch into the
     /// overlay, and record undo for the changed pairs. Returns the ChangeSet.
-    fn commit_tag_update(&mut self, updated: Vec<(Location, Location)>) -> ChangeSet {
+    fn commit_tag_update(&mut self, mut updated: Vec<(Location, Location)>) -> ChangeSet {
         let old_locs: Vec<Location> = updated.iter().map(|(o, _)| o.clone()).collect();
         self.remove_tag_counts(&old_locs);
-        for (old, new_loc) in &updated {
-            self.overlay_write(new_loc.id, new_loc.clone(), (old.lat, old.lng));
+        for (old, new_loc) in &mut updated {
+            *new_loc = self.overlay_write(new_loc.id, new_loc.clone(), (old.lat, old.lng));
         }
         let new_locs: Vec<Location> = updated.iter().map(|(_, n)| n.clone()).collect();
         self.add_tag_counts(&new_locs);
@@ -1641,7 +1641,7 @@ impl Store {
                 }
             };
         }
-        self.overlay_write(id, loc.clone(), old_coords);
+        let loc = self.overlay_write(id, loc, old_coords);
         Some((old, loc))
     }
 
@@ -1649,28 +1649,30 @@ impl Store {
     /// and its pre-mutation coords for spatial-index maintenance. Shared by `overlay_update`
     /// (which fetches+mutates a patch itself) and callers that already hold the fully-built
     /// new Location (e.g. `commit_tag_update`), so the latter skip a redundant re-fetch.
-    fn overlay_write(&mut self, id: u32, mut loc: Location, old_coords: (f64, f64)) {
+    /// Returns the location as the store now holds it -- stamped when the write was a real
+    /// change -- which is what undo entries and membership re-tests must carry.
+    fn overlay_write(&mut self, id: u32, mut loc: Location, old_coords: (f64, f64)) -> Location {
         if (loc.lat, loc.lng) != old_coords {
             if let Some(ix) = self.spatial.as_mut() {
                 ix.remove(id, old_coords.0, old_coords.1);
                 ix.insert(id, loc.lat, loc.lng);
             }
         }
+        // Stamp only on a real change, in every branch: a no-op patch must stay a no-op or
+        // it fabricates undo entries and phantom modification times.
         if let Ok(pos) = self.overlay.adds.binary_search_by_key(&id, |l| l.id) {
-            // Stamp only on a real change (parity with the base-row branch below): a
-            // session-added row must not report "never modified", but a no-op patch
-            // must stay a no-op or it fabricates undo entries.
             if self.overlay.adds[pos] != loc {
                 loc.modified_at = Some(crate::util::now_unix());
-                self.overlay.adds[pos] = loc;
+                self.overlay.adds[pos] = loc.clone();
             }
         } else if self.base_loc_by_id(id).as_ref() == Some(&loc) {
             self.overlay.patches.remove(&id);
-        } else {
+        } else if self.overlay.patches.get(&id) != Some(&loc) {
             loc.modified_at = Some(crate::util::now_unix());
-            self.overlay.patches.insert(id, loc);
+            self.overlay.patches.insert(id, loc.clone());
         }
         self.overlay.touch();
+        loc
     }
 
     /// Reset overlay state. Called after bake or on map close.
