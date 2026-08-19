@@ -9,8 +9,6 @@ export type MessageSource = string | PluralForms;
 export type MessageParams = Record<string, string | number>;
 type CatalogEntry = string | Record<string, string>;
 
-const catalogs = import.meta.glob<{ default: Record<string, CatalogEntry> }>("../locales/*.json");
-
 let catalog: Record<string, CatalogEntry> = {};
 let locale = "en";
 let pluralRules = new Intl.PluralRules("en");
@@ -19,6 +17,7 @@ let countFormat = new Intl.NumberFormat("en");
 /** Load a locale's catalog. Call once before the first render -- language changes relaunch the
  *  app rather than re-rendering, so nothing observes `locale` changing mid-flight. */
 export async function initLocale(code: string): Promise<void> {
+	const catalogs = import.meta.glob<{ default: Record<string, CatalogEntry> }>("../locales/*.json");
 	const load = catalogs[`../locales/${code}.json`];
 	catalog = load ? (await load()).default : {};
 	locale = code;
