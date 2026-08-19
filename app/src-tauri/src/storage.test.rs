@@ -488,6 +488,28 @@ fn footer_region_corruption_does_not_panic() {
 }
 
 #[test]
+fn atomic_write_leaves_no_tmp_on_success() {
+    let dir = TempDir::new("mma_test_atomic_no_tmp");
+    let path = dir.join("dest.arrow");
+    write_arrow_ipc(&path, &make_test_batch(&[1])).unwrap();
+    assert!(path.exists());
+    assert!(!dir.join("dest.tmp").exists());
+}
+
+#[test]
+fn sweep_tmp_under_removes_only_tmp_recursively() {
+    let dir = TempDir::new("mma_test_sweep_tmp");
+    std::fs::create_dir_all(dir.join("commits").join("m1")).unwrap();
+    std::fs::write(dir.join("a.tmp"), b"x").unwrap();
+    std::fs::write(dir.join("commits").join("m1").join("b.tmp"), b"x").unwrap();
+    std::fs::write(dir.join("keep.arrow"), b"x").unwrap();
+    assert_eq!(sweep_tmp_under(&dir), 2);
+    assert!(!dir.join("a.tmp").exists());
+    assert!(!dir.join("commits").join("m1").join("b.tmp").exists());
+    assert!(dir.join("keep.arrow").exists());
+}
+
+#[test]
 fn atomic_write_failure_leaves_dest_unchanged() {
     let dir = TempDir::new("mma_test_crash_atomic_fail");
     let path = dir.join("dest.arrow");
