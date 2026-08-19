@@ -1003,12 +1003,16 @@ impl Store {
 
     /// Apply a tags-only update: adjust tag counts, write the tags patch into the
     /// overlay, and record undo for the changed pairs. Returns the ChangeSet.
-    fn commit_tag_update(&mut self, mut updated: Vec<(Location, Location)>) -> ChangeSet {
+    fn commit_tag_update(&mut self, updated: Vec<(Location, Location)>) -> ChangeSet {
         let old_locs: Vec<Location> = updated.iter().map(|(o, _)| o.clone()).collect();
         self.remove_tag_counts(&old_locs);
-        for (old, new_loc) in &mut updated {
-            *new_loc = self.overlay_write(new_loc.id, new_loc.clone(), (old.lat, old.lng));
-        }
+        let updated: Vec<(Location, Location)> = updated
+            .into_iter()
+            .map(|(old, new_loc)| {
+                let new_loc = self.overlay_write(new_loc.id, new_loc, &old);
+                (old, new_loc)
+            })
+            .collect();
         let new_locs: Vec<Location> = updated.iter().map(|(_, n)| n.clone()).collect();
         self.add_tag_counts(&new_locs);
         self.record_update_undo(&updated);
@@ -1618,7 +1622,6 @@ impl Store {
     fn overlay_update(&mut self, id: u32, patch: &LocationPatch) -> Option<(Location, Location)> {
         let old = self.get_loc_by_id(id)?;
         let mut loc = old.clone();
-        let old_coords = (old.lat, old.lng);
         apply_patch!(loc, patch; lat, lng, heading, pitch, zoom, created_at, modified_at);
         apply_patch!(clone loc, patch; pano_id, tags);
         if let Some(v) = patch.flags {
@@ -1641,18 +1644,18 @@ impl Store {
                 }
             };
         }
-        let loc = self.overlay_write(id, loc, old_coords);
+        let loc = self.overlay_write(id, loc, &old);
         Some((old, loc))
     }
 
-    /// Write an already-computed Location into the overlay (adds/patches), given the id
-    /// and its pre-mutation coords for spatial-index maintenance. Shared by `overlay_update`
-    /// (which fetches+mutates a patch itself) and callers that already hold the fully-built
-    /// new Location (e.g. `commit_tag_update`), so the latter skip a redundant re-fetch.
-    fn overlay_write(&mut self, id: u32, mut loc: Location, old_coords: (f64, f64)) -> Location {
-        if (loc.lat, loc.lng) != old_coords {
+    /// Write an already-computed Location into the overlay (adds/patches). `old` is the
+    /// row's pre-mutation state, which every caller already holds -- for an unpatched row
+    /// it IS the base row, so the no-op check needs no Arrow re-materialization. Returns
+    /// the location as the store now holds it (stamped on a real change).
+    fn overlay_write(&mut self, id: u32, mut loc: Location, old: &Location) -> Location {
+        if (loc.lat, loc.lng) != (old.lat, old.lng) {
             if let Some(ix) = self.spatial.as_mut() {
-                ix.remove(id, old_coords.0, old_coords.1);
+                ix.remove(id, old.lat, old.lng);
                 ix.insert(id, loc.lat, loc.lng);
             }
         }
@@ -1662,9 +1665,16 @@ impl Store {
                 loc.modified_at = Some(crate::util::now_unix());
                 self.overlay.adds[pos] = loc.clone();
             }
-        } else if self.base_loc_by_id(id).as_ref() == Some(&loc) {
-            self.overlay.patches.remove(&id);
-        } else if self.overlay.patches.get(&id) != Some(&loc) {
+        } else if self.overlay.patches.contains_key(&id) {
+            // A patched row: `old` is the patched state, so reverting to the base row
+            // exactly is the one case that still has to materialize it.
+            if self.base_loc_by_id(id).as_ref() == Some(&loc) {
+                self.overlay.patches.remove(&id);
+            } else if self.overlay.patches.get(&id) != Some(&loc) {
+                loc.modified_at = Some(crate::util::now_unix());
+                self.overlay.patches.insert(id, loc.clone());
+            }
+        } else if loc != *old {
             loc.modified_at = Some(crate::util::now_unix());
             self.overlay.patches.insert(id, loc.clone());
         }
