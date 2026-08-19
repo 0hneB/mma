@@ -68,6 +68,10 @@ mod vcs_delta;
 #[cfg(feature = "web-serve")]
 pub mod serve;
 
+/// The whole surface the criterion benches link against. See `benches/store.rs`.
+#[cfg(feature = "bench")]
+pub use location_store::bench as bench_api;
+
 /// App handle, captured once in `setup()`. Private: the only capability exposed is
 /// event emission via [`emit_event`], so commands don't carry an `AppHandle`
 /// parameter just to emit.

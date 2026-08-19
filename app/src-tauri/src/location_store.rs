@@ -4239,3 +4239,10 @@ pub fn store_near_any(
 #[cfg(test)]
 #[path = "location_store.test.rs"]
 mod tests;
+
+/// Fixtures and command-body mirrors for the criterion suite. A child module so it
+/// reaches these internals without widening any visibility; absent unless the
+/// `bench` feature is on.
+#[cfg(feature = "bench")]
+#[path = "location_store.bench.rs"]
+pub mod bench;
