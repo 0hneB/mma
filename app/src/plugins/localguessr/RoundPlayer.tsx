@@ -6,7 +6,7 @@ import { Flag } from "@/components/primitives/Flag";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { mdiClose, mdiHome, mdiNavigation, mdiBookmarkOutline, mdiBookmark, mdiCar, mdiCarOff, mdiTagOutline } from "@mdi/js";
 import { cmd } from "@/lib/commands";
-import { getSettings, setSetting } from "@/store/settings";
+import { getSettings, setSetting, useSettings } from "@/store/settings";
 import { sendHideCar, Compass, CompassTape } from "@/components/editor/location/PanoControls";
 import { usePluginState } from "@/plugins/registry";
 import { t } from "@/lib/i18n";
@@ -116,6 +116,7 @@ export function RoundPlayer({
 	const [submitting, setSubmitting] = useState(false);
 	const [hasCheckpoint, setHasCheckpoint] = useState(false);
 	const [panorama, setPanorama] = useState<Parameters<typeof Compass>[0]["panorama"] | null>(null);
+	const settings = useSettings();
 	const [hideCar, setHideCar] = useState(!getSettings().showCar);
 	// Persisted: the tag bar is a working preference, not per-round state.
 	const [showTags, setShowTags] = usePluginState<boolean>("localguessr", "showTags", false);
@@ -238,12 +239,16 @@ export function RoundPlayer({
 
 			{!showResult && panorama && (
 				<>
-					<div className="lg-round__compass">
-						<Compass panorama={panorama} />
-					</div>
-					<div className="lg-round__compass-tape">
-						<CompassTape panorama={panorama} />
-					</div>
+					{settings.showCompass && (
+						<div className="lg-round__compass">
+							<Compass panorama={panorama} />
+						</div>
+					)}
+					{settings.showCompassTape && (
+						<div className="lg-round__compass-tape">
+							<CompassTape panorama={panorama} />
+						</div>
+					)}
 				</>
 			)}
 
