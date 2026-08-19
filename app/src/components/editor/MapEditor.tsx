@@ -34,6 +34,7 @@ import { Dialog, DialogTrigger, DialogContent } from "@/components/primitives/Di
 import {
 	useHotkey,
 	useCommandHotkeys,
+	isActivationElement,
 	isEditableElement,
 	pluginOverlayOwnsInput,
 } from "@/lib/hooks/useHotkey";
@@ -274,6 +275,7 @@ export function MapEditor() {
 			if (e.key !== "Enter" || e.repeat) return;
 			if (pluginOverlayOwnsInput()) return;
 			if (isEditableElement(e.target)) return;
+			if (isActivationElement(document.activeElement)) return;
 			if (!getSettings().enterOpensCenter) return;
 			if (getMapState().activeLocation) return;
 			showMapCursorRef.current = true;
