@@ -2039,6 +2039,32 @@ pub struct LocationPatch {
 // Commands
 // ---------------------------------------------------------------------------
 
+/// Load the uncommitted-delta sidecar. An unreadable delta is set aside as a
+/// `.corrupt` sibling - never left in place where the next autosave would
+/// overwrite it - and the user is warned via a `store-warning` event.
+fn load_delta(delta_path: &std::path::Path) -> Option<Overlay> {
+    if !delta_path.exists() {
+        return None;
+    }
+    let parsed = std::fs::read(delta_path)
+        .map_err(|e| e.to_string())
+        .and_then(|d| rmp_serde::from_slice::<Overlay>(&d).map_err(|e| e.to_string()));
+    match parsed {
+        Ok(p) => Some(p),
+        Err(e) => {
+            let kept = delta_path.with_extension("corrupt");
+            let _ = std::fs::remove_file(&kept);
+            let moved = std::fs::rename(delta_path, &kept).is_ok();
+            log::error!("[store_open] unreadable delta ({e}), set aside (moved={moved}) at {kept:?}");
+            crate::emit_event(
+                "store-warning",
+                "Uncommitted changes could not be read and were set aside as a .corrupt file. The map opened from its last committed state.",
+            );
+            None
+        }
+    }
+}
+
 /// Load a map's Arrow data from disk, rebuild all indexes, and return initial state
 /// (tag counts, undo/redo availability). Must be called before any other store commands.
 #[tauri::command]
@@ -2075,23 +2101,7 @@ pub async fn store_open_map(
                 log::debug!("[store_open] no base file, empty batch");
                 (RecordBatch::new_empty(schema()), None)
             };
-            let delta = if delta_path.exists() {
-                match std::fs::read(&delta_path) {
-                    Ok(d) => match rmp_serde::from_slice::<Overlay>(&d) {
-                        Ok(parsed) => Some(parsed),
-                        Err(e) => {
-                            log::warn!("[store_open] delta parse failed, ignoring: {e}");
-                            None
-                        }
-                    },
-                    Err(e) => {
-                        log::warn!("[store_open] delta read failed, ignoring: {e}");
-                        None
-                    }
-                }
-            } else {
-                None
-            };
+            let delta = load_delta(&delta_path);
             (batch, handle, delta)
         };
 
