@@ -304,10 +304,10 @@ const COMMANDS = {
 		enabled: hasSelection,
 	},
 	"select-spaced": {
-		label: msg("Pick evenly spaced locations from selection"),
+		label: msg("Thin selection by minimum distance"),
 		icon: mdiDotsGrid,
 		group: msg("Selections"),
-		aliases: ["spaced", "thin", "reduce density", "distribute"],
+		aliases: ["spaced", "thin", "reduce density", "distribute", "evenly spaced"],
 		execute: openInlinePanel("select-spaced"),
 		enabled: hasSelection,
 	},
