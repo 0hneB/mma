@@ -137,6 +137,7 @@ export function PanoView({
 		let cancelled = false;
 		let listener: google.maps.MapsEventListener | null = null;
 		setError(null);
+		checkpointRef.current = null;
 
 		void (async () => {
 			await loadOpenSV();
