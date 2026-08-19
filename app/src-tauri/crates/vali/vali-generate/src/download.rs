@@ -261,9 +261,11 @@ pub struct CountryStatus {
     pub files: usize,
     pub bytes: i64,
 }
-/// Countries with data on disk whose remote copy has moved on. Lists object metadata only --
-/// no file bodies are fetched, so this is cheap enough to run unprompted. Countries that were
-/// never downloaded are not reported: nothing is stale about data you don't have.
+/// Countries with data on disk whose remote copy has moved on. Both buckets count: a stretch
+/// where upstream ships only incremental deltas must still read as stale, since the download
+/// pass syncs full files and updates alike. Lists object metadata only -- no file bodies are
+/// fetched, so this is cheap enough to run unprompted. Countries that were never downloaded
+/// are not reported: nothing is stale about data you don't have.
 pub fn stale_countries(
     root: &Path,
     timeout: Duration,
@@ -280,9 +282,13 @@ pub fn stale_countries(
         10,
         cancel,
         |cc| {
-            let remote = list_files(&agent, cc, COUNTRIES_BUCKET)?;
+            let remote_data = list_files(&agent, cc, COUNTRIES_BUCKET)?;
+            let remote_updates = list_files(&agent, cc, COUNTRY_UPDATES_BUCKET)?;
             let local = existing_files_in_metadata(&root.join(cc));
-            let stale = outdated(&remote, &local);
+            let stale: Vec<&R2Object> = outdated(&remote_data, &local)
+                .into_iter()
+                .chain(outdated(&remote_updates, &local))
+                .collect();
             if !stale.is_empty() {
                 found
                     .lock()
