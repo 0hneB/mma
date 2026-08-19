@@ -127,15 +127,11 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 		});
 	};
 
-	const compileDefines = (defines: string[]) => {
-		if (defines.length === 0) {
-			currentDefineKey = "default";
-			return;
-		}
+	const ensureCompiled = (defines: string[]): string => {
+		if (defines.length === 0) return "default";
 		defines.sort();
 		const key = defines.join("_");
-		currentDefineKey = key;
-		if (key in compiledPrograms) return;
+		if (key in compiledPrograms) return key;
 
 		const header = "//Custom shader\n" + defines.map((d) => `#define ${d}`).join("\n") + "\n";
 		const vs = gl.createShader(gl.VERTEX_SHADER)!;
@@ -148,9 +144,21 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 		origAttachShader(prog, vs);
 		origAttachShader(prog, fs);
 		gl.linkProgram(prog);
+		// Force link completion now so the toggle frame only swaps programs.
+		gl.getProgramParameter(prog, gl.LINK_STATUS);
 		compiledPrograms[key] = prog;
 		uniformLocCache[key] = {};
+		return key;
 	};
+
+	const compileDefines = (defines: string[]) => {
+		currentDefineKey = ensureCompiled(defines);
+	};
+
+	// Warm the car-toggle variant at context creation: a fresh pano canvas (e.g. the
+	// LocalGuessr fullscreen viewer) would otherwise compile it mid-frame on the first
+	// toggle, which shows as a one-frame glitch.
+	ensureCompiled(["NO_CAR"]);
 
 	window.addEventListener("message", (e) => {
 		const t = e.data;
