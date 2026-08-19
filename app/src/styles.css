@@ -4271,7 +4271,8 @@ body {
 	font-family: monospace;
 }
 .page-map-editor {
-	grid-gap: 0.5rem 1rem;
+	--editor-column-gap: 1rem;
+	grid-gap: 0.5rem var(--editor-column-gap);
 	grid-template: "header back" min-content "map-embed work-area" 1fr "map-meta work-area" min-content/1fr 1fr;
 	height: calc(100vh - 2rem);
 	margin: 0.5rem 1rem;
@@ -5099,12 +5100,13 @@ body {
 	position: relative;
 }
 .split-handle {
+	--split-handle-width: 8px;
 	grid-area: map-embed;
 	justify-self: end;
 	position: relative;
-	width: 8px;
+	width: var(--split-handle-width);
 	/* half the grid column gap, less half the handle, to sit centred in the gutter */
-	margin-right: calc(-0.5rem - 4px);
+	margin-right: calc(var(--editor-column-gap) / -2 - var(--split-handle-width) / 2);
 	cursor: col-resize;
 	z-index: 10;
 	touch-action: none;
