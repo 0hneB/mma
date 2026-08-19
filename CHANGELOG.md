@@ -1,3 +1,15 @@
+## v0.9.1 - 2026-08-19
+- Option to tag locations that have no value for the field when applying metadata as tags
+- Fixed map list search skipping maps inside collapsed folders
+- Fixed the map generator's search visualization not covering polygons added when a running job is resumed
+- Fixed a brief rendering glitch when toggling hide car in LocalGuessr
+- Fixed the LocalGuessr compass and compass tape ignoring the compass settings
+- Fixed a truncated map file opening as an empty map instead of reporting the problem
+- Fixed a corrupted map file crashing the app on open
+- Fixed unsaved changes being silently discarded when their file could not be read
+- Fixed unsaved edits being lost if the app or machine stopped mid-save
+- Fixed field type detection accepting impossible dates like "9999-99"
+
 ## v0.9.0 - 2026-08-18
 - **LocalGuessr: play your maps in-app like GeoGuessr, with movement modes, timers, and cross-game streaks**
 - **Report bugs and suggest ideas from inside the app, under your GitHub account or anonymously**
