@@ -4,7 +4,9 @@ A **doclink** ties a tag to a heading in a Google Doc. Select that tag and the r
 
 ## Assigning links
 
-Run **Assign document links...** from the command palette (Tags group). Paste the document's URL and <App /> loads its outline: every heading, listed in order. Arm a tag by clicking it, then click headings to attach or detach that tag. One tag can point at several headings, and one heading can serve several tags.
+Run **Assign document links...** from the command palette (Tags group). Paste the document's URL and <App /> loads its outline: every heading, listed in order. Arm a tag by clicking it, then click headings to attach or detach that tag. One tag can point at several headings, and one heading can serve several tags. Both panes have filter fields, and when the map links more than one document, buttons under the URL switch between them.
+
+**Match names** proposes links wherever a heading's text equals a tag's name (ignoring case and accents; a nested tag like `Poland/Bollard` also matches a heading named just `Bollard` when no other tag shares that leaf). Review the suggestions, dismiss any you don't want, then **Link all**.
 
 The document has to be readable by anyone with the link - <App /> fetches it as an anonymous reader, with no sign-in.
 
