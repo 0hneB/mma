@@ -12,6 +12,10 @@ custom_domain = true
 binding = "ATTACHMENTS"
 bucket_name = "mma-feedback"
 
+# Weekly sweep of attachments no issue references any more (see `sweepAttachments`).
+[triggers]
+crons = ["17 4 * * 1"]
+
 [vars]
 GITHUB_REPO = "ccmdi/mma"
 

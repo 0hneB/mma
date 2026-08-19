@@ -6,7 +6,13 @@
  *
  *  Signed-in users never touch this worker -- the app talks to GitHub directly as them. */
 
-import { addLabels, createIssue, getIssue, relayedComments } from "./github";
+import {
+	addLabels,
+	createIssue,
+	getIssue,
+	referencedAttachments,
+	relayedComments,
+} from "./github";
 import {
 	hmacHex,
 	imageType,
@@ -243,6 +249,30 @@ async function handleReplies(number: number, token: string, env: Env): Promise<R
 	});
 }
 
+/** An upload happens before the issue that quotes it exists, so anything this young may simply
+ *  not have been submitted yet. */
+const SWEEP_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/** Drop stored images no issue points at any more.
+ *
+ *  Reachability rather than an expiry rule: an attachment has to live exactly as long as the
+ *  issue quoting it, and a blanket lifecycle would blank the screenshots on old reports. What
+ *  actually accumulates is uploads whose report was never filed, and those are unreferenced
+ *  from the moment they land. */
+async function sweepAttachments(env: Env): Promise<void> {
+	const referenced = await referencedAttachments(env);
+	const cutoff = Date.now() - SWEEP_GRACE_MS;
+	let cursor: string | undefined;
+	do {
+		const page = await env.ATTACHMENTS.list({ cursor });
+		const stale = page.objects
+			.filter((o) => !referenced.has(o.key) && o.uploaded.getTime() < cutoff)
+			.map((o) => o.key);
+		if (stale.length) await env.ATTACHMENTS.delete(stale);
+		cursor = page.truncated ? page.cursor : undefined;
+	} while (cursor);
+}
+
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
@@ -286,5 +316,8 @@ export default {
 		}
 
 		return bad("not found", 404);
+	},
+	async scheduled(_event: ScheduledController, env: Env): Promise<void> {
+		await sweepAttachments(env);
 	},
 };

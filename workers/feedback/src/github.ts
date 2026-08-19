@@ -135,6 +135,23 @@ export async function addLabels(env: Env, number: number, labels: string[]): Pro
 	if (!resp.ok) throw new Error(`label failed (${resp.status})`);
 }
 
+/** Every attachment key some issue body still points at.
+ *
+ *  Paginates to completion and throws on the first bad page: a partial answer would read as
+ *  "nothing references these" and take live screenshots with it. */
+export async function referencedAttachments(env: Env): Promise<Set<string>> {
+	const keys = new Set<string>();
+	for (let page = 1; ; page++) {
+		const resp = await apiFetch(env, `/issues?state=all&per_page=100&page=${page}`);
+		if (!resp.ok) throw new Error(`issue list failed (${resp.status})`);
+		const issues = (await resp.json()) as Array<{ body?: string }>;
+		for (const issue of issues) {
+			for (const m of (issue.body ?? "").matchAll(/\/attachments\/([\w-]+\.\w+)/g)) keys.add(m[1]);
+		}
+		if (issues.length < 100) return keys;
+	}
+}
+
 export interface RelayedComment {
 	author: string;
 	body: string;
