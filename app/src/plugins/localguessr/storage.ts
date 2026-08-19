@@ -6,20 +6,23 @@ const SAVED_GAME = "savedGame";
 const GLOBAL_STREAK = "globalStreak";
 
 /**
- * The one in-flight game, kept so closing the sidebar mid-round isn't a loss.
- * Only the drawn rounds are stored, never the pool they came from.
+ * The one in-flight game per map, kept so closing the sidebar mid-round isn't a loss.
+ * Keyed by the map the rounds were drawn from: their location ids and tags mean nothing
+ * on any other map. Only the drawn rounds are stored, never the pool they came from.
  */
-export function getSavedGame(): Game | null {
-	const game = storage.get<Game | null>(SAVED_GAME, null);
-	return game && Array.isArray(game.locations) && game.locations.length > 0 ? game : null;
+export function getSavedGame(mapId: string): Game | null {
+	const game = storage.get<Game | null>(`${SAVED_GAME}:${mapId}`, null);
+	return game && game.mapId === mapId && Array.isArray(game.locations) && game.locations.length > 0
+		? game
+		: null;
 }
 
 export function saveGame(game: Game): void {
-	storage.set(SAVED_GAME, game);
+	storage.set(`${SAVED_GAME}:${game.mapId}`, game);
 }
 
-export function clearSavedGame(): void {
-	storage.set(SAVED_GAME, null);
+export function clearSavedGame(mapId: string): void {
+	storage.set(`${SAVED_GAME}:${mapId}`, null);
 }
 
 interface GlobalStreak {

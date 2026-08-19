@@ -46,18 +46,22 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 	const scopeCtl = useScope();
 	const [view, dispatch] = useReducer(reduce, { phase: "config" } as View);
 	const [starting, setStarting] = useState(false);
-	const [resumable, setResumable] = useState(() => getSavedGame());
+	const [resumable, setResumable] = useState(() => {
+		const id = getMapState().map?.meta.id;
+		return id ? getSavedGame(id) : null;
+	});
 
 	const patch = (p: Partial<GameConfig>) => setStored({ ...config, ...p });
 
 	useEffect(() => {
+		const mapId = getMapState().map?.meta.id;
 		if (view.phase === "playing" || view.phase === "result") {
 			saveGame(view.game);
 			setGlobalStreak(view.game.config.streakMode, view.game.streak);
-		} else {
-			clearSavedGame();
+		} else if (mapId) {
+			clearSavedGame(mapId);
 		}
-		setResumable(view.phase === "config" ? getSavedGame() : null);
+		setResumable(view.phase === "config" && mapId ? getSavedGame(mapId) : null);
 	}, [view]);
 
 	const start = useCallback(async () => {

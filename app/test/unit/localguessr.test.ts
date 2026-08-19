@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import type { GeoResult } from "@/bindings.gen";
 import {
@@ -267,5 +268,18 @@ describe("round helpers", () => {
 	it("carries the best streak into the session", () => {
 		const results = [true, true, false, true].map((streakHit) => result({ streakHit }));
 		expect(toSession(game({ results })).bestStreak).toBe(2);
+	});
+});
+
+describe("saved game storage", () => {
+	it("scopes the saved game to its map", async () => {
+		const { saveGame, getSavedGame, clearSavedGame } = await import(
+			"@/plugins/localguessr/storage"
+		);
+		saveGame(game({ mapId: "a" }));
+		expect(getSavedGame("a")?.mapId).toBe("a");
+		expect(getSavedGame("b")).toBeNull();
+		clearSavedGame("a");
+		expect(getSavedGame("a")).toBeNull();
 	});
 });
