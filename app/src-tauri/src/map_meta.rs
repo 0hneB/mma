@@ -339,7 +339,10 @@ pub fn infer_field_type(value: &serde_json::Value) -> ExtraFieldType {
             && b[..4].iter().all(|c| c.is_ascii_digit())
             && b[5..].iter().all(|c| c.is_ascii_digit())
         {
-            return ExtraFieldType::Month;
+            let month = (b[5] - b'0') * 10 + (b[6] - b'0');
+            if (1..=12).contains(&month) {
+                return ExtraFieldType::Month;
+            }
         }
     }
     ExtraFieldType::String
@@ -906,6 +909,18 @@ mod tests {
             infer_field_type(&serde_json::json!("2023-123")),
             ExtraFieldType::String
         ));
+        assert!(matches!(
+            infer_field_type(&serde_json::json!("9999-99")),
+            ExtraFieldType::String
+        ));
+        assert!(matches!(
+            infer_field_type(&serde_json::json!("2023-00")),
+            ExtraFieldType::String
+        ));
+        assert!(matches!(
+            infer_field_type(&serde_json::json!("2023-13")),
+            ExtraFieldType::String
+        ));
     }
 
     #[test]
@@ -1092,16 +1107,6 @@ mod tests {
         assert!(matches!(
             infer_field_type(&serde_json::Value::Null),
             ExtraFieldType::String
-        ));
-    }
-
-    #[test]
-    fn infer_month_quirk_accepts_invalid_month_number() {
-        // SUSPECTED BUG: the check is byte digit-ness + dash position only, not
-        // actual month range validity. "9999-99" passes as Month.
-        assert!(matches!(
-            infer_field_type(&serde_json::json!("9999-99")),
-            ExtraFieldType::Month
         ));
     }
 
