@@ -76,6 +76,9 @@ const GPU_CLUSTER = { lat: 47, lng: 2, latSpan: 1.2, lngSpan: 1.8 };
 const IDLE_WINDOW_MS = 1_000;
 const SCENE_TIMEOUT_MS = 180_000;
 const SCALE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+/** A measured block runs entirely in-page, and an import at scale takes far longer than
+ *  the suite's default 20s WebDriver request budget. Raised for this spec only. */
+const SCRIPT_TIMEOUT_MS = 30 * 60 * 1000;
 
 function parseInteger(name: string, fallback: number, minimum: number): number {
 	const raw = process.env[name];
@@ -125,27 +128,31 @@ const ownedMapIds = new Set<string>();
 
 // --- Map lifecycle (node side) ---
 
+/** Poll from the node side: each in-page call is short, so a scene that never settles
+ *  surfaces as a readable failure instead of a WebDriver request timeout. */
 async function waitForScene(minimumMarkers: number): Promise<number> {
-	return withApi(
-		async (_api, target, timeoutMs) => {
-			const perf = window.__mmaPerf;
-			if (!perf) throw new Error("window.__mmaPerf is unavailable");
-			const deadline = performance.now() + timeoutMs;
-			for (;;) {
-				await perf.settled();
-				const total = perf.render()?.totalMarkers;
-				if (document.querySelector(".page-map-editor") && total != null && total >= target) {
-					return total;
-				}
-				if (performance.now() >= deadline) {
-					throw new Error(`Scene never reached ${target} markers (last ${total ?? "n/a"})`);
-				}
-				await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-			}
-		},
-		minimumMarkers,
-		SCENE_TIMEOUT_MS,
-	);
+	let last = -1;
+	try {
+		await browser.waitUntil(
+			async () => {
+				last = await withApi(async () => {
+					const perf = window.__mmaPerf;
+					if (!perf) return -1;
+					await Promise.race([
+						perf.settled(),
+						new Promise<void>((resolve) => setTimeout(resolve, 1000)),
+					]);
+					if (!document.querySelector(".page-map-editor")) return -2;
+					return perf.render()?.totalMarkers ?? -3;
+				});
+				return last >= minimumMarkers;
+			},
+			{ timeout: SCENE_TIMEOUT_MS, interval: 200 },
+		);
+	} catch {
+		throw new Error(`scene never reached ${minimumMarkers} markers (last reading ${last})`);
+	}
+	return last;
 }
 
 async function createOpenMap(name: string): Promise<string> {
@@ -249,6 +256,7 @@ async function bench(
 describe("Performance benchmarks", () => {
 	before(async function () {
 		this.timeout(120_000);
+		await browser.setTimeout({ script: SCRIPT_TIMEOUT_MS });
 		await waitForReady();
 	});
 
@@ -393,7 +401,10 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	const { tagId } = fixtureInfo;
 	const [helperA, helperB] = fixtureInfo.helperIds;
 	const baseline = scale + fixtureInfo.helperIds.length;
-	await waitForScene(baseline);
+	// Scene readiness is a floor, not an equality: the renderer bins by cell, so the two
+	// off-fixture helper rows need not show up in `totalMarkers`.
+	const sceneFloor = scale;
+	await waitForScene(sceneFloor);
 
 	const bulkAddCount = Math.min(scale, 50_000);
 
@@ -422,13 +433,13 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 					return { durationMs: performance.now() - start, operationMs };
 				},
 				mapId,
-				baseline,
+				sceneFloor,
 				SCENE_TIMEOUT_MS,
 			),
 	});
 
 	await bench("close-map", scale, {
-		setup: () => ensureOpen(mapId, baseline),
+		setup: () => ensureOpen(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api) => {
 				const start = performance.now();
@@ -443,7 +454,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("map-idle", scale, {
-		setup: () => ensureOpen(mapId, baseline),
+		setup: () => ensureOpen(mapId, sceneFloor),
 		run: () =>
 			withApi(async (_api, idleMs) => {
 				await window.__mmaPerf!.settled();
@@ -459,7 +470,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 
 	await bench("activate-location", scale, {
 		setup: async () => {
-			await ensureOpen(mapId, baseline);
+			await ensureOpen(mapId, sceneFloor);
 			await withApi(async (api, id) => api.setActiveLocation(id, false), helperA);
 		},
 		run: () =>
@@ -478,7 +489,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	// --- render pipeline ---
 
 	await bench("render-fill", scale, {
-		setup: () => ensureOpen(mapId, baseline),
+		setup: () => ensureOpen(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api) => {
 				const start = performance.now();
@@ -505,7 +516,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	const selectionCase = (route: string, props: Record<string, unknown>, minimumSelected: number) =>
 		bench(route, scale, {
 			setup: async () => {
-				await ensureOpen(mapId, baseline);
+				await ensureOpen(mapId, sceneFloor);
 				await withApi(async (api) => api.resetSelections());
 			},
 			run: () =>
@@ -543,12 +554,16 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	const compositeCase = (route: string, operation: "intersection" | "union" | "invert") =>
 		bench(route, scale, {
 			setup: async () => {
-				await ensureOpen(mapId, baseline);
-				await withApi(async (api, id, op) => {
-					await api.resetSelections();
-					await api.addSelections([{ type: "PanoIds" }]);
-					if (op !== "invert") await api.addSelections([{ type: "Tag", tagId: id }]);
-				}, tagId, operation);
+				await ensureOpen(mapId, sceneFloor);
+				await withApi(
+					async (api, id, op) => {
+						await api.resetSelections();
+						await api.addSelections([{ type: "PanoIds" }]);
+						if (op !== "invert") await api.addSelections([{ type: "Tag", tagId: id }]);
+					},
+					tagId,
+					operation,
+				);
 			},
 			run: () =>
 				withApi(async (api, op) => {
@@ -572,7 +587,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	// affected cell but scans the whole selection overlay.
 	await bench("edit-while-selected", scale, {
 		setup: async () => {
-			await unwind(mapId, baseline);
+			await unwind(mapId, sceneFloor);
 			await withApi(async (api) => {
 				await api.resetSelections();
 				await api.addSelections([{ type: "Everything" }]);
@@ -591,13 +606,13 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 				return { durationMs: performance.now() - start, operationMs };
 			}),
 	});
-	await unwind(mapId, baseline);
+	await unwind(mapId, sceneFloor);
 	await withApi(async (api) => api.resetSelections());
 
 	// --- mutation ---
 
 	await bench("add-location", scale, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api, target) => {
 				const location = api.createLocation({ lat: 83.5, lng: 178.5, heading: 30 });
@@ -617,7 +632,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("bulk-add", bulkAddCount, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(
 				async (api, count, target) => {
@@ -642,7 +657,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("update-location", scale, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api, id) => {
 				const start = performance.now();
@@ -659,7 +674,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("bulk-update", scale, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api) => {
 				const ids = await api.scopeIds({ kind: "all" });
@@ -680,7 +695,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("remove-location", scale, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(
 				async (api, id, target) => {
@@ -702,7 +717,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 
 	await bench("delete-tagged", scale, {
 		setup: async () => {
-			await unwind(mapId, baseline);
+			await unwind(mapId, sceneFloor);
 			await withApi(async (api, id) => {
 				await api.resetSelections();
 				await api.addSelections([{ type: "Tag", tagId: id }]);
@@ -731,7 +746,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	});
 
 	await bench("remove-all", scale, {
-		setup: () => unwind(mapId, baseline),
+		setup: () => unwind(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api) => {
 				const ids = new Set(await api.scopeIds({ kind: "all" }));
@@ -752,7 +767,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 
 	await bench("undo-delete", scale, {
 		setup: async () => {
-			await unwind(mapId, baseline);
+			await unwind(mapId, sceneFloor);
 			await withApi(async (api, id) => {
 				await api.resetSelections();
 				await api.addSelections([{ type: "Tag", tagId: id }]);
@@ -778,7 +793,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 
 	await bench("redo-delete", scale, {
 		setup: async () => {
-			await unwind(mapId, baseline);
+			await unwind(mapId, sceneFloor);
 			await withApi(async (api, id) => {
 				await api.resetSelections();
 				await api.addSelections([{ type: "Tag", tagId: id }]);
@@ -802,14 +817,14 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 				return { durationMs: performance.now() - start, operationMs };
 			}, baseline),
 	});
-	await unwind(mapId, baseline);
+	await unwind(mapId, sceneFloor);
 	await withApi(async (api) => api.resetSelections());
 
 	// --- persistence ---
 
 	await bench("autosave", scale, {
 		setup: async () => {
-			await ensureOpen(mapId, baseline);
+			await ensureOpen(mapId, sceneFloor);
 			await withApi(async (api, id) => {
 				const [loc] = await api.fetchLocations({ kind: "ids", ids: [id] });
 				if (!loc) throw new Error(`autosave helper ${id} is missing`);
@@ -829,7 +844,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 
 	await bench("commit", scale, {
 		setup: async () => {
-			await ensureOpen(mapId, baseline);
+			await ensureOpen(mapId, sceneFloor);
 			await withApi(async (api, id) => {
 				api.cancelAutosave();
 				await api.waitForInflightPersist();
@@ -858,7 +873,7 @@ async function runScale(scale: number, scaleMaps: Set<string>): Promise<void> {
 	// --- export ---
 
 	await bench("export-json", scale, {
-		setup: () => ensureOpen(mapId, baseline),
+		setup: () => ensureOpen(mapId, sceneFloor),
 		run: () =>
 			withApi(async (api) => {
 				const map = api.getMapState().map;

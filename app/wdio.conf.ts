@@ -64,7 +64,10 @@ export const config: WebdriverIO.Config = {
 	path: "/",
 	logLevel: "warn",
 	waitforTimeout: 10000,
-	connectionRetryTimeout: 20000,
+	// A single in-page block can legitimately run for minutes (the benchmark suite imports
+	// hundreds of thousands of rows inside one `execute/async`). Mocha's per-test timeout is
+	// the real bound on a wedged app; this only has to be larger than the slowest command.
+	connectionRetryTimeout: 900000,
 	connectionRetryCount: 2,
 	framework: "mocha",
 	reporters: ["spec"],
