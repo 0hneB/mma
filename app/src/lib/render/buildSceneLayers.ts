@@ -25,7 +25,7 @@ import {
 	getMeasureSegments,
 	MEASURE_NODE_PX,
 } from "@/lib/sv/measure";
-import type { RGB } from "@/lib/util/color";
+import type { RGB, RGBA } from "@/lib/util/color";
 import { unwrapRing } from "@/lib/geo/geo";
 
 export const LOCATION_LAYER_ID = "locations";
@@ -67,7 +67,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 	if (getMapState().workArea === "diff") {
 		const diff = getCommitDiffPreview();
 		if (diff) {
-			const diffLayer = (id: string, pos: Float32Array, color: [number, number, number, number]) =>
+			const diffLayer = (id: string, pos: Float32Array, color: RGBA) =>
 				new ScatterplotLayer({
 					id,
 					data: { length: pos.length / 2, attributes: { getPosition: { value: pos, size: 2 } } },
@@ -104,8 +104,8 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 			geom = { poly, fill, stroke: fill.flatMap((p) => p) as Position[][] };
 			ctx.polygonGeomCache.set(sel.key, geom);
 		}
-		const fillColor: [number, number, number, number] = [...sel.color, 26];
-		const strokeColor: [number, number, number, number] = [...sel.color, 153];
+		const fillColor: RGBA = [...sel.color, 26];
+		const strokeColor: RGBA = [...sel.color, 153];
 		layers.push(
 			new PolygonLayer<Position[][]>({
 				id: `selectionPolygonFill:${sel.key}`,
@@ -137,7 +137,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 		layers.push(
 			new PanoCoverageLayer({
 				id: "pano-coverage",
-				color: [ctx.panoDotColor.r, ctx.panoDotColor.g, ctx.panoDotColor.b],
+				color: ctx.panoDotColor,
 				scaled: ctx.panoDotScaled,
 			}),
 		);
@@ -214,12 +214,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 					getRadius: 6,
 					radiusUnits: "pixels",
 					radiusMinPixels: 3,
-					getFillColor: [
-						ctx.importPreviewColor.r,
-						ctx.importPreviewColor.g,
-						ctx.importPreviewColor.b,
-						200,
-					],
+					getFillColor: [...ctx.importPreviewColor, 200],
 					stroked: false,
 					pickable: true,
 				}),
@@ -231,12 +226,7 @@ export function buildSceneLayers(cm: CellManager, ctx: SceneContext): Layer[] {
 	// on an empty map still show — and it draws on top of the preview dots, which is the highlight.
 	const activeLoc = getMapState().activeLocation;
 	if (activeLoc) {
-		const activeColor: [number, number, number, number] = [
-			ctx.activeLocationColor.r,
-			ctx.activeLocationColor.g,
-			ctx.activeLocationColor.b,
-			255,
-		];
+		const activeColor: RGBA = [...ctx.activeLocationColor, 255];
 		const s = MARKER_STYLE[ctx.markerStyle];
 		layers.push(
 			new SDFMarkerLayer<Location>({

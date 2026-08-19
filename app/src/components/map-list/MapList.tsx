@@ -396,11 +396,10 @@ function MapEditForm({ id, name, labels }: { id: string; name: string; labels: s
 				<div className="map-edit-labels__label">{t("Labels")}</div>
 				<div className="map-edit-labels__list">
 					{currentLabels.map((l) => {
-						const [r, g, b] = hexToRgb(labelColor(l, labelColors));
 						return (
 							<span key={l} className="map-label map-label--editable">
 								<ColorPicker
-									color={{ r, g, b }}
+									color={hexToRgb(labelColor(l, labelColors))}
 									onChange={(rgb) => setLabelColor(l, rgbToHex(rgb))}
 									ariaLabel={t("Color for {label}", { label: l })}
 								/>

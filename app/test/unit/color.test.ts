@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	textColorFor,
+	hexToRgb,
 	hexToHsl,
 	hslToHex,
 	hslToRgb,
@@ -113,9 +114,13 @@ describe("rgbCss", () => {
 });
 
 describe("rgbToHex", () => {
-	it("formats an RGB object as a hex string", () => {
-		expect(rgbToHex({ r: 255, g: 128, b: 0 })).toBe("#ff8000");
-		expect(rgbToHex({ r: 0, g: 0, b: 0 })).toBe("#000000");
+	it("formats an rgb tuple as a hex string", () => {
+		expect(rgbToHex([255, 128, 0])).toBe("#ff8000");
+		expect(rgbToHex([0, 0, 0])).toBe("#000000");
+	});
+
+	it("round-trips through hexToRgb", () => {
+		expect(hexToRgb(rgbToHex([17, 34, 51]))).toEqual([17, 34, 51]);
 	});
 });
 

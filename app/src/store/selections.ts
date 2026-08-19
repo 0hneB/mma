@@ -155,7 +155,7 @@ function selectionColor(props: SelectionProps, key: string): [number, number, nu
 	}
 	if (props.type === "Polygon") {
 		const { polygonColorMode, polygonColor } = getSettings();
-		if (polygonColorMode === "fixed") return [polygonColor.r, polygonColor.g, polygonColor.b];
+		if (polygonColorMode === "fixed") return polygonColor;
 	}
 	return colorForKey(key);
 }

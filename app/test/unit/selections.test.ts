@@ -114,14 +114,14 @@ describe("polygon color mode", () => {
 
 	it("fixed gives every polygon the configured color", () => {
 		setSetting("polygonColorMode", "fixed");
-		setSetting("polygonColor", { r: 1, g: 2, b: 3 });
+		setSetting("polygonColor", [1, 2, 3]);
 		expect(build().color).toEqual([1, 2, 3]);
 		expect(build().color).toEqual([1, 2, 3]);
 	});
 
 	it("fixed does not affect non-polygon selections", () => {
 		setSetting("polygonColorMode", "fixed");
-		setSetting("polygonColor", { r: 1, g: 2, b: 3 });
+		setSetting("polygonColor", [1, 2, 3]);
 		expect(buildSelection({ type: "Untagged" }).color).toEqual(colorForKey("untagged"));
 	});
 });

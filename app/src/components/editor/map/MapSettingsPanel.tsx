@@ -17,7 +17,7 @@ import { ColorPicker } from "@/components/primitives/ColorPicker";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import { useStableHandler } from "@/lib/hooks/useStableHandler";
 import { Slider } from "@/components/primitives/Slider";
-import { hexToRgbObj, rgbToHex, resolveSvColorHex } from "@/lib/util/color";
+import { hexToRgb, rgbToHex, resolveSvColorHex } from "@/lib/util/color";
 import { useMapSetting } from "@/store/useMapSetting";
 import { ScoreBoundsEditor } from "./ScoreBoundsEditor";
 import { t, msg } from "@/lib/i18n";
@@ -137,7 +137,7 @@ function SettingsPopup({ layerConfig: e }: { layerConfig: LayerConfig }) {
 							))}
 						</div>
 						<ColorPicker
-							color={hexToRgbObj(resolveSvColorHex(p.svColor))}
+							color={hexToRgb(resolveSvColorHex(p.svColor))}
 							onChange={(c) => setPref("svColor")(rgbToHex(c))}
 							ariaLabel={t("Coverage line color")}
 						/>

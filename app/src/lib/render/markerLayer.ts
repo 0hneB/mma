@@ -2,12 +2,13 @@ import type { Layer } from "@deck.gl/core";
 import SDFMarkerLayer from "@/lib/render/sdf-marker-layer/SDFMarkerLayer";
 import type { MarkerStyle } from "@/types";
 import type { CellManager } from "@/lib/render/CellManager";
+import type { RGBA } from "@/lib/util/color";
 
 /** Colour source for a marker layer. The base cells are all one colour and vary only in
  *  whether each marker is hidden, so they pass a constant plus a visibility byte; the
  *  selection overlay genuinely varies per marker and passes RGBA. */
 export type MarkerColors =
-	| { kind: "constant"; color: [number, number, number, number]; visible: Uint8Array }
+	| { kind: "constant"; color: RGBA; visible: Uint8Array }
 	| { kind: "perMarker"; colors: Uint8Array };
 
 export type MarkerBuf = {
@@ -91,7 +92,7 @@ export function buildMarkerLayer(
 export function baseMarkerLayers(
 	cm: CellManager,
 	markerStyle: MarkerStyle,
-	markerColor: [number, number, number, number],
+	markerColor: RGBA,
 	markerOpacity: number,
 	markerSize = 1,
 ): Layer[] {

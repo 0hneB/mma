@@ -1,7 +1,8 @@
-export type RGB = { r: number; g: number; b: number };
+export type RGB = [number, number, number];
+export type RGBA = [...RGB, number];
 
 /** Parse "#rrggbb" to an [r, g, b] byte tuple. Single source for hex parsing. */
-export function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): RGB {
 	const h = hex.replace("#", "");
 	return [
 		parseInt(h.substring(0, 2), 16),
@@ -61,7 +62,7 @@ export function hslToHex(h: number, s: number, l: number): string {
 	return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
-export function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+export function hslToRgb(h: number, s: number, l: number): RGB {
 	const a = s * Math.min(l, 1 - l);
 	const f = (n: number) => {
 		const k = (n + h / 30) % 12;
@@ -85,16 +86,11 @@ export function colorForName(name: string): string {
 	return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
-export function rgbCss([r, g, b]: [number, number, number]): string {
+export function rgbCss([r, g, b]: RGB): string {
 	return `rgb(${r}, ${g}, ${b})`;
 }
 
-export function hexToRgbObj(hex: string): RGB {
-	const [r, g, b] = hexToRgb(hex);
-	return { r, g, b };
-}
-
-export function rgbToHex({ r, g, b }: RGB): string {
+export function rgbToHex([r, g, b]: RGB): string {
 	const h = (n: number) => Math.round(n).toString(16).padStart(2, "0");
 	return `#${h(r)}${h(g)}${h(b)}`;
 }

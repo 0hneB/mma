@@ -2693,11 +2693,7 @@ declare function describeRule(props: SavedSelectionProps): string;
 /** All saved selection rules (global, name-based; shared across maps). */
 declare function getSavedSelections(): SavedSelection[];
 
-export type RGB = {
-    r: number;
-    g: number;
-    b: number;
-};
+export type RGB = [number, number, number];
 
 /** Language names stay in their own language, the way every language picker does it -- a reader
  *  looking for their own has to recognise it without already reading English.

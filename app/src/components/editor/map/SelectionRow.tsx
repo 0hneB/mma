@@ -21,8 +21,6 @@ import {
 import { toast } from "@/lib/util/toast";
 import { downloadBlob } from "@/lib/util/util";
 import { stepFilterWindow } from "@/lib/data/fieldOps";
-import { RgbColorPicker } from "react-colorful";
-import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import type { RGB } from "@/lib/util/color";
 import type { Selection } from "@/bindings.gen";
 import { selectionDisplayName } from "@/store/selections";
@@ -36,6 +34,7 @@ import { Dialog, DialogContent } from "@/components/primitives/Dialog";
 import { Icon } from "@/components/primitives/Icon";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/TextInput";
+import { RgbPicker } from "@/components/primitives/ColorPicker";
 import {
 	mdiClose,
 	mdiChevronLeft,
@@ -144,15 +143,11 @@ export const SelectionRow = memo(function SelectionRow({
 	const drag = useDragState();
 	const isDragging = drag?.key === selection.key;
 	const isDropTarget = drag != null && drag.key !== selection.key;
-	const handleColorChange = useDebouncedCallback(
-		useCallback(
-			(c: RGB) => {
-				setSelectionColors([{ key: selection.key, color: [c.r, c.g, c.b] }]);
-			},
-			[selection.key],
-		),
-		60,
-		{ flush: true },
+	const handleColorChange = useCallback(
+		(color: RGB) => {
+			setSelectionColors([{ key: selection.key, color }]);
+		},
+		[selection.key],
 	);
 
 	const fieldEntries = useExtraFieldKeys();
@@ -360,14 +355,7 @@ export const SelectionRow = memo(function SelectionRow({
 								<Menu.Popup className="context-menu">
 									{view === "color" ? (
 										<div style={{ padding: "0.5rem", width: "14rem" }}>
-											<RgbColorPicker
-												color={{
-													r: selection.color[0],
-													g: selection.color[1],
-													b: selection.color[2],
-												}}
-												onChange={handleColorChange}
-											/>
+											<RgbPicker color={selection.color} onChange={handleColorChange} />
 										</div>
 									) : (
 										<>

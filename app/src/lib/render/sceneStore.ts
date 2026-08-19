@@ -1,7 +1,7 @@
 import { CellManager } from "@/lib/render/CellManager";
 import { cmd } from "@/lib/commands";
 import { mmaBufUrl } from "@/lib/util/util";
-import type { RGB } from "@/lib/util/color";
+import type { RGB, RGBA } from "@/lib/util/color";
 import { log } from "@/lib/util/log";
 import { trace } from "@/lib/util/debug";
 import { getMapState, mapOpen, setSelectedLocationIds } from "@/store/useMapStore";
@@ -13,7 +13,7 @@ import type { MarkerStyle } from "@/types";
 // There can be exactly one producer — `store_fill_render_file` is unsafe for a second caller
 // (ignores bounds, rebuilds the picking index, shared file path).
 
-let markerDefault: [number, number, number, number] = [42, 42, 42, 255];
+let markerDefault: RGBA = [42, 42, 42, 255];
 
 const scene = new CellManager();
 let lastMarkerStyle: MarkerStyle = "pin";
@@ -34,15 +34,14 @@ export function setMarkerDefaultColor(r: number, g: number, b: number) {
 /** Repaint the default marker color and tell Rust (for future deltas). The base layers take
  *  the colour as a constant, so this is O(1) rather than a rewrite of every marker. */
 export function recolorScene(mc: RGB) {
-	const [or, og, ob] = markerDefault;
-	if (or === mc.r && og === mc.g && ob === mc.b) return;
-	setMarkerDefaultColor(mc.r, mc.g, mc.b);
-	void cmd.storeSetMarkerColor([mc.r, mc.g, mc.b]);
+	if (markerDefault.every((c, i) => c === mc[i])) return;
+	setMarkerDefaultColor(...mc);
+	void cmd.storeSetMarkerColor(mc);
 	scene.version++;
 	emitEvent("scene:changed");
 }
 
-export function getMarkerDefaultColor(): [number, number, number, number] {
+export function getMarkerDefaultColor(): RGBA {
 	return markerDefault;
 }
 
@@ -67,7 +66,7 @@ export function loadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
 
 async function doLoadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
 	lastMarkerStyle = markerStyle;
-	if (mc) setMarkerDefaultColor(mc.r, mc.g, mc.b);
+	if (mc) setMarkerDefaultColor(...mc);
 	const token = ++loadToken;
 	const t = trace("render", { summary: true });
 	try {
@@ -77,7 +76,7 @@ async function doLoadScene(markerStyle: MarkerStyle, mc?: RGB): Promise<void> {
 			east: 180,
 			north: 90,
 			markerStyle,
-			markerColor: mc ? [mc.r, mc.g, mc.b] : undefined,
+			markerColor: mc,
 		});
 		t.step("fill");
 		const resp = await fetch(mmaBufUrl(filePath));
