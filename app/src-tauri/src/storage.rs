@@ -750,11 +750,10 @@ pub(crate) fn read_arrow_ipc_mmap(
 
     let buf_len = buffer.len();
     if buf_len < 10 {
-        let schema = Arc::new(arrow_bridge::location_schema());
-        return Ok((
-            arrow_array::RecordBatch::new_empty(schema),
-            MmapHandle { _buffer: buffer },
-        ));
+        return Err(AppError(format!(
+            "Arrow file {} is truncated ({buf_len} bytes)",
+            path.display()
+        )));
     }
 
     let trailer: [u8; 10] = buffer[buf_len - 10..].try_into().unwrap();

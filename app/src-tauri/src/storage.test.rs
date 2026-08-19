@@ -394,19 +394,17 @@ fn truncation_sweep_mmap_reader_never_panics() {
     }
 }
 
-// Files under 10 bytes short-circuit to Ok(empty batch) in read_arrow_ipc_mmap
-// (storage.rs ~line 608) rather than erroring. A base file truncated below 10
-// bytes by a crash therefore reads as a silently-empty map, not a detected
-// corruption. See SUSPECTED BUGS in the delivering task's report.
 #[test]
-fn mmap_sub_10_byte_file_reads_as_empty_batch() {
+fn mmap_sub_10_byte_file_errs_as_truncated() {
     let dir = TempDir::new("mma_test_crash_mmap_sub10");
     let path = dir.join("sub10.arrow");
 
     for len in [0usize, 1, 5, 9] {
         std::fs::write(&path, vec![0xABu8; len]).unwrap();
-        let (loaded, _handle) = read_arrow_ipc_mmap(&path).unwrap();
-        assert_eq!(loaded.num_rows(), 0, "len {len} should read as empty batch");
+        assert!(
+            read_arrow_ipc_mmap(&path).is_err(),
+            "len {len} must Err, not read as an empty map"
+        );
     }
 }
 
