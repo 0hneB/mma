@@ -9,6 +9,12 @@
 //
 // Knobs: MMA_BENCH_SCALES, MMA_BENCH_SAMPLES, MMA_BENCH_WARMUPS, MMA_BENCH_ROUTES,
 // MMA_BENCH_GPU, MMA_BENCH_SEED, MMA_BENCH_REVISION, MMA_BENCH_LABEL.
+//
+// Docker absolute-number caveat: ops whose awaited path rebuilds render state
+// (the remove/undo-delete family) pay ~1s of llvmpipe CPU rasterization in the
+// container vs ~10-40ms native at the same scale. Docker numbers are valid for
+// A/B between builds (both sides pay the tax), never as absolute latency
+// claims; measure absolutes with a native run of the same routes.
 
 import type { ExportOpts } from "@/bindings.gen";
 import {
