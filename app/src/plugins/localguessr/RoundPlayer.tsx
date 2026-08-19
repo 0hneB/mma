@@ -195,7 +195,9 @@ export function RoundPlayer({
 			// warmed next round by then, not this one.
 			if (showResult) return;
 			if (e.key === "r") return act(() => panoRef.current?.returnToSpawn());
-			if (e.key === "n") return act(() => panoRef.current?.pointNorth());
+			if (e.key === "n" && game.config.movementMode !== "nmpz") {
+				return act(() => panoRef.current?.pointNorth());
+			}
 			if (e.key === "c" && game.config.movementMode === "moving") {
 				return act(() => {
 					if (panoRef.current?.setCheckpoint()) setHasCheckpoint(true);
@@ -305,16 +307,18 @@ export function RoundPlayer({
 							<Icon path={mdiHome} size={20} />
 						</button>
 					</Tooltip>
-					<Tooltip content={t("Point north (N)")} side="right">
-						<button
-							type="button"
-							className="lg-round__tool"
-							onClick={() => panoRef.current?.pointNorth()}
-							aria-label={t("Point north")}
-						>
-							<Icon path={mdiNavigation} size={20} />
-						</button>
-					</Tooltip>
+					{game.config.movementMode !== "nmpz" && (
+						<Tooltip content={t("Point north (N)")} side="right">
+							<button
+								type="button"
+								className="lg-round__tool"
+								onClick={() => panoRef.current?.pointNorth()}
+								aria-label={t("Point north")}
+							>
+								<Icon path={mdiNavigation} size={20} />
+							</button>
+						</Tooltip>
+					)}
 					{game.config.movementMode === "moving" && (
 						<Tooltip content={hasCheckpoint ? t("Return to checkpoint (B)") : t("Set checkpoint (C)")} side="right">
 							<button
