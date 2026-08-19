@@ -283,3 +283,14 @@ describe("saved game storage", () => {
 		expect(getSavedGame("a")).toBeNull();
 	});
 });
+
+describe("resume", () => {
+	it("restarts the round clock on start, not the persisted timestamp", () => {
+		const stale = game({ roundStartedAt: 1 });
+		const view = reduce({ phase: "config" }, { type: "start", game: stale });
+		expect(view.phase).toBe("playing");
+		if (view.phase === "playing") {
+			expect(view.game.roundStartedAt).toBeGreaterThan(1);
+		}
+	});
+});

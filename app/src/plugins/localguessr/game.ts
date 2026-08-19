@@ -217,7 +217,7 @@ export function toSession(game: Game): Session {
 export function reduce(view: View, action: GameAction): View {
 	switch (action.type) {
 		case "start":
-			return { phase: "playing", game: action.game };
+			return { phase: "playing", game: { ...action.game, roundStartedAt: Date.now() } };
 
 		case "result": {
 			if (view.phase !== "playing") return view;
