@@ -1,13 +1,12 @@
-//! Bench support: deterministic fixtures plus in-process wrappers for the store
-//! operations the Tauri commands expose. Compiled only under `--features bench`
-//! and re-exported as `app_lib::bench_api`; inert in every normal build.
+//! Bench support: deterministic fixtures plus a [`BenchApp`] harness that calls
+//! the real `store_*` commands on a `MockRuntime` app. Compiled only under
+//! `--features bench` (which pulls in `tauri/test`) and re-exported as
+//! `app_lib::bench_api`; inert in every normal build.
 //!
 //! A child module of `location_store`, so it reaches the private internals
 //! (`overlay_write`, `get_loc_by_id`, `apply_edit_*`) without widening their
-//! visibility. The operation wrappers mirror the bodies of the corresponding
-//! `store_*` commands minus the Tauri plumbing (webview, state lock, temp-file
-//! write, logging); when a command body changes, its wrapper here must follow or
-//! the bench stops measuring the real path.
+//! visibility. Command-level benches go through [`BenchApp`] -- the actual
+//! command fns, no mirrored bodies -- so they can never drift from the app.
 
 use super::*;
 use crate::types::RawExtra;
@@ -187,38 +186,88 @@ pub fn render_request() -> RenderRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Operation wrappers (mirror the `store_*` command bodies)
+// BenchApp: the real commands on a MockRuntime app
 // ---------------------------------------------------------------------------
 
-/// Mirrors `store_fill_render_file` minus the temp-file write.
+/// A `MockRuntime` Tauri app with a managed [`StoreState`] whose `"bench"` window
+/// maps to the `"bench"` store. Command-level benches call the actual command fns
+/// through this, exactly as IPC would (minus serialization). The app exists only
+/// because `tauri::State` can't be constructed by hand.
+pub struct BenchApp {
+    app: tauri::App<tauri::test::MockRuntime>,
+}
+
+fn label() -> WindowLabel {
+    WindowLabel("bench".into())
+}
+
+impl BenchApp {
+    pub fn new() -> Self {
+        use tauri::Manager;
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app");
+        storage::init_paths(app.handle()).expect("init app paths");
+        let mut mgr = StoreManager::new();
+        mgr.window_map.insert("bench".into(), "bench".into());
+        mgr.stores.insert("bench".into(), Store::new());
+        app.manage(StoreState::new(mgr));
+        Self { app }
+    }
+
+    fn state(&self) -> tauri::State<'_, StoreState> {
+        use tauri::Manager;
+        self.app.state()
+    }
+
+    /// Swap the `"bench"` store. Call in an `iter_batched` setup so every
+    /// iteration mutates a fresh population.
+    pub fn set_store(&self, store: Store) {
+        self.state()
+            .lock()
+            .expect("store lock")
+            .stores
+            .insert("bench".into(), store);
+    }
+
+    pub fn add_locations(&self, locations: Vec<Location>) -> MutationResult {
+        store_add_locations(label(), self.state(), locations).expect("add_locations")
+    }
+
+    pub fn undo(&self) -> MutationResult {
+        store_undo(label(), self.state()).expect("undo")
+    }
+
+    pub fn redo(&self) -> MutationResult {
+        store_redo(label(), self.state()).expect("redo")
+    }
+
+    pub fn sync_selections(&self, sels: Vec<SelectionInput>) -> usize {
+        tauri::async_runtime::block_on(store_sync_selections(label(), self.state(), sels))
+            .expect("sync_selections")
+            .selected_count
+    }
+
+    /// Full render via the real command, temp-file write included.
+    pub fn fill_render(&self) -> String {
+        tauri::async_runtime::block_on(store_fill_render_file(
+            label(),
+            self.state(),
+            render_request(),
+        ))
+        .expect("fill_render")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Direct engine calls (real fns, no command plumbing)
+// ---------------------------------------------------------------------------
+
+/// The render build the command wraps; used by fixtures and the delta bench.
 pub fn fill_render(store: &mut Store) -> Vec<u8> {
     let req = render_request();
     store.render.arrow_style = false;
     build_cell_render_buffers(store, &req)
-}
-
-/// Mirrors `store_add_locations`.
-pub fn add_locations(store: &mut Store, mut locations: Vec<Location>) -> MutationResult {
-    for loc in &mut locations {
-        loc.id = store.alloc_id();
-    }
-    store.push_undo(EditEntry {
-        created: locations.clone(),
-        removed: Vec::new(),
-    });
-    store.edits.redo.clear();
-    store.add_tag_counts(&locations);
-    let added = locations.clone();
-    for loc in locations {
-        store.overlay_add(loc);
-    }
-    let mut result = store.finish_mutation(ChangeSet {
-        added: added.clone(),
-        ..Default::default()
-    });
-    let extras: Vec<&RawExtra> = added.iter().filter_map(|l| l.extra.as_ref()).collect();
-    auto_register_extras(store, &extras, &mut result);
-    result
 }
 
 /// The real bulk-update path -- `store_update_locations` is this plus the state lock.
@@ -230,60 +279,23 @@ pub fn update_locations(
     apply_updates(store, updates, record_undo)
 }
 
-/// Mirrors `store_sync_selections` minus the binary temp-file write; returns the
-/// serialized bitmask so the serialize cost is included, as in the command.
-pub fn sync_selections(store: &mut Store, sels: &[SelectionInput]) -> (Vec<u8>, usize) {
-    let sels_full: Vec<selections::Selection> = sels
-        .iter()
-        .map(|si| selections::Selection {
-            key: si.key.clone(),
-            color: si.color,
-            props: si.props.clone(),
-        })
-        .collect();
-    let (sel_sets, counts) = {
-        let view = store.loc_view();
-        selections::resolve_forest(&view, &sels_full)
-    };
-    let live: Vec<ResolvedSelection> = pair_selections(sels_full, sel_sets)
-        .into_iter()
-        .zip(sels)
-        .filter(|(_, si)| !si.ghosted)
-        .map(|(r, _)| r)
-        .collect();
-    let mut all_selected = RoaringBitmap::new();
-    for r in &live {
-        all_selected |= &r.set;
-    }
-    let selected_count = all_selected.len() as usize;
-    let (buf, _) = build_selection_buf(&store.render, &live);
-    store.selections.ids = all_selected;
-    store.selections.resolved = live;
-    store.selections.node_counts = counts;
-    store.selections.version += 1;
-    (buf, selected_count)
-}
-
 /// Resolution only, no bitmask serialization.
 pub fn resolve_selection(store: &Store, props: &SelectionProps) -> usize {
     let view = store.loc_view();
     selections::resolve(&view, props).len()
 }
 
-/// Mirrors `store_undo`. Panics on an empty stack.
-pub fn undo(store: &mut Store) -> MutationResult {
-    let entry = store.edits.undo.pop().expect("nothing to undo");
-    let changes = store.apply_edit_reverse(&entry);
-    store.edits.redo.push(entry);
-    store.finish_mutation(changes)
-}
-
-/// Mirrors `store_redo`. Panics on an empty stack.
-pub fn redo(store: &mut Store) -> MutationResult {
-    let entry = store.edits.redo.pop().expect("nothing to redo");
-    let changes = store.apply_edit_forward(&entry);
-    store.push_undo(entry);
-    store.finish_mutation(changes)
+/// Setup-only population of the overlay (id alloc + add + tag counts). Fixture
+/// seeding for benches that measure something downstream of adds; never the
+/// measured operation itself -- that is `BenchApp::add_locations`.
+pub fn seed_adds(store: &mut Store, mut locs: Vec<Location>) {
+    for loc in &mut locs {
+        loc.id = store.alloc_id();
+    }
+    store.add_tag_counts(&locs);
+    for loc in locs {
+        store.overlay_add(loc);
+    }
 }
 
 /// The open-time O(N) pass: alive count, tag counts, bounds.

@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 use crate::arrow_bridge;
 use crate::location_store;
+use crate::location_store::WindowLabel;
 use crate::storage;
 use crate::types::{is_ws, scan_fields_from, skip_string, Location, LocationFlags, Tag};
 
@@ -1617,7 +1618,7 @@ fn add_parsed_to_store(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_import_file(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, location_store::StoreState>,
     dropped_fields: Vec<String>,
     tag_name: Option<String>,
@@ -1665,7 +1666,7 @@ pub async fn store_import_file(
     let auto_commit = parsed.locations.len() > IMPORT_AUTOCOMMIT_THRESHOLD;
     log::debug!("[import] parse=cached locs={}", imported_count);
 
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let mutation = add_parsed_to_store(store, &mut parsed, tag_name.as_deref())?;
 
         log::debug!(

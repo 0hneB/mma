@@ -59,14 +59,18 @@ fn add_locations(c: &mut Criterion) {
     let n = n();
     let fx = bench::Fixture::new(n);
     let incoming = bench::locations(n, 0xADD5);
+    let app = bench::BenchApp::new();
 
     let mut g = c.benchmark_group("add_locations");
     g.sample_size(10);
     g.throughput(Throughput::Elements(n as u64));
     g.bench_function(BenchmarkId::from_parameter(n), |b| {
         b.iter_batched(
-            || (fx.store(), incoming.clone()),
-            |(mut store, locs)| black_box(bench::add_locations(&mut store, locs)),
+            || {
+                app.set_store(fx.store());
+                incoming.clone()
+            },
+            |locs| black_box(app.add_locations(locs)),
             BatchSize::PerIteration,
         );
     });
@@ -129,10 +133,15 @@ fn row_ops(c: &mut Criterion) {
     // back unchanged (compare against the caller's old row, no Arrow materialization)
     // versus changing a row that is already patched (the one branch that still has to
     // materialize the base row to test for a revert).
+    // The row clone happens in setup so only the write itself is measured.
     let base_row = bench::get_loc_by_id(&store, 1).unwrap();
     let mut wstore = fx.store();
     g.bench_function("overlay_write/no_op", |b| {
-        b.iter(|| bench::overlay_write(&mut wstore, base_row.clone(), &base_row));
+        b.iter_batched(
+            || base_row.clone(),
+            |loc| bench::overlay_write(&mut wstore, loc, &base_row),
+            BatchSize::SmallInput,
+        );
     });
 
     let mut wstore2 = fx.store();
@@ -147,12 +156,16 @@ fn row_ops(c: &mut Criterion) {
         &base_row,
     );
     g.bench_function("overlay_write/patched_row_change", |b| {
-        b.iter(|| {
-            heading = (heading + 1.0) % 360.0;
-            let mut l = base_row.clone();
-            l.heading = heading;
-            bench::overlay_write(&mut wstore2, l, &base_row)
-        });
+        b.iter_batched(
+            || {
+                heading = (heading + 1.0) % 360.0;
+                let mut l = base_row.clone();
+                l.heading = heading;
+                l
+            },
+            |l| bench::overlay_write(&mut wstore2, l, &base_row),
+            BatchSize::SmallInput,
+        );
     });
     g.finish();
 }
@@ -160,7 +173,9 @@ fn row_ops(c: &mut Criterion) {
 fn selections(c: &mut Criterion) {
     let n = n();
     let fx = bench::Fixture::new(n);
-    let mut store = fx.rendered_store();
+    let store = fx.rendered_store();
+    let app = bench::BenchApp::new();
+    app.set_store(fx.rendered_store());
 
     let tag_leaf = SelectionProps::Tag { tag_id: 3 };
     let composite = SelectionProps::Intersection {
@@ -194,13 +209,11 @@ fn selections(c: &mut Criterion) {
         b.iter(|| black_box(bench::resolve_selection(&store, &composite)));
     });
 
-    let tag_sels = vec![input("tag:3", &tag_leaf)];
     g.bench_function(format!("{n}/sync/tag"), |b| {
-        b.iter(|| black_box(bench::sync_selections(&mut store, &tag_sels).1));
+        b.iter(|| black_box(app.sync_selections(vec![input("tag:3", &tag_leaf)])));
     });
-    let comp_sels = vec![input("int:1+2", &composite)];
     g.bench_function(format!("{n}/sync/intersection"), |b| {
-        b.iter(|| black_box(bench::sync_selections(&mut store, &comp_sels).1));
+        b.iter(|| black_box(app.sync_selections(vec![input("int:1+2", &composite)])));
     });
     g.finish();
 }
@@ -210,31 +223,32 @@ fn undo_redo(c: &mut Criterion) {
     let fx = bench::Fixture::new(n);
     let updates = fx.heading_updates(n);
 
+    let app = bench::BenchApp::new();
     let mut g = c.benchmark_group("undo_redo");
     g.sample_size(10);
     g.throughput(Throughput::Elements(n as u64));
     // Setup builds the undo entry (an n-row update); the measured part is the
     // reverse replay plus the mutation it produces.
     g.bench_function(format!("{n}/undo"), |b| {
-        b.iter_batched_ref(
+        b.iter_batched(
             || {
                 let mut store = fx.store();
                 bench::update_locations(&mut store, &updates, true);
-                store
+                app.set_store(store);
             },
-            |store| black_box(bench::undo(store)),
+            |()| black_box(app.undo()),
             BatchSize::PerIteration,
         );
     });
     g.bench_function(format!("{n}/redo"), |b| {
-        b.iter_batched_ref(
+        b.iter_batched(
             || {
                 let mut store = fx.store();
                 bench::update_locations(&mut store, &updates, true);
-                bench::undo(&mut store);
-                store
+                app.set_store(store);
+                app.undo();
             },
-            |store| black_box(bench::redo(store)),
+            |()| black_box(app.redo()),
             BatchSize::PerIteration,
         );
     });
@@ -255,7 +269,7 @@ fn bake(c: &mut Criterion) {
             || {
                 let mut store = fx.store();
                 bench::update_locations(&mut store, &updates, false);
-                bench::add_locations(&mut store, adds.clone());
+                bench::seed_adds(&mut store, adds.clone());
                 store
             },
             bench::bake_overlay,
@@ -270,15 +284,14 @@ fn render(c: &mut Criterion) {
     let fx = bench::Fixture::new(n);
     let delta_updates = fx.heading_updates(100);
 
+    let app = bench::BenchApp::new();
+    app.set_store(fx.store());
     let mut g = c.benchmark_group("render");
     g.sample_size(10);
     g.throughput(Throughput::Elements(n as u64));
+    // The real command, temp-file write included -- the cost the app pays per full render.
     g.bench_function(format!("{n}/full_build"), |b| {
-        b.iter_batched_ref(
-            || fx.store(),
-            |store| black_box(bench::fill_render(store).len()),
-            BatchSize::PerIteration,
-        );
+        b.iter(|| black_box(app.fill_render().len()));
     });
     // A 100-row edit on a rendered store: the delta path, which must not scale with n.
     g.bench_function(format!("{n}/delta_100"), |b| {
@@ -307,6 +320,8 @@ fn map_open(c: &mut Criterion) {
         b.iter(|| black_box(bench::alive(&bench::open_from_arrow(&path, &fx.tags))));
     });
     g.finish();
+    std::fs::remove_file(&path).ok();
+    std::fs::remove_dir(&dir).ok();
 }
 
 criterion_group!(

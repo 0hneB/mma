@@ -1806,11 +1806,31 @@ impl StoreManager {
 pub type StoreState = Mutex<StoreManager>;
 
 macro_rules! with_store {
-    ($webview:expr, $state:expr, |$store:ident| $body:block) => {{
+    ($label:expr, $state:expr, |$store:ident| $body:block) => {{
         let mut mgr = $state.lock()?;
-        let $store = mgr.store_for_window($webview.label())?;
+        let $store = mgr.store_for_window(&$label.0)?;
         $body
     }};
+}
+
+/// The invoking window's label, extracted from the IPC call. Commands take this
+/// instead of a `Webview` so they stay runtime-agnostic and directly callable
+/// (benches, tests) with any label the `StoreManager` knows. Invisible to TS:
+/// the `FunctionArg` impl skips it in the generated bindings.
+pub struct WindowLabel(pub String);
+
+impl<'de, R: tauri::Runtime> tauri::ipc::CommandArg<'de, R> for WindowLabel {
+    fn from_command(
+        command: tauri::ipc::CommandItem<'de, R>,
+    ) -> Result<Self, tauri::ipc::InvokeError> {
+        Ok(Self(command.message.webview_ref().label().to_string()))
+    }
+}
+
+impl specta::function::FunctionArg for WindowLabel {
+    fn to_datatype(_: &mut specta::Types) -> Option<specta::datatype::DataType> {
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2024,7 +2044,7 @@ pub struct LocationPatch {
 #[tauri::command]
 #[specta::specta]
 pub async fn store_open_map(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     map_id: String,
 ) -> AppResult<StoreStatus> {
@@ -2174,7 +2194,7 @@ pub async fn store_open_map(
     let status = store.store_status();
     let mut mgr = state.lock()?;
     mgr.window_map
-        .insert(webview.label().to_string(), map_id.clone());
+        .insert(label.0.clone(), map_id.clone());
     mgr.stores.insert(map_id, store);
     Ok(status)
 }
@@ -2184,11 +2204,11 @@ pub async fn store_open_map(
 #[tauri::command]
 #[specta::specta]
 pub fn store_close_map(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<()> {
     let mut mgr = state.lock()?;
-    let label = webview.label().to_string();
+    let label = label.0.clone();
     let map_id = match mgr.window_map.remove(&label) {
         Some(id) => id,
         None => return Ok(()),
@@ -2273,12 +2293,12 @@ pub(crate) fn apply_field_defs(
 #[tauri::command]
 #[specta::specta]
 pub fn store_add_locations(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     mut locations: Vec<Location>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let _lock = _t.elapsed().as_millis();
         for loc in &mut locations {
             loc.id = store.alloc_id();
@@ -2313,12 +2333,12 @@ pub fn store_add_locations(
 #[tauri::command]
 #[specta::specta]
 pub fn store_remove_locations(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let mut removed_locs = Vec::new();
         for &id in &ids {
             if let Some(loc) = store.get_loc_by_id(id) {
@@ -2353,14 +2373,14 @@ pub fn store_remove_locations(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_update_locations(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     updates: Vec<Update<LocationPatch>>,
     record_undo: Option<bool>,
 ) -> AppResult<MutationResult> {
     let record_undo = record_undo.unwrap_or(true);
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let n = updates.len();
         let result = apply_updates(store, &updates, record_undo);
         log::debug!(
@@ -2533,14 +2553,14 @@ pub(crate) fn apply_field_op(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_apply_field_op(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
     op: FieldOp,
     record_undo: Option<bool>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let result = apply_field_op(store, &scope, &op, record_undo.unwrap_or(true))?;
         log::debug!(
             "[cmd] store_apply_field_op total={}ms",
@@ -2588,12 +2608,12 @@ pub(crate) fn apply_tag_patch(t: &mut Tag, patch: &TagPatch) {
 #[tauri::command]
 #[specta::specta]
 pub async fn store_update_tags(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     updates: Vec<Update<TagPatch>>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let mut all_updated: Vec<(Location, Location)> = Vec::new();
 
         for u in &updates {
@@ -2659,12 +2679,12 @@ pub async fn store_update_tags(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_delete_tags(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     tag_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let tag_set: HashSet<u32> = tag_ids.iter().copied().collect();
         let view = store.loc_view();
         let mut affected_ids = HashSet::new();
@@ -2703,11 +2723,11 @@ pub async fn store_delete_tags(
 #[tauri::command]
 #[specta::specta]
 pub fn store_set_active(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     id: Option<u32>,
 ) -> AppResult<()> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         store.selections.active_id = id;
         Ok(())
     })
@@ -2718,11 +2738,11 @@ pub fn store_set_active(
 #[tauri::command]
 #[specta::specta]
 pub fn store_set_marker_color(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     color: [u8; 3],
 ) -> AppResult<()> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         store.render.marker_color = color;
         Ok(())
     })
@@ -2734,12 +2754,12 @@ pub fn store_set_marker_color(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_country_distribution(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
     level: String,
 ) -> AppResult<Vec<(String, u32)>> {
-    let coords: Vec<(f64, f64)> = with_store!(webview, state, |store| {
+    let coords: Vec<(f64, f64)> = with_store!(label, state, |store| {
         let view = store.loc_view();
         let resolved = scope.resolve(&view, &store.selections.ids);
         view.scoped(resolved.as_deref())
@@ -2910,7 +2930,7 @@ pub(crate) fn reconcile_tags_by_name(
 #[tauri::command]
 #[specta::specta]
 pub fn store_copy_locations_to_map(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     target_map_id: String,
     scope: Scope,
@@ -2926,7 +2946,7 @@ pub fn store_copy_locations_to_map(
     // The manager lock is held for both paths: it serializes the closed-path
     // delta-file rewrite against a concurrent store_open_map of the same map.
     let mut mgr = state.lock()?;
-    let source_map_id = mgr.map_id_for_window(webview.label())?;
+    let source_map_id = mgr.map_id_for_window(&label.0)?;
     if source_map_id == target_map_id {
         return Err(AppError("cannot copy a location into its own map".into()));
     }
@@ -3108,14 +3128,14 @@ pub(crate) fn persist_dirty(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_save_dirty(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<SaveResult> {
     let _t = std::time::Instant::now();
     log::debug!("[cmd] store_save_dirty ENTER");
     let (map_id, delta_data, alive, tags_json, rev) = {
         let mut mgr = state.lock()?;
-        let store = mgr.store_for_window(webview.label())?;
+        let store = mgr.store_for_window(&label.0)?;
         let map_id = store.map_id.clone().ok_or("no map open")?;
         if !store.overlay.dirty && !store.tags.dirty {
             return Ok(SaveResult { saved_bytes: 0 });
@@ -3149,7 +3169,7 @@ pub async fn store_save_dirty(
         .map_err(AppError::from)
         .and_then(|r| r);
     if write.is_err() && wrote_tags {
-        if let Ok(store) = state.lock()?.store_for_window(webview.label()) {
+        if let Ok(store) = state.lock()?.store_for_window(&label.0) {
             store.tags.dirty = true;
         }
     }
@@ -3159,7 +3179,7 @@ pub async fn store_save_dirty(
         let mut mgr = state.lock()?;
         // The window may have closed or switched maps during the write; the map_id
         // check stops a fresh store (rev 0) from being cleared by a stale save.
-        if let Ok(store) = mgr.store_for_window(webview.label()) {
+        if let Ok(store) = mgr.store_for_window(&label.0) {
             if store.overlay.rev == rev && store.map_id.as_deref() == Some(map_id.as_str()) {
                 store.overlay.dirty = false;
             }
@@ -3178,11 +3198,11 @@ pub async fn store_save_dirty(
 #[tauri::command]
 #[specta::specta]
 pub fn store_get_summary(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<SummaryResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let count = store.alive_count;
         log::debug!(
             "[cmd] store_get_summary total={}ms alive_count={}",
@@ -3547,13 +3567,13 @@ fn build_cell_render_buffers(store: &mut Store, req: &RenderRequest) -> Vec<u8> 
 #[tauri::command]
 #[specta::specta]
 pub async fn store_fill_render_file(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     req: RenderRequest,
 ) -> AppResult<String> {
     let (buf, map_id_str) = {
         let mut mgr = state.lock()?;
-        let store = mgr.store_for_window(webview.label())?;
+        let store = mgr.store_for_window(&label.0)?;
         store.render.arrow_style = req.marker_style == "arrow";
         if let Some(mc) = req.marker_color {
             store.render.marker_color = mc;
@@ -3574,12 +3594,12 @@ pub async fn store_fill_render_file(
 #[tauri::command]
 #[specta::specta]
 pub fn store_resolve_pick(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     cell: String,
     cell_index: u32,
 ) -> AppResult<Option<u32>> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let ci = cell_idx_from_key(&cell).ok_or("invalid cell key")?;
         Ok(store.render.cells[ci as usize]
             .as_ref()
@@ -3595,10 +3615,10 @@ pub fn store_resolve_pick(
 #[tauri::command]
 #[specta::specta]
 pub fn store_undo(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<MutationResult> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let _t = std::time::Instant::now();
         let entry = store.edits.undo.pop().ok_or("nothing to undo")?;
         log::debug!(
@@ -3624,10 +3644,10 @@ pub fn store_undo(
 #[tauri::command]
 #[specta::specta]
 pub fn store_redo(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<MutationResult> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let _t = std::time::Instant::now();
         let entry = store.edits.redo.pop().ok_or("nothing to redo")?;
         log::debug!(
@@ -3655,20 +3675,20 @@ pub fn store_redo(
 #[tauri::command]
 #[specta::specta]
 pub fn store_commit_diff(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<(u32, u32, u32)> {
-    with_store!(webview, state, |store| { Ok(store.overlay_diff_counts()) })
+    with_store!(label, state, |store| { Ok(store.overlay_diff_counts()) })
 }
 
 /// Clear both undo and redo stacks. Called after a commit to start fresh.
 #[tauri::command]
 #[specta::specta]
 pub fn store_reset_undo(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
 ) -> AppResult<()> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         store.edits.undo.clear();
         store.edits.redo.clear();
         Ok(())
@@ -3800,12 +3820,12 @@ pub(crate) fn write_tags_json(
 #[tauri::command]
 #[specta::specta]
 pub fn store_create_tags(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     names: Vec<String>,
     scope: Scope,
 ) -> AppResult<MutationResult> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let location_ids: Vec<u32> = {
             let view = store.loc_view();
             let resolved = scope.resolve(&view, &store.selections.ids);
@@ -3823,11 +3843,11 @@ pub fn store_create_tags(
 #[tauri::command]
 #[specta::specta]
 pub fn store_reorder_tags(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     ordered_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         for (i, &id) in ordered_ids.iter().enumerate() {
             if let Some(tag) = store.tags.all.get_mut(&id) {
                 tag.order = Some(i as u32);
@@ -3862,14 +3882,14 @@ pub struct SelectionInput {
 #[tauri::command]
 #[specta::specta]
 pub async fn store_sync_selections(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     sels: Vec<SelectionInput>,
 ) -> AppResult<SelectionSync> {
     let _t = std::time::Instant::now();
     let (counts, buf, selected_count, num_cells) = {
         let mut mgr = state.lock()?;
-        let store = mgr.store_for_window(webview.label())?;
+        let store = mgr.store_for_window(&label.0)?;
 
         // Faithful tree: real keys preserved so per-node counts come back keyed (incl. nested).
         let sels_full: Vec<selections::Selection> = sels
@@ -4006,13 +4026,13 @@ fn rows_file_path(temp: &std::path::Path, map_id: &str) -> std::path::PathBuf {
 #[tauri::command]
 #[specta::specta]
 pub fn store_query(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
     select: Select,
 ) -> AppResult<QueryResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let view = store.loc_view();
         // Rows materializes through `collect`, which resolves the scope itself (it owns
         // the ids fast path) -- resolving here too would resolve a Props scope twice.
@@ -4080,11 +4100,11 @@ pub fn store_query(
 #[tauri::command]
 #[specta::specta]
 pub fn store_duplicate_groups(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     distance: f64,
 ) -> AppResult<Vec<Vec<u32>>> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let view = store.loc_view();
         Ok(selections::find_duplicate_groups(&view, distance))
     })
@@ -4096,12 +4116,12 @@ pub fn store_duplicate_groups(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_merge_duplicates(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     distance: f64,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let groups = {
             let view = store.loc_view();
             selections::find_duplicate_groups(&view, distance)
@@ -4141,14 +4161,14 @@ pub async fn store_merge_duplicates(
 #[tauri::command]
 #[specta::specta]
 pub async fn store_prune_duplicates(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
     distance: f64,
     keep_tag_ids: Vec<u32>,
 ) -> AppResult<MutationResult> {
     let _t = std::time::Instant::now();
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let locs: Vec<Location> = store.collect(&scope);
         let keep: HashSet<u32> = keep_tag_ids.into_iter().collect();
         let prune_ids: HashSet<u32> = selections::prune_duplicates(&locs, distance, &keep)
@@ -4176,13 +4196,13 @@ pub async fn store_prune_duplicates(
 #[tauri::command]
 #[specta::specta]
 pub fn store_find_nearby(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     lat: f64,
     lng: f64,
     radius_m: f64,
 ) -> AppResult<Vec<Location>> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let _t = std::time::Instant::now();
         let mut ids = store.find_nearby_ids(lat, lng, radius_m);
         ids.sort_unstable();
@@ -4206,7 +4226,7 @@ pub fn store_find_nearby(
 #[tauri::command]
 #[specta::specta]
 pub fn store_near_any(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     lats: Vec<f64>,
     lngs: Vec<f64>,
@@ -4215,7 +4235,7 @@ pub fn store_near_any(
     if lats.len() != lngs.len() {
         return Err(AppError::from("store_near_any: lats/lngs length mismatch"));
     }
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let _t = std::time::Instant::now();
         let result: Vec<bool> = lats
             .iter()

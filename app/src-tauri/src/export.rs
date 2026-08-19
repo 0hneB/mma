@@ -2,7 +2,7 @@
 //! All exports write to temp files and return the path -- the frontend
 //! triggers a native save dialog to move the file to its final destination.
 
-use crate::location_store::StoreState;
+use crate::location_store::{StoreState, WindowLabel};
 use crate::selections::Scope;
 use crate::storage;
 use crate::types::LocationFlags;
@@ -179,11 +179,11 @@ fn location_to_coord(
 #[tauri::command]
 #[specta::specta]
 pub fn store_export_json(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     opts: ExportOpts,
 ) -> AppResult<String> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let (tag_defs, id_to_name) = parse_tag_defs(&opts.tags_json);
         let locs = store.collect(&opts.scope);
 
@@ -233,11 +233,11 @@ pub fn store_export_json(
 #[tauri::command]
 #[specta::specta]
 pub fn store_export_csv(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
 ) -> AppResult<String> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let locs = store.collect(&scope);
 
         let mut buf = String::with_capacity(locs.len() * 30);
@@ -257,12 +257,12 @@ pub fn store_export_csv(
 #[tauri::command]
 #[specta::specta]
 pub fn store_export_geojson(
-    webview: tauri::Webview,
+    label: WindowLabel,
     state: tauri::State<'_, StoreState>,
     scope: Scope,
     tags_json: String,
 ) -> AppResult<String> {
-    with_store!(webview, state, |store| {
+    with_store!(label, state, |store| {
         let (_, id_to_name) = parse_tag_defs(&tags_json);
         let locs = store.collect(&scope);
 

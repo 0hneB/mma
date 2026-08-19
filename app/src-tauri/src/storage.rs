@@ -69,7 +69,7 @@ const DATA_LOCATION_FILE: &str = "data_location.txt";
 ///
 /// The effective data dir is the OS default unless a [`DATA_LOCATION_FILE`]
 /// pointer in `app_config_dir` overrides it. Test mode always uses the default.
-pub(crate) fn init_paths(app: &tauri::AppHandle) -> AppResult<()> {
+pub(crate) fn init_paths<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<()> {
     let default_dir = app.path().app_data_dir().map_err(AppError::from)?;
     let config_dir = app.path().app_config_dir().map_err(AppError::from)?;
     let _ = DEFAULT_DATA_DIR.set(default_dir.clone());

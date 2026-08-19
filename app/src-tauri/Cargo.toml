@@ -95,7 +95,7 @@ strip = true
 
 [features]
 # Exposes `app_lib::bench_api` (fixtures + store-internals access) for benches/store.rs.
-bench = []
+bench = ["tauri/test"]
 e2e = ["tauri-plugin-webdriver"]
 web-serve = ["dep:tauri-plugin-webserve"]
 
