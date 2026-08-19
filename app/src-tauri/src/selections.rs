@@ -297,7 +297,10 @@ impl<'a, 'v> RowRef<'a, 'v> {
                 }
                 let s = extras.value(*i);
                 crate::types::scan_fields(s.as_bytes(), |fs| {
-                    f(&s[fs.key.clone()]);
+                    // Decode escapes so a key baked as `café` reports as `café`, matching
+                    // the overlay branch above (RawExtra canonicalizes on construction) and the
+                    // field-def registry (map_meta.rs).
+                    f(&crate::types::decode_json_key(&s[fs.key.clone()]));
                     false
                 });
             }

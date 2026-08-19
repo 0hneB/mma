@@ -2662,6 +2662,19 @@ fn extra_key_coverage_counts_rows_per_key_across_the_overlay() {
 }
 
 #[test]
+fn extra_key_coverage_decodes_escaped_base_row_keys() {
+    // Blobs baked before key canonicalization can still carry `café` on disk; coverage
+    // must report the decoded spelling, matching overlay rows and the field-def registry.
+    let mut l = loc(1, 0.0, 0.0);
+    l.extra = crate::types::RawExtra::from_string_uncanonicalized("{\"caf\\u00e9\":1}");
+    let fx = Fx::base(&[l]);
+    assert_eq!(
+        extra_key_coverage(&fx.view(), None),
+        vec![("café".to_string(), 1u32)]
+    );
+}
+
+#[test]
 fn extra_key_coverage_does_not_descend_into_nested_objects() {
     let locs = vec![loc_extra(1, serde_json::json!({"outer":{"inner":1}}))];
     let fx = Fx::base(&locs);
