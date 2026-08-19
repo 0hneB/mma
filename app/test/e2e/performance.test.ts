@@ -124,6 +124,10 @@ function enabled(route: string): boolean {
 
 const cases: BenchmarkCase[] = [];
 const failures: string[] = [];
+// A mocha timeout aborts a test without running its catch, leaving `failures`
+// empty; the report is complete only if every started block also finished.
+let startedBlocks = 0;
+let finishedBlocks = 0;
 const ownedMapIds = new Set<string>();
 
 // --- Map lifecycle (node side) ---
@@ -267,7 +271,7 @@ describe("Performance benchmarks", () => {
 		const report: BenchmarkReport = {
 			schemaVersion: 2,
 			generatedAt: new Date().toISOString(),
-			complete: failures.length === 0,
+			complete: failures.length === 0 && startedBlocks === finishedBlocks,
 			failures,
 			environment: collectEnvironment(SCALES, ITERATIONS, WARMUPS),
 			cases,
@@ -295,8 +299,10 @@ describe("Performance benchmarks", () => {
 		it(`scale ${scale}`, async function () {
 			this.timeout(SCALE_TIMEOUT_MS);
 			const scaleMaps = new Set<string>();
+			startedBlocks += 1;
 			try {
 				await runScale(scale, scaleMaps);
+				finishedBlocks += 1;
 			} catch (error) {
 				failures.push(`scale ${scale}: ${(error as Error).message}`);
 				throw error;
@@ -310,8 +316,10 @@ describe("Performance benchmarks", () => {
 		it("gpu render scenarios", async function () {
 			this.timeout(SCALE_TIMEOUT_MS);
 			const gpuMaps = new Set<string>();
+			startedBlocks += 1;
 			try {
 				await runGpuScenarios(gpuMaps);
+				finishedBlocks += 1;
 			} catch (error) {
 				failures.push(`gpu: ${(error as Error).message}`);
 				throw error;

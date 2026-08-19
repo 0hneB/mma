@@ -73,7 +73,10 @@ export const config: WebdriverIO.Config = {
 	reporters: ["spec"],
 	mochaOpts: {
 		ui: "bdd",
-		timeout: 300000,
+		// Runtime `this.timeout()` is not honored under wdio's mocha runner, so the
+		// benchmark suite (MMA_BENCH_REVISION set by e2e.sh --bench) gets its whole
+		// per-scale budget here; everything else keeps the 5-minute hang bound.
+		timeout: process.env.MMA_BENCH_REVISION ? 7_200_000 : 300000,
 	},
 	// Monkey-patch Street View (window.fetch + google.maps) from the test side when
 	// --mock is on, so the network-bound specs run deterministically with no network.
