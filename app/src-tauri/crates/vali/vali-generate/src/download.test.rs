@@ -130,3 +130,24 @@ fn only_countries_holding_data_files_are_scanned() {
     assert_eq!(downloaded_country_codes(&dir), vec!["FR".to_string()]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn interrupted_update_application_records_the_applied_deltas() {
+    use super::{apply_update_files, existing_files_in_metadata};
+    let country = temp_dir("vali-apply-partial");
+    std::fs::create_dir_all(country.join("updates")).unwrap();
+    std::fs::write(country.join("paris.bin"), b"base").unwrap();
+    // Only the first delta was actually fetched; applying the second fails mid-loop.
+    std::fs::write(country.join("updates").join("2026-01-01-paris.bin"), b"-jan").unwrap();
+
+    let jan = remote("FR/2026-01-01-paris.bin", "2026-03-01T00:00:00Z");
+    let feb = remote("FR/2026-02-01-paris.bin", "2026-03-01T00:00:00Z");
+    assert!(apply_update_files(&country, &[&jan, &feb]).is_err());
+
+    // The applied delta is recorded, so the next run cannot re-append its bytes.
+    let recorded = existing_files_in_metadata(&country);
+    assert!(recorded.iter().any(|f| f.name == "2026-01-01-paris"));
+    assert!(!recorded.iter().any(|f| f.name == "2026-02-01-paris"));
+    assert_eq!(std::fs::read(country.join("paris.bin")).unwrap(), b"base-jan");
+    let _ = std::fs::remove_dir_all(&country);
+}

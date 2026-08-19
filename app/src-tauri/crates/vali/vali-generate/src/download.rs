@@ -198,10 +198,7 @@ fn run_operation(
                     Ok(())
                 },
             )?;
-            for r2 in &files_to_download {
-                append_update_file(&country_folder, r2)?;
-            }
-            save_update_files_downloaded(&country_folder, &files_to_download)?;
+            apply_update_files(&country_folder, &files_to_download)?;
             if updates_folder.exists() {
                 std::fs::remove_dir_all(&updates_folder)?;
             }
@@ -343,6 +340,17 @@ fn download_data_files(
             Ok(())
         },
     )
+}
+/// Append fetched deltas in listing order, recording each one the moment its bytes land.
+/// An I/O error (or kill) between deltas then loses only the unapplied tail -- an applied
+/// delta whose record never made it to `downloads.json` would be appended a second time on
+/// the next run, duplicating its bytes inside the data file.
+fn apply_update_files(country_folder: &Path, files: &[&R2Object]) -> anyhow::Result<()> {
+    for r2 in files {
+        append_update_file(country_folder, r2)?;
+        save_update_files_downloaded(country_folder, &[*r2])?;
+    }
+    Ok(())
 }
 /// Appends an already-fetched delta onto the data file it belongs to.
 fn append_update_file(country_folder: &Path, r2: &R2Object) -> anyhow::Result<()> {
