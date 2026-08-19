@@ -1649,8 +1649,6 @@ impl Store {
     /// and its pre-mutation coords for spatial-index maintenance. Shared by `overlay_update`
     /// (which fetches+mutates a patch itself) and callers that already hold the fully-built
     /// new Location (e.g. `commit_tag_update`), so the latter skip a redundant re-fetch.
-    /// Returns the location as the store now holds it -- stamped when the write was a real
-    /// change -- which is what undo entries and membership re-tests must carry.
     fn overlay_write(&mut self, id: u32, mut loc: Location, old_coords: (f64, f64)) -> Location {
         if (loc.lat, loc.lng) != old_coords {
             if let Some(ix) = self.spatial.as_mut() {
@@ -1658,8 +1656,7 @@ impl Store {
                 ix.insert(id, loc.lat, loc.lng);
             }
         }
-        // Stamp only on a real change, in every branch: a no-op patch must stay a no-op or
-        // it fabricates undo entries and phantom modification times.
+        // Stamp only on a real change in every branch
         if let Ok(pos) = self.overlay.adds.binary_search_by_key(&id, |l| l.id) {
             if self.overlay.adds[pos] != loc {
                 loc.modified_at = Some(crate::util::now_unix());
@@ -3985,6 +3982,15 @@ pub enum QueryResult {
 /// Above this many rows, `Select::Rows` stages a file instead of answering over IPC.
 const ROWS_INLINE_MAX: usize = 1024;
 
+/// A rotating slot per rows-file query: the file is fetched after the store lock is
+/// released, so two concurrent scoped queries must not share one path -- while the slot
+/// cycle keeps stale files bounded and self-overwriting like a fixed path.
+fn rows_file_path(temp: &std::path::Path, map_id: &str) -> std::path::PathBuf {
+    static SLOT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let slot = SLOT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % 8;
+    temp.join(format!("mma_rows_{map_id}_{slot}.json"))
+}
+
 /// Read the scoped location set through one projection. The single read primitive:
 /// `scope` says which locations, `select` says what to bring back.
 #[tauri::command]
@@ -4046,7 +4052,7 @@ pub fn store_query(
                     QueryResult::Rows { locations }
                 } else {
                     let map_id_str = store.map_id.as_deref().unwrap_or("default");
-                    let path = storage::temp_dir()?.join(format!("mma_rows_{map_id_str}.json"));
+                    let path = rows_file_path(&storage::temp_dir()?, map_id_str);
                     std::fs::write(&path, serde_json::to_vec(&locations)?)?;
                     QueryResult::RowsFile {
                         path: path.to_string_lossy().into_owned(),

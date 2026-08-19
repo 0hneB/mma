@@ -4112,3 +4112,13 @@ fn collect_honours_each_scope_variant() {
         vec![1, 3]
     );
 }
+
+#[test]
+fn concurrent_rows_file_queries_get_distinct_paths() {
+    // The rows file is fetched after the store lock is released; queries in flight at the
+    // same time must never stage into the same path.
+    let temp = std::env::temp_dir();
+    let a = rows_file_path(&temp, "m");
+    let b = rows_file_path(&temp, "m");
+    assert_ne!(a, b);
+}
