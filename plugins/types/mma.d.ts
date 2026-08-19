@@ -1481,7 +1481,13 @@ type Scope = {
     kind: "all";
 } | {
     kind: "selected";
-} | {
+} | 
+/**
+ *  The consumer decides ordering: `collect` (rows) preserves the caller's order and
+ *  duplicates, while `resolve` (every set projection) funnels through a bitmap that
+ *  sorts and dedups. Callers that care about order must not rely on set projections.
+ */
+{
     kind: "ids";
     ids: number[];
 } | {
