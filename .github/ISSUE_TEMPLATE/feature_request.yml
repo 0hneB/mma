@@ -6,8 +6,7 @@ body:
     attributes:
       value: |
         **You can send this from inside MMA too.** Open the map list and click "Report bugs
-        here", or go to Settings → Feedback, and pick "Suggestion". No GitHub account needed,
-        and replies come back to you in the app.
+        here", or go to Settings → Feedback, and pick "Suggestion". Replies come back to you in the app.
   - type: textarea
     id: description
     attributes:

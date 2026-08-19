@@ -7,7 +7,7 @@ body:
       value: |
         **If the app still starts, report from inside MMA instead.** Open the map list and click
         "Report bugs here", or go to Settings → Feedback. It attaches the log automatically,
-        which for a crash is the thing that actually matters. No GitHub account needed.
+        which for a crash is the thing that actually matters.
   - type: textarea
     id: description
     attributes:
