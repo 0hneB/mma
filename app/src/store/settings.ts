@@ -1,5 +1,5 @@
 import { bridgeAcrossWindows, emit as emitEvent, useEventValue } from "@/lib/events";
-import { getLocal, setLocal, reloadLocal } from "@/lib/hooks/useLocalStorage";
+import { getLocal, setLocal, reloadLocal, persisted } from "@/lib/hooks/useLocalStorage";
 import { msg } from "@/lib/i18n";
 import type { SavedSelection } from "./savedSelections";
 import type { TagSortMode } from "@/types";
@@ -178,17 +178,17 @@ export const DEFAULTS = {
 	/** Min half-extent (degrees) a single pasted/imported point is padded to before fitBounds */
 	pastePadding: 0.003 as number,
 	followActiveInReview: true,
-	markerColor: { r: 42, g: 42, b: 42 } as RGB,
-	activeLocationColor: { r: 200, g: 0, b: 0 } as RGB,
-	importPreviewColor: { r: 217, g: 70, b: 239 } as RGB,
-	panoDotColor: { r: 255, g: 0, b: 0 } as RGB,
+	markerColor: [42, 42, 42] as RGB,
+	activeLocationColor: [200, 0, 0] as RGB,
+	importPreviewColor: [217, 70, 239] as RGB,
+	panoDotColor: [255, 0, 0] as RGB,
 	/** Color a newly drawn polygon selection starts with. `random` hashes it from the polygon's
 	 *  key; `fixed` uses polygonColor. Either way it's only the initial value -- recoloring a
 	 *  polygon by hand still wins. */
 	/** What the layer opacity hotkeys restore a layer to when toggling it back on. */
 	opacityToggleMode: "previous" as OpacityToggleMode,
 	polygonColorMode: "random" as PolygonColorMode,
-	polygonColor: { r: 0, g: 140, b: 255 } as RGB,
+	polygonColor: [0, 140, 255] as RGB,
 	panoDotScaled: false,
 	tagViewMode: "flat" as TagViewMode,
 	/** Tree view only: render each tag as the shortest path suffix that's still unique. */
@@ -197,7 +197,7 @@ export const DEFAULTS = {
 	 *  `firstChild` inherits the first own-colored descendant in display order,
 	 *  with tagFolderColor as the fallback for colorless subtrees. */
 	tagFolderColorMode: "direct" as TagFolderColorMode,
-	tagFolderColor: { r: 136, g: 136, b: 136 } as RGB,
+	tagFolderColor: [136, 136, 136] as RGB,
 	tagSortMode: "default" as TagSortMode,
 	/** Gap between tag pills (px), shared by flat and tree views via `--tag-gap`. */
 	tagGap: 6 as number,
@@ -240,13 +240,13 @@ export const CSS_VAR_SETTINGS: ReadonlyArray<
 	readonly [cssVar: string, value: (s: AppSettings) => string]
 > = [["--tag-gap", (s) => `${s.tagGap}px`]];
 
-const STORAGE_KEY = "appSettings";
+export const APP_SETTINGS = persisted("appSettings", DEFAULTS);
 
-let settings: AppSettings = { ...getLocal(STORAGE_KEY, DEFAULTS) };
+let settings: AppSettings = { ...getLocal(APP_SETTINGS) };
 
 // Another window changed settings: reread the shared localStorage before re-emitting.
 bridgeAcrossWindows("settings:changed", () => {
-	settings = { ...reloadLocal(STORAGE_KEY, DEFAULTS) };
+	settings = { ...reloadLocal(APP_SETTINGS) };
 });
 
 export function getSettings(): AppSettings {
@@ -272,7 +272,7 @@ export function panoDisplayOptions(s: AppSettings) {
 
 export function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
 	settings = { ...settings, [key]: value };
-	setLocal(STORAGE_KEY, settings);
+	setLocal(APP_SETTINGS, settings);
 	emitEvent("settings:changed");
 }
 

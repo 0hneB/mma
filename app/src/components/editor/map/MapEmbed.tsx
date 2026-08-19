@@ -36,7 +36,12 @@ import { SearchControl } from "@/components/editor/map/SearchControl";
 import type { ParsedLocation } from "@/lib/data/importExport";
 import { MapTypeDropdown, MapSettingsDropdown } from "@/components/editor/map/MapSettingsPanel";
 import { CUSTOM_STYLES_KEY, type CustomStyle } from "@/lib/geo/mapStack";
-import { type MapEmbedPrefs, DEFAULT_PREFS, toggledOpacity } from "@/store/mapEmbedPrefs";
+import {
+	MAP_EMBED_PREFS,
+	DEFAULT_PREFS,
+	toggledOpacity,
+	type MapEmbedPrefs,
+} from "@/store/mapEmbedPrefs";
 import { FpsCounter } from "@/components/editor/map/FpsCounter";
 import { t } from "@/lib/i18n";
 
@@ -61,7 +66,7 @@ export function MapEmbed({
 	const [host, setHost] = useState<MapHost | null>(null);
 	const hostRef = useRef<MapHost | null>(null);
 
-	const [prefs, setPrefs] = useLocalStorage<MapEmbedPrefs>("mapEmbedPrefs", DEFAULT_PREFS);
+	const [prefs, setPrefs] = useLocalStorage(MAP_EMBED_PREFS);
 	const pref =
 		<K extends keyof MapEmbedPrefs>(k: K) =>
 		(v: MapEmbedPrefs[K]) =>

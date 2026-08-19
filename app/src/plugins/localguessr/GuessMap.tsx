@@ -17,7 +17,7 @@ import { useHoverExpand, panelSize } from "@/lib/hooks/useHoverExpand";
 import { useSetting } from "@/store/settings";
 import { usePluginState } from "@/plugins/registry";
 import { clamp, range } from "@/types/util";
-import { DEFAULT_PREFS, type MapEmbedPrefs } from "@/store/mapEmbedPrefs";
+import { MAP_EMBED_PREFS, type MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 import { fetchBounds } from "@/store/useMapStore";
 import { t } from "@/lib/i18n";
 import type { Scope } from "@/bindings.gen";
@@ -93,7 +93,7 @@ export function GuessMap({
 	useEffect(() => {
 		if (instant) setSettled(showResult);
 	}, [instant, showResult]);
-	const [prefs] = useLocalStorage<MapEmbedPrefs>("mapEmbedPrefs", DEFAULT_PREFS);
+	const [prefs] = useLocalStorage(MAP_EMBED_PREFS);
 	const [basemap, setBasemap] = useState<MapTypeKey>(() => prefs.mapType);
 
 	// Read via refs so the click listener binds once.
