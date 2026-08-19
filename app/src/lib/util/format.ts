@@ -78,11 +78,6 @@ export function utcDateTime(secs: number): string {
 	return new Date(secs * 1000).toISOString().slice(0, 16).replace("T", " ");
 }
 
-/** Current time as Unix seconds, the form Location timestamps use. */
-export function nowUnix(): number {
-	return Math.floor(Date.now() / 1000);
-}
-
 const MINUTE = 60_000;
 const HOUR = 3_600_000;
 const DAY = 86_400_000;

@@ -19,8 +19,7 @@ import { emit as emitEvent, useEventValue } from "@/lib/events";
 import { log, fireAndForget } from "@/lib/util/log";
 import { hexToRgb } from "@/lib/util/color";
 import { trace } from "@/lib/util/debug";
-import { nowUnix } from "@/lib/util/format";
-import { mmaBufUrl } from "@/lib/util/util";
+import { mmaBufUrl, nowUnix } from "@/lib/util/util";
 import {
 	setUserFieldDefs,
 	mergeUserFieldDefs,

@@ -1,5 +1,5 @@
 import type { Location, LocationPatch_Deserialize as LocationPatch } from "@/bindings.gen";
-import { nowUnix } from "@/lib/util/format";
+import { nowUnix } from "@/lib/util/util";
 
 /** Street View camera orientation (POV). */
 export type LocationPOV = Pick<Location, "heading" | "pitch" | "zoom">;
