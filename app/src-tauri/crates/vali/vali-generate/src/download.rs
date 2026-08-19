@@ -378,14 +378,19 @@ fn download_file(
     folder: &Path,
 ) -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(folder)?;
-    let dest = folder.join(downloaded_file_name(r2));
+    let file_name = downloaded_file_name(r2);
+    let dest = folder.join(&file_name);
     let url = format!("{BASE_URL}/{bucket}/{}", encode_key(&r2.key));
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 1..=3u32 {
         match try_download(agent, &url) {
             Ok(bytes) => {
-                std::fs::write(&dest, bytes)
-                    .with_context(|| format!("write {}", dest.display()))?;
+                let tmp = folder.join(format!("{file_name}.tmp"));
+                std::fs::write(&tmp, bytes)
+                    .with_context(|| format!("write {}", tmp.display()))?;
+                let _ = std::fs::remove_file(&dest);
+                std::fs::rename(&tmp, &dest)
+                    .with_context(|| format!("rename to {}", dest.display()))?;
                 return Ok(dest);
             }
             Err(e) => {
