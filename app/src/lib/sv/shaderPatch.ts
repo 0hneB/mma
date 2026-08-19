@@ -104,6 +104,7 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 	let currentDefineKey = "default";
 	let needsRefresh = false;
 	const compiledPrograms: Record<string, WebGLProgram> = {};
+	const programKeys = new Map<WebGLProgram, string>();
 	const uniformLocCache: Record<string, Record<string, WebGLUniformLocation | null>> = {};
 	const savedUniforms: Record<string, { func: Function; args: any[] }> = {};
 	let currentProgram: any = null;
@@ -147,6 +148,7 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 		// Force link completion now so the toggle frame only swaps programs.
 		gl.getProgramParameter(prog, gl.LINK_STATUS);
 		compiledPrograms[key] = prog;
+		programKeys.set(prog, key);
 		uniformLocCache[key] = {};
 		return key;
 	};
@@ -155,9 +157,7 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 		currentDefineKey = ensureCompiled(defines);
 	};
 
-	// Warm the car-toggle variant at context creation: a fresh pano canvas (e.g. the
-	// LocalGuessr fullscreen viewer) would otherwise compile it mid-frame on the first
-	// toggle, which shows as a one-frame glitch.
+	// Compile the car-toggle variant up front so the first toggle only swaps programs.
 	ensureCompiled(["NO_CAR"]);
 
 	window.addEventListener("message", (e) => {
@@ -299,20 +299,20 @@ function installShaderHooks(gl: WebGLRenderingContext, canvas: HTMLCanvasElement
 			if (prog?.defaultProgram) {
 				savedUniforms[loc.uniformVariableName] = { func: orig, args };
 
-				if (currentDefineKey !== "default") {
-					const replacement = compiledPrograms[currentDefineKey];
-					if (replacement === activeProgram) {
-						uniformLocCache[currentDefineKey] ??= {};
-						uniformLocCache[currentDefineKey][loc.uniformVariableName] ||= origGetUniformLocation(
-							replacement,
-							loc.uniformVariableName,
-						);
-						args[0] = uniformLocCache[currentDefineKey][loc.uniformVariableName];
-					} else {
-						return;
-					}
-				} else if (prog !== activeProgram) {
-					return;
+				// Translate against the program GL actually has bound, not the one the
+				// pending toggle intends. The two disagree for the rest of the frame after
+				// a switch, and keying on intent discarded per-tile writes that were valid
+				// for the bound program -- tiles then drew with the previous tile's values.
+				const boundKey = activeProgram === prog ? "default" : programKeys.get(activeProgram);
+				if (boundKey === undefined) return;
+				if (boundKey !== "default") {
+					const bound = compiledPrograms[boundKey];
+					uniformLocCache[boundKey] ??= {};
+					uniformLocCache[boundKey][loc.uniformVariableName] ||= origGetUniformLocation(
+						bound,
+						loc.uniformVariableName,
+					);
+					args[0] = uniformLocCache[boundKey][loc.uniformVariableName];
 				}
 			}
 
