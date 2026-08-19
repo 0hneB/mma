@@ -234,6 +234,10 @@ impl BenchApp {
         store_add_locations(label(), self.state(), locations).expect("add_locations")
     }
 
+    pub fn remove_locations(&self, ids: Vec<u32>) -> MutationResult {
+        store_remove_locations(label(), self.state(), ids).expect("remove_locations")
+    }
+
     pub fn undo(&self) -> MutationResult {
         store_undo(label(), self.state()).expect("undo")
     }

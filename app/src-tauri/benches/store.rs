@@ -218,6 +218,60 @@ fn selections(c: &mut Criterion) {
     g.finish();
 }
 
+fn removes(c: &mut Criterion) {
+    let n = n();
+    let fx = bench::Fixture::new(n);
+    let tenth: Vec<u32> = (1..=(n as u32 / 10)).collect();
+    let app = bench::BenchApp::new();
+
+    let mut g = c.benchmark_group("remove_locations");
+    g.sample_size(10);
+    g.bench_function(format!("{n}/single"), |b| {
+        b.iter_batched(
+            || app.set_store(fx.store()),
+            |()| black_box(app.remove_locations(vec![n as u32 / 2])),
+            BatchSize::PerIteration,
+        );
+    });
+    g.throughput(Throughput::Elements(tenth.len() as u64));
+    g.bench_function(format!("{n}/bulk_10pct"), |b| {
+        b.iter_batched(
+            || app.set_store(fx.store()),
+            |()| black_box(app.remove_locations(tenth.clone())),
+            BatchSize::PerIteration,
+        );
+    });
+    g.finish();
+
+    // The undo-delete pair the e2e suite flagged: undo re-creates the rows,
+    // redo re-tombstones them.
+    let mut g2 = c.benchmark_group("undo_redo");
+    g2.sample_size(10);
+    g2.throughput(Throughput::Elements(tenth.len() as u64));
+    g2.bench_function(format!("{n}/undo_delete_10pct"), |b| {
+        b.iter_batched(
+            || {
+                app.set_store(fx.store());
+                app.remove_locations(tenth.clone());
+            },
+            |()| black_box(app.undo()),
+            BatchSize::PerIteration,
+        );
+    });
+    g2.bench_function(format!("{n}/redo_delete_10pct"), |b| {
+        b.iter_batched(
+            || {
+                app.set_store(fx.store());
+                app.remove_locations(tenth.clone());
+                app.undo();
+            },
+            |()| black_box(app.redo()),
+            BatchSize::PerIteration,
+        );
+    });
+    g2.finish();
+}
+
 fn undo_redo(c: &mut Criterion) {
     let n = n();
     let fx = bench::Fixture::new(n);
@@ -330,6 +384,7 @@ criterion_group!(
     update_locations,
     row_ops,
     selections,
+    removes,
     undo_redo,
     bake,
     render,
