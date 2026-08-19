@@ -2997,6 +2997,10 @@ input.date-picker__trigger:focus {
 	border-color: var(--accent);
 	outline: none;
 }
+input.date-picker__trigger.is-invalid,
+input.date-picker__trigger.is-invalid:focus {
+	border-color: var(--destructive);
+}
 .color-picker__swatch {
 	width: 28px;
 	height: 28px;
