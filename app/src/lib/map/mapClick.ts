@@ -8,7 +8,8 @@ import { toast } from "@/lib/util/toast";
 import { t } from "@/lib/i18n";
 import { tryInterceptClick, fitMapToBounds } from "@/lib/map/mapState";
 import { getSettings } from "@/store/settings";
-import type { ParsedLocation } from "@/lib/data/importExport";
+import { parseMapsUrl, type ParsedLocation } from "@/lib/data/importExport";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { openSeenEntry } from "@/lib/seen/seenOverlay";
 import { openContextMenuLatLng, openContextMenuLocation } from "@/lib/map/contextMenu";
 import { trace } from "@/lib/util/debug";
@@ -69,6 +70,25 @@ export async function addParsedLocations(parsed: ParsedLocation[]) {
 	await addLocations(locs);
 	setActiveLocation(locs[locs.length - 1].id);
 	zoomToPasted(boundsOfCoords(locs));
+}
+
+/** Open a clicked href map-aware: an href that parses as a location route opens
+ *  the existing location if the map already has it (same pano, else within 2m --
+ *  the duplicate-detection radius), otherwise adds it as if pasted. Everything
+ *  else opens externally. */
+export async function openHref(href: string) {
+	const parsed = await parseMapsUrl(href);
+	if (!parsed) {
+		await openExternal(href);
+		return;
+	}
+	const nearby = await cmd.storeFindNearby(parsed.lat, parsed.lng, 2.0);
+	const match = nearby.find((l) => parsed.panoId && l.panoId === parsed.panoId) ?? nearby[0];
+	if (match) {
+		await setActiveLocation(match);
+		return;
+	}
+	await addParsedLocations([parsed]);
 }
 
 // ---------------------------------------------------------------------------

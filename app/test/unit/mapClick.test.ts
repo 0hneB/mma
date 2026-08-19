@@ -4,11 +4,30 @@ import type { PickingInfo } from "@deck.gl/core";
 import type { CellManager } from "@/lib/render/CellManager";
 
 const storeResolvePick = vi.fn();
+const storeFindNearby = vi.fn();
 vi.mock("@/lib/commands", () => ({
-	cmd: { storeResolvePick: (...a: unknown[]) => storeResolvePick(...a) },
+	cmd: {
+		storeResolvePick: (...a: unknown[]) => storeResolvePick(...a),
+		storeFindNearby: (...a: unknown[]) => storeFindNearby(...a),
+	},
+}));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
+vi.mock("@/lib/data/importExport", async (orig) => ({
+	...(await orig()),
+	parseMapsUrl: vi.fn(),
+}));
+vi.mock("@/store/useMapStore", async (orig) => ({
+	...(await orig()),
+	setActiveLocation: vi.fn(),
+	addLocations: vi.fn(),
+	createTags: vi.fn(async () => []),
+}));
+vi.mock("@/store/settings", async (orig) => ({
+	...(await orig()),
+	getSettings: () => ({ panToImported: false }),
 }));
 
-import { resolvePickedId } from "@/lib/map/mapClick";
+import { resolvePickedId, openHref } from "@/lib/map/mapClick";
 
 const pick = (id: string | undefined, index: number): PickingInfo =>
 	({ index, layer: id == null ? null : { id } }) as unknown as PickingInfo;
@@ -49,5 +68,61 @@ describe("resolvePickedId (shared pick resolution)", () => {
 
 	it("returns null for an unrelated layer", async () => {
 		expect(await resolvePickedId(fakeCm({}), pick("import-preview", 0))).toBeNull();
+	});
+});
+
+describe("openHref (map-aware link opening)", () => {
+	const HREF = "https://www.google.com/maps/@1,2,3z";
+	const parsed = { lat: 10, lng: 20, panoId: "PANO_A", heading: 0, pitch: 0, zoom: 0, flags: 0, tags: [] };
+	const loc = (id: number, panoId: string) => ({ id, lat: 10, lng: 20, panoId });
+
+	let openExternal: ReturnType<typeof vi.fn>;
+	let setActive: ReturnType<typeof vi.fn>;
+	let addLocs: ReturnType<typeof vi.fn>;
+	let parseUrl: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		openExternal = vi.mocked((await import("@tauri-apps/plugin-shell")).open);
+		setActive = vi.mocked((await import("@/store/useMapStore")).setActiveLocation);
+		addLocs = vi.mocked((await import("@/store/useMapStore")).addLocations);
+		parseUrl = vi.mocked((await import("@/lib/data/importExport")).parseMapsUrl);
+		parseUrl.mockResolvedValue(parsed);
+		storeFindNearby.mockReset();
+	});
+
+	it("opens non-location hrefs externally", async () => {
+		parseUrl.mockResolvedValue(null);
+		await openHref("https://example.com/page");
+		expect(openExternal).toHaveBeenCalledWith("https://example.com/page");
+		expect(storeFindNearby).not.toHaveBeenCalled();
+		expect(addLocs).not.toHaveBeenCalled();
+	});
+
+	it("prefers the same-pano location over a nearer one", async () => {
+		const nearest = loc(1, "OTHER");
+		const samePano = loc(2, "PANO_A");
+		storeFindNearby.mockResolvedValue([nearest, samePano]);
+		await openHref(HREF);
+		expect(setActive).toHaveBeenCalledWith(samePano);
+		expect(addLocs).not.toHaveBeenCalled();
+	});
+
+	it("falls back to the nearest location when no pano matches", async () => {
+		const nearest = loc(1, "OTHER");
+		storeFindNearby.mockResolvedValue([nearest, loc(2, "ALSO_OTHER")]);
+		await openHref(HREF);
+		expect(setActive).toHaveBeenCalledWith(nearest);
+		expect(addLocs).not.toHaveBeenCalled();
+	});
+
+	it("adds the location when nothing is within the duplicate radius", async () => {
+		storeFindNearby.mockResolvedValue([]);
+		await openHref(HREF);
+		expect(storeFindNearby).toHaveBeenCalledWith(parsed.lat, parsed.lng, 2.0);
+		expect(openExternal).not.toHaveBeenCalled();
+		expect(addLocs).toHaveBeenCalledWith([
+			expect.objectContaining({ lat: 10, lng: 20, panoId: "PANO_A" }),
+		]);
 	});
 });
