@@ -449,15 +449,11 @@ fn garbage_bytes_heap_and_mmap_no_panic() {
     }
 }
 
-// Attempts to hit the footer.schema().unwrap() panic (storage.rs ~line 620) by
-// corrupting bytes strictly inside the footer flatbuffer region, leaving the
-// trailer (footer length + magic) and the record-batch body untouched. If
-// root_as_footer still parses the corrupted bytes as a valid footer with no
-// schema field, footer.schema().unwrap() panics.
+// Corrupts bytes strictly inside the footer flatbuffer region, leaving the
+// trailer (footer length + magic) and the record-batch body untouched. The
+// reader must Err or succeed, never panic (fb_to_schema panics on out-of-range
+// enum values, so the conversion is unwind-guarded in read_arrow_ipc_mmap).
 #[test]
-#[ignore = "confirmed panic: fb_to_schema panics on an out-of-range FloatingPoint precision \
-enum value decoded from a corrupted footer (arrow-ipc convert.rs:356), reached via \
-read_arrow_ipc_mmap's unchecked footer parse. See SUSPECTED BUGS."]
 fn footer_region_corruption_does_not_panic() {
     let batch = make_test_batch(&[1, 2, 3]);
     let dir = TempDir::new("mma_test_crash_footer");
