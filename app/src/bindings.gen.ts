@@ -1261,7 +1261,13 @@ export type SaveResult = {
  *  `All`/`Selected` reference state Rust already holds; `Ids`/`Props` carry their
  *  definition in the call.
  */
-export type Scope = { kind: "all" } | { kind: "selected" } | { kind: "ids"; ids: number[] } | { kind: "props"; props: SelectionProps };
+export type Scope = { kind: "all" } | { kind: "selected" } | 
+/**
+ *  The consumer decides ordering: `collect` (rows) preserves the caller's order and
+ *  duplicates, while `resolve` (every set projection) funnels through a bitmap that
+ *  sorts and dedups. Callers that care about order must not rely on set projections.
+ */
+{ kind: "ids"; ids: number[] } | { kind: "props"; props: SelectionProps };
 
 /**
  *  Score bounding box: either `"auto"` (computed from locations) or an
