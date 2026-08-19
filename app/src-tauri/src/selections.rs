@@ -297,9 +297,6 @@ impl<'a, 'v> RowRef<'a, 'v> {
                 }
                 let s = extras.value(*i);
                 crate::types::scan_fields(s.as_bytes(), |fs| {
-                    // Decode escapes so a key baked as `café` reports as `café`, matching
-                    // the overlay branch above (RawExtra canonicalizes on construction) and the
-                    // field-def registry (map_meta.rs).
                     f(&crate::types::decode_json_key(&s[fs.key.clone()]));
                     false
                 });
@@ -1702,6 +1699,9 @@ pub enum NumericBinning {
 pub enum Scope {
     All,
     Selected,
+    /// The consumer decides ordering: `collect` (rows) preserves the caller's order and
+    /// duplicates, while `resolve` (every set projection) funnels through a bitmap that
+    /// sorts and dedups. Callers that care about order must not rely on set projections.
     Ids { ids: Vec<u32> },
     Props { props: SelectionProps },
 }

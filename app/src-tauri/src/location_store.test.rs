@@ -207,6 +207,20 @@ fn collect_all_scope() {
     assert_eq!(all.len(), 2);
 }
 
+#[test]
+fn ids_scope_ordering_is_consumer_defined() {
+    // Pins the documented divergence on `Scope::Ids`: `collect` honours the caller's order
+    // and duplicates, set projections (via `resolve`) sort and dedup.
+    let locs = vec![loc(3, 0.0, 0.0), loc(7, 1.0, 1.0)];
+    let store = setup_store_with(&locs);
+    let scope = Scope::Ids { ids: vec![7, 3, 3] };
+    let rows: Vec<u32> = store.collect(&scope).iter().map(|l| l.id).collect();
+    assert_eq!(rows, vec![7, 3, 3]);
+    let view = store.loc_view();
+    let set = scope.resolve(&view, &store.selections.ids).unwrap();
+    assert_eq!(set.iter().collect::<Vec<u32>>(), vec![3, 7]);
+}
+
 // -----------------------------------------------------------------------
 // Overlay dirty lifecycle (autosave rev guard)
 // -----------------------------------------------------------------------
