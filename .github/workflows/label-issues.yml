@@ -15,6 +15,11 @@ permissions:
 jobs:
   choose:
     runs-on: ubuntu-latest
+    # id-token mints an OIDC token for the action's own auth; it grants nothing on the
+    # repository, so the model still holds no write capability.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
