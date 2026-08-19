@@ -142,6 +142,14 @@ export function blockBrowserAccelerators(): void {
 	});
 }
 
+/** True while a plugin overlay owns the keyboard. `data-plugin-overlay` is
+ *  the same contract the CSS uses to hide the editor shell; every editor-level key handler
+ *  yields on it, whatever phase or target it listens on -- per-key suppression from inside
+ *  the overlay cannot reach listeners registered earlier or on window capture. */
+export function pluginOverlayOwnsInput(): boolean {
+	return document.querySelector("[data-plugin-overlay]") !== null;
+}
+
 export function isEditableElement(el: EventTarget | null): boolean {
 	if (!(el instanceof HTMLElement)) return false;
 	const tag = el.tagName.toLowerCase();
@@ -174,6 +182,7 @@ export function useHotkey(
 
 	const onKey = useEffectEvent((e: KeyboardEvent) => {
 		if (e.defaultPrevented) return;
+		if (pluginOverlayOwnsInput()) return;
 		const editable = !options.enableInInputs && isEditableElement(e.target);
 
 		for (const alt of parsed) {
@@ -219,6 +228,7 @@ export function useCommandHotkeys() {
 	useEffect(() => {
 		function handler(e: KeyboardEvent) {
 			if (e.defaultPrevented) return;
+			if (pluginOverlayOwnsInput()) return;
 			const editable = isEditableElement(e.target);
 
 			for (const cmd of getCommands()) {

@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import type { MapKeyAction, MapKeyBinding } from "@/bindings.gen";
-import { parseHotkey, matchesKey, isEditableElement } from "@/lib/hooks/useHotkey";
+import {
+	parseHotkey,
+	matchesKey,
+	isEditableElement,
+	pluginOverlayOwnsInput,
+} from "@/lib/hooks/useHotkey";
 
 /**
  * Per-map key binding layer. Bindings live on `MapSettings.keyBindings`; each maps
@@ -106,6 +111,7 @@ export function executeMapKeyAction(action: MapKeyAction): boolean {
 /** Resolve a keydown against the current bindings; consume it if handled. */
 export function handleMapKeyEvent(e: KeyboardEvent, bindings: MapKeyBinding[]): boolean {
 	if (e.defaultPrevented || e.repeat) return false;
+	if (pluginOverlayOwnsInput()) return false;
 	if (isEditableElement(e.target)) return false;
 	if (bindings.length === 0) return false;
 	const binding = matchMapKeyBinding(e, bindings);

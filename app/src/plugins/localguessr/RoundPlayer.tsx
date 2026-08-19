@@ -170,8 +170,9 @@ export function RoundPlayer({
 		else onNext();
 	}, [last, onNext, onFinish]);
 
-	// One capture-phase handler: the game owns the keyboard while it is open, so
-	// editor hotkeys must not also fire.
+	// One capture-phase handler for the game's own keys. Editor-level handlers are kept
+	// out by `pluginOverlayOwnsInput` (they yield while `data-plugin-overlay` is mounted);
+	// the stopImmediatePropagation below only settles ordering among later listeners.
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			const el = e.target as HTMLElement | null;

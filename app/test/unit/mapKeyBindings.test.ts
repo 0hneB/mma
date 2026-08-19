@@ -157,6 +157,17 @@ describe("handleMapKeyEvent", () => {
 		expect(e.defaultPrevented).toBe(false);
 	});
 
+	it("yields while a plugin overlay owns input", () => {
+		cleanups.push(registerMapKeyActionHandler("applyTag", () => {}));
+		const overlay = document.createElement("div");
+		overlay.setAttribute("data-plugin-overlay", "");
+		document.body.appendChild(overlay);
+		cleanups.push(() => overlay.remove());
+		const e = keyEvent("m");
+		expect(handleMapKeyEvent(e, bindings)).toBe(false);
+		expect(e.defaultPrevented).toBe(false);
+	});
+
 	it("ignores repeats and already-handled events", () => {
 		cleanups.push(registerMapKeyActionHandler("applyTag", () => {}));
 		expect(handleMapKeyEvent(keyEvent("m", { repeat: true }), bindings)).toBe(false);

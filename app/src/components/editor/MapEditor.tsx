@@ -31,7 +31,12 @@ import { CommandPalette } from "@/components/editor/CommandPalette";
 import { MapRenameForm } from "@/components/editor/MapRenameForm";
 import { EnrichmentButton } from "@/components/editor/map/EnrichmentDialog";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/primitives/Dialog";
-import { useHotkey, useCommandHotkeys, isEditableElement } from "@/lib/hooks/useHotkey";
+import {
+	useHotkey,
+	useCommandHotkeys,
+	isEditableElement,
+	pluginOverlayOwnsInput,
+} from "@/lib/hooks/useHotkey";
 import { useBinding } from "@/lib/util/hotkeys";
 import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { useSettings, getSettings } from "@/store/settings";
@@ -267,6 +272,7 @@ export function MapEditor() {
 	useEffect(() => {
 		function onKeyDown(e: KeyboardEvent) {
 			if (e.key !== "Enter" || e.repeat) return;
+			if (pluginOverlayOwnsInput()) return;
 			if (isEditableElement(e.target)) return;
 			if (!getSettings().enterOpensCenter) return;
 			if (getMapState().activeLocation) return;
