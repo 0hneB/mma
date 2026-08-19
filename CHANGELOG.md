@@ -1,3 +1,33 @@
+## v0.9.0 - 2026-08-18
+- **LocalGuessr: play your maps in-app like GeoGuessr, with movement modes, timers, and cross-game streaks**
+- **Report bugs and suggest ideas from inside the app, under your GitHub account or anonymously**
+- Reports can carry screenshots and opt-in diagnostics, with a preview of what gets sent
+- Filed reports show their status and replies in Settings
+- Full translations in German, Spanish, French, Japanese, Polish, Russian, and Chinese (Simplified)
+- Download Vali coverage data per country from inside the app
+- Out-of-date Vali data is flagged, with a one-click update for stale countries
+- Vali engine updated to upstream 3.2.1
+- Write a commit message when committing, shown in version history
+- Edit an enum field's values from the enrichment dialog
+- Random and spaced pickers can cap picks per selection
+- Custom heatmap gradient editor
+- Street View screenshots copy to the clipboard
+- Cleaner state and province borders data source
+- The map layers panel opens on dropdown click instead of hover
+- Reorganized settings page
+- Generator searches in grow strategy keep exploring from found locations instead of stopping early
+- Settings and hotkey changes apply immediately in other open windows
+- Faster metadata enrichment on large batches
+- Fixed imported fields with accented names sometimes splitting into two fields
+- Fixed a failed autosave silently dropping pending tag changes
+- Fixed inconsistent undo behavior for bulk tag changes
+- Fixed duplicate detection missing matches near cell boundaries
+- Fixed selections missing locations near the poles and the antimeridian
+- Fixed dropdown menus rendering behind map controls
+- Fixed bound hotkeys also triggering browser shortcuts
+- Fixed unassigned hotkey slots not being clickable
+- Fixed Street View coverage opacity not applying in the minimap
+
 ## v0.8.3 - 2026-08-06
 - Location actions in the map right-click menu (copy link, copy pano ID, download, copy to map, duplicate, delete)
 - Select the country or subdivision under the cursor from the right-click menu
