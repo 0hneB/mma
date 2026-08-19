@@ -26,6 +26,7 @@ import { TagContextMenuContent } from "./TagManager";
 import {
 	rangeToggleTagIds,
 	reorderSiblingsFlatOrder,
+	stepSiblingFlatOrder,
 	collectDragBlock,
 	canDropInto,
 	moveIntoFolder,
@@ -51,6 +52,7 @@ interface TreeDragHandlers {
 		el: HTMLElement,
 		horizontal?: boolean,
 	) => void;
+	onKeyDown: (e: React.KeyboardEvent, node: TagTreeNode) => void;
 }
 
 interface TagTreeCallbacks {
@@ -251,6 +253,7 @@ export function TagTreeView({
 		if (!dragEnabled || e.button !== 0 || node.isAlias) return; // alias leaves aren't reorderable
 		if ((e.target as HTMLElement).closest("button")) return;
 		e.preventDefault(); // don't start a text selection
+		(e.currentTarget as HTMLElement).focus(); // ...which also suppresses the click's own focus
 		const startX = e.clientX;
 		const startY = e.clientY;
 		// Grab offset within the pill, so the pickup point stays under the cursor (not the top-left corner).
@@ -392,9 +395,29 @@ export function TagTreeView({
 		},
 	);
 
+	// Alt+Arrow is the keyboard route through the same reorder the drag commits.
+	const handleDragKeyDown = useStableHandler((e: React.KeyboardEvent, node: TagTreeNode) => {
+		if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+		if (!dragEnabled || node.isAlias) return;
+		const order = stepSiblingFlatOrder(
+			treeRef.current,
+			node.fullPath,
+			node.parentPath,
+			e.key === "ArrowUp" ? -1 : 1,
+		);
+		if (!order) return;
+		e.preventDefault();
+		e.stopPropagation();
+		onReorder(order);
+	});
+
 	const drag: TreeDragHandlers = useMemo(
-		() => ({ onMouseDown: handleDragMouseDown, onMouseMove: handleDragMouseMove }),
-		[handleDragMouseDown, handleDragMouseMove],
+		() => ({
+			onMouseDown: handleDragMouseDown,
+			onMouseMove: handleDragMouseMove,
+			onKeyDown: handleDragKeyDown,
+		}),
+		[handleDragMouseDown, handleDragMouseMove, handleDragKeyDown],
 	);
 
 	const handleRowClick = useStableHandler(
@@ -584,8 +607,10 @@ const TagTreeNodeRow = memo(function TagTreeNodeRow({
 								cursor: "pointer",
 							}}
 							onClick={(e) => onRowClick(node, e.shiftKey, e.altKey)}
+							tabIndex={0}
 							onMouseDown={(e) => drag.onMouseDown(e, node)}
 							onMouseMove={(e) => drag.onMouseMove(e, node, e.currentTarget)}
+							onKeyDown={(e) => drag.onKeyDown(e, node)}
 						>
 							{hasChildren ? (
 								<button
@@ -823,10 +848,12 @@ const TagTreeLeaf = memo(function TagTreeLeaf({
 						style={{ cursor: "pointer" }}
 						data-tag-id={tag.id}
 						onClick={(e: React.MouseEvent) => onRowClick(node, e.shiftKey, e.altKey)}
+						tabIndex={0}
 						onMouseDown={(e: React.MouseEvent) => drag.onMouseDown(e, node)}
 						onMouseMove={(e: React.MouseEvent<HTMLElement>) =>
 							drag.onMouseMove(e, node, e.currentTarget, true)
 						}
+						onKeyDown={(e: React.KeyboardEvent) => drag.onKeyDown(e, node)}
 						button={
 							<TagPillButton
 								variant="edit"

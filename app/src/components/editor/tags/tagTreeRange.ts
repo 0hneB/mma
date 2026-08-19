@@ -491,6 +491,29 @@ export function collectDragBlock(
  *  Returns null if the target isn't a sibling under `parent`, is part of the block, or
  *  no block member is found. Every other node keeps its relative order; moved nodes
  *  carry their whole subtrees. */
+/** Move one node a single slot among its siblings (-1 up, +1 down). Returns the new flat
+ *  DFS tag-id order, or null at either end. Keyboard counterpart to a drag reorder. */
+export function stepSiblingFlatOrder<T extends OrderNode>(
+	tree: T[],
+	path: string,
+	parent: string,
+	delta: -1 | 1,
+): number[] | null {
+	const siblings = siblingsAt(tree, parent);
+	const from = siblings.findIndex((n) => n.fullPath === path);
+	if (from === -1) return null;
+	const to = from + delta;
+	const neighbour = siblings[to];
+	if (!neighbour) return null;
+	return reorderSiblingsFlatOrder(
+		tree,
+		[path],
+		neighbour.fullPath,
+		delta < 0 ? "before" : "after",
+		parent,
+	);
+}
+
 export function reorderSiblingsFlatOrder<T extends OrderNode>(
 	tree: T[],
 	dragPaths: string[],
