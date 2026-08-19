@@ -6,3 +6,4 @@ tools/
 **/target/
 **/.venv/
 **/.*
+!.nvmrc
