@@ -19,6 +19,12 @@ tauri-build = { version = "2.5.6", features = [] }
 
 [dev-dependencies]
 proptest = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "store"
+harness = false
+required-features = ["bench"]
 
 [dependencies]
 anyhow = "1"
