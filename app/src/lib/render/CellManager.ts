@@ -648,6 +648,17 @@ export class CellManager {
 		}
 	}
 
+	/** Visit every rendered location's position. The cells hold all alive rows (a `visible`
+	 *  0 only means the overlay or active layer draws that row instead), so this is the
+	 *  maintained full-map position set. */
+	forEachPosition(f: (id: number, lng: number, lat: number) => void) {
+		for (const cb of this.cells.values()) {
+			for (let i = 0; i < cb.count; i++) {
+				f(cb.ids[i], cb.positions[i * 2], cb.positions[i * 2 + 1]);
+			}
+		}
+	}
+
 	/** Map a deck.gl pick (cell + index) back to a location ID. */
 	resolvePickFromCell(cellKey: string, cellIndex: number): number | null {
 		const cb = this.cells.get(cellKey);

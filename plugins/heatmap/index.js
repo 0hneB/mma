@@ -1068,7 +1068,6 @@ function loadGradients() {
   return (store.get("gradients") ?? []).map(normalizeGradient);
 }
 var overlay = null;
-var locStore = null;
 var layers = loadLayers();
 var customGradients = loadGradients();
 var onSettingsChange = null;
@@ -1124,11 +1123,14 @@ function removeCustomGradient(id) {
   commitGradients();
 }
 async function sourceData(source) {
-  if (!locStore) return [];
-  const pool = locStore.get();
   const ids = await MMA.resolveScopeIds(source);
-  const subset = ids ? pool.filter((l) => ids.has(l.id)) : pool;
-  return subset.map((l) => ({ lat: l.lat, lng: l.lng }));
+  const scene = MMA.getScenePositions();
+  const out = [];
+  for (let i = 0; i < scene.ids.length; i++) {
+    if (ids && !ids.has(scene.ids[i])) continue;
+    out.push({ lng: scene.positions[i * 2], lat: scene.positions[i * 2 + 1] });
+  }
+  return out;
 }
 var rebuildToken = 0;
 async function rebuild() {
@@ -1156,20 +1158,18 @@ async function rebuild() {
 async function init() {
   const host = MMA.getMapHost();
   if (!host) throw new Error("No map instance");
-  locStore = await MMA.createLocationStore();
   overlay = host.createDeckOverlay();
   void rebuild();
+  let rebuildTimer;
   const onChange = () => {
-    void rebuild();
+    clearTimeout(rebuildTimer);
+    rebuildTimer = setTimeout(() => void rebuild(), 100);
     onSettingsChange?.();
   };
-  const unsubStore = locStore.onChange(onChange);
-  const unsubSel = MMA.on("selection:change", onChange);
+  const unsub = MMA.on("scene:changed", onChange);
   return () => {
-    unsubStore();
-    unsubSel();
-    locStore?.destroy();
-    locStore = null;
+    unsub();
+    clearTimeout(rebuildTimer);
     if (overlay) {
       overlay.finalize();
       overlay = null;

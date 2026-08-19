@@ -135,8 +135,13 @@ export function removeCustomGradient(id: string) {
 
 async function sourceData(source: ScopeWithSaved): Promise<LatLng[]> {
 	const ids = await MMA.resolveScopeIds(source);
-	const locs = await MMA.fetchLocations(ids ? { kind: "ids", ids: [...ids] } : { kind: "all" });
-	return locs.map((l) => ({ lat: l.lat, lng: l.lng }));
+	const scene = MMA.getScenePositions();
+	const out: LatLng[] = [];
+	for (let i = 0; i < scene.ids.length; i++) {
+		if (ids && !ids.has(scene.ids[i])) continue;
+		out.push({ lng: scene.positions[i * 2], lat: scene.positions[i * 2 + 1] });
+	}
+	return out;
 }
 
 let rebuildToken = 0;
@@ -175,21 +180,17 @@ export async function init(): Promise<() => void> {
 	overlay = host.createDeckOverlay();
 	void rebuild();
 
+	let rebuildTimer: ReturnType<typeof setTimeout> | undefined;
 	const onChange = () => {
-		void rebuild();
+		clearTimeout(rebuildTimer);
+		rebuildTimer = setTimeout(() => void rebuild(), 100);
 		onSettingsChange?.();
 	};
-	const events = [
-		"location:add",
-		"location:remove",
-		"location:update",
-		"location:invalidate",
-		"selection:change",
-	] as const;
-	const unsubs = events.map((e) => MMA.on(e, onChange));
+	const unsub = MMA.on("scene:changed", onChange);
 
 	return () => {
-		unsubs.forEach((u) => u());
+		unsub();
+		clearTimeout(rebuildTimer);
 		if (overlay) {
 			overlay.finalize();
 			overlay = null;

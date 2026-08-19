@@ -43,6 +43,7 @@ import { validateLocations } from "@/lib/sv/validate";
 import { fetchSvMetadata } from "@/lib/sv/svMeta";
 import { mmaBufUrl } from "@/lib/util/util";
 import { getMapHost, waitForMapHost } from "@/lib/map/mapState";
+import { getScene } from "@/lib/render/sceneStore";
 import * as legacy from "@/legacy";
 import * as testApi from "@/testApi";
 
@@ -196,6 +197,24 @@ const surface = {
 	// --- Map host ---
 	getMapHost,
 	waitForMapHost,
+
+	/** Snapshot of every rendered location: `ids` plus interleaved `[lng, lat, ...]`, read
+	 *  from the render buffers the app already keeps current. The way for an overlay that
+	 *  draws all locations to see the map without a store round trip; refresh on
+	 *  `scene:changed`. */
+	getScenePositions(): { ids: Uint32Array; positions: Float32Array } {
+		const scene = getScene();
+		const ids = new Uint32Array(scene.totalCount);
+		const positions = new Float32Array(scene.totalCount * 2);
+		let n = 0;
+		scene.forEachPosition((id, lng, lat) => {
+			ids[n] = id;
+			positions[n * 2] = lng;
+			positions[n * 2 + 1] = lat;
+			n++;
+		});
+		return { ids, positions };
+	},
 
 	// --- Settings ---
 	setSetting,
