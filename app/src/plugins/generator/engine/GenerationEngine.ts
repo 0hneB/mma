@@ -127,6 +127,9 @@ export class GenerationEngine {
 			if (!existing) this.regions.push(region);
 			this.regionTasks.push(this.runRegionWorkers(existing ?? region, count));
 		}
+
+		const b = this.searchOverlayBounds();
+		if (b) searchCoverage.growSession(b, this.settings.radius);
 	}
 
 	// Live-apply per-region target changes mid-job; workers re-read target every probe.
@@ -161,27 +164,30 @@ export class GenerationEngine {
 		searchCoverage.endSession();
 	}
 
-	private beginSearchOverlay(): void {
-		if (this.regions.length === 0) return;
+	/** Every region's box, padded by the probe radius so a disc at the edge still lands. */
+	private searchOverlayBounds(): Bounds | null {
+		if (this.regions.length === 0) return null;
 		let bounds: Bounds | null = null;
 		for (const region of this.regions) {
 			const bb = getBoundingBox(region.feature);
 			if (bb) bounds = bounds ? unionBounds(bounds, bb) : bb;
 		}
-		if (!bounds) return;
+		if (!bounds) return null;
 		const { west, south, east, north } = bounds;
 		const r = this.settings.radius;
 		const midLat = (south + north) / 2;
 		const mPerDegLng = 111320 * Math.cos((midLat * Math.PI) / 180) || 1;
-		searchCoverage.beginSession(
-			{
-				west: west - r / mPerDegLng,
-				south: south - r / 111320,
-				east: east + r / mPerDegLng,
-				north: north + r / 111320,
-			},
-			r,
-		);
+		return {
+			west: west - r / mPerDegLng,
+			south: south - r / 111320,
+			east: east + r / mPerDegLng,
+			north: north + r / 111320,
+		};
+	}
+
+	private beginSearchOverlay(): void {
+		const b = this.searchOverlayBounds();
+		if (b) searchCoverage.beginSession(b, this.settings.radius);
 	}
 
 	isRunning(): boolean {
