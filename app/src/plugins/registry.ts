@@ -5,6 +5,9 @@ import { cmpVersion } from "@/lib/util/util";
 import { cmd } from "@/lib/commands";
 import type { PluginManifest } from "@/bindings.gen";
 import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
+import { toast } from "@/lib/util/toast";
+import { log } from "@/lib/util/log";
+import { t } from "@/lib/i18n";
 
 export interface PluginSettingDef {
 	key: string;
@@ -66,6 +69,52 @@ export function needsUpdate(
 ): boolean {
 	if (isPluginUpdatable(installedVersion, latestVersion)) return true;
 	return !!latestSidecarVersion && installedSidecarVersion !== latestSidecarVersion;
+}
+
+const REGISTRY_URL = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins/registry.json";
+
+let registryPromise: Promise<PluginManifest[]> | null = null;
+
+/** The marketplace registry, fetched once per session (startup update check and the
+ *  marketplace dialog share it). A failed fetch clears the cache so the next call retries. */
+export function fetchPluginRegistry(): Promise<PluginManifest[]> {
+	if (!registryPromise) {
+		registryPromise = fetch(REGISTRY_URL, { signal: AbortSignal.timeout(5000) }).then((r) => {
+			if (!r.ok) throw new Error(`HTTP ${r.status}`);
+			return r.json();
+		});
+		registryPromise.catch(() => {
+			registryPromise = null;
+		});
+	}
+	return registryPromise;
+}
+
+/** Refresh a stale install before it loads. Nothing is registered yet at startup, so an
+ *  update is just re-downloading the files the normal load then picks up; any failure
+ *  falls back to loading what's on disk. Plugins absent from the registry (hand-installed
+ *  dev plugins) and registry builds requiring a newer app are never touched. */
+export async function autoUpdatePlugin(
+	m: PluginManifest,
+	latest: PluginManifest | undefined,
+	appVersion: string,
+): Promise<PluginManifest> {
+	if (!latest || !isPluginCompatible(latest.minAppVersion, appVersion)) return m;
+	const sidecarVersion = latest.sidecar
+		? await cmd.sidecarInstalledVersion(m.id).catch(() => null)
+		: null;
+	if (!needsUpdate(m.version, latest.version, sidecarVersion, latest.sidecar?.version)) return m;
+	try {
+		const fresh = await cmd.installPlugin(m.id);
+		if (fresh.sidecar) {
+			await cmd.sidecarInstall(fresh.id, fresh.sidecar.name, fresh.sidecar.version);
+		}
+		toast(t("{name} updated to v{version}", { name: fresh.name, version: fresh.version }));
+		return fresh;
+	} catch (e) {
+		log.warn(`[plugin] auto-update failed for "${m.id}":`, e);
+		return m;
+	}
 }
 
 // --- Registry ---

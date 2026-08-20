@@ -1438,6 +1438,7 @@
 	"{label} failed": "{label} falló",
 	"{maps} maps · {locations} locations": "{maps} mapas · {locations} ubicaciones",
 	"{name} - round {n}": "{name} - ronda {n}",
+	"{name} updated to v{version}": "{name} actualizado a v{version}",
 	"{name}() takes {n} arguments": {
 		"one": "{name}() requiere {n} argumento",
 		"many": "{name}() requiere {n} argumentos",

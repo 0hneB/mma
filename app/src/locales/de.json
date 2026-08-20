@@ -1402,6 +1402,7 @@
 	"{label} failed": "{label} fehlgeschlagen",
 	"{maps} maps · {locations} locations": "{maps} Karten · {locations} Standorte",
 	"{name} - round {n}": "{name} - Runde {n}",
+	"{name} updated to v{version}": "{name} auf v{version} aktualisiert",
 	"{name}() takes {n} arguments": {
 		"one": "{name}() erwartet {n} Argument",
 		"other": "{name}() erwartet {n} Argumente"

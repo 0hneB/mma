@@ -1366,6 +1366,7 @@
 	"{label} failed": "{label} 失敗",
 	"{maps} maps · {locations} locations": "{maps} マップ・{locations} 地点",
 	"{name} - round {n}": "{name} - ラウンド {n}",
+	"{name} updated to v{version}": "{name} を v{version} に更新しました",
 	"{name}() takes {n} arguments": {
 		"other": "{name}() は {n} 個の引数を取ります"
 	},

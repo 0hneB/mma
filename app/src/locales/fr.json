@@ -1438,6 +1438,7 @@
 	"{label} failed": "{label} en échec",
 	"{maps} maps · {locations} locations": "{maps} cartes · {locations} lieux",
 	"{name} - round {n}": "{name} - manche {n}",
+	"{name} updated to v{version}": "{name} mis à jour vers v{version}",
 	"{name}() takes {n} arguments": {
 		"one": "{name}() prend {n} argument",
 		"many": "{name}() prend {n} arguments",

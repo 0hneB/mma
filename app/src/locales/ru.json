@@ -1474,6 +1474,7 @@
 	"{label} failed": "{label}: сбой",
 	"{maps} maps · {locations} locations": "Карт: {maps} · локаций: {locations}",
 	"{name} - round {n}": "{name} - раунд {n}",
+	"{name} updated to v{version}": "{name} обновлён до v{version}",
 	"{name}() takes {n} arguments": {
 		"one": "{name}() принимает {n} аргумент",
 		"few": "{name}() принимает {n} аргумента",

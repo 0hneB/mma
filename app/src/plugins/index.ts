@@ -4,10 +4,18 @@
  */
 
 import { preloadModules, getAvailableExternals } from "./externals";
-import { setPendingManifest, getPlugins, activatePlugin } from "./registry";
+import {
+	setPendingManifest,
+	getPlugins,
+	activatePlugin,
+	autoUpdatePlugin,
+	fetchPluginRegistry,
+} from "./registry";
 import type { PluginManifest } from "@/bindings.gen";
 import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
+
+declare const __APP_VERSION__: string;
 
 // Re-export the API type for plugin consumers
 export type { MMA as MMAApi } from "@/api";
@@ -43,9 +51,17 @@ async function loadUserPlugins() {
 	} catch {
 		return;
 	}
+	if (manifests.length === 0) return;
+	// Silent update pass: refresh stale marketplace installs before anything loads.
+	let latest = new Map<string, PluginManifest>();
+	try {
+		latest = new Map((await fetchPluginRegistry()).map((r) => [r.id, r]));
+	} catch (e) {
+		log.warn("[plugin] registry unavailable, skipping update check:", e);
+	}
 	for (const m of manifests) {
 		try {
-			await loadUserPlugin(m);
+			await loadUserPlugin(await autoUpdatePlugin(m, latest.get(m.id), __APP_VERSION__));
 		} catch (e) {
 			log.error(`[plugin] failed to load user plugin "${m.id}":`, e);
 		}

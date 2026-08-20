@@ -16,13 +16,12 @@ import {
 	needsUpdate,
 	isPluginCompatible,
 	isBackgroundPlugin,
+	fetchPluginRegistry,
 } from "@/plugins/registry";
 import { events, type PluginManifest } from "@/bindings.gen";
 import { loadAndActivatePlugin, loadUserPlugin } from "@/plugins/index";
 import { cmd } from "@/lib/commands";
 import { log } from "@/lib/util/log";
-
-const REGISTRY_URL = "https://raw.githubusercontent.com/ccmdi/mma/master/plugins/registry.json";
 
 declare const __APP_VERSION__: string;
 
@@ -46,8 +45,6 @@ async function installSidecar(
 }
 
 type Tab = "core" | "additional";
-
-let registryCache: PluginManifest[] | null = null;
 
 function PluginSettings({ pluginId }: { pluginId: string }) {
 	const plugin = getPlugin(pluginId);
@@ -250,7 +247,7 @@ function PluginCard({
 
 export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 	const [tab, setTab] = useState<Tab>("core");
-	const [registry, setRegistry] = useState<PluginManifest[] | null>(registryCache);
+	const [registry, setRegistry] = useState<PluginManifest[] | null>(null);
 	const [fetchError, setFetchError] = useState<string | null>(null);
 	const [installedManifests, setInstalledManifests] = useState<PluginManifest[]>([]);
 	const [sidecarVersions, setSidecarVersions] = useState<Record<string, string | null>>({});
@@ -291,15 +288,8 @@ export function PluginMarketplace({ open, onOpenChange }: DialogProps) {
 
 	const fetchRegistry = useCallback(() => {
 		setFetchError(null);
-		fetch(REGISTRY_URL)
-			.then((r) => {
-				if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				return r.json();
-			})
-			.then((data: PluginManifest[]) => {
-				registryCache = data;
-				setRegistry(data);
-			})
+		fetchPluginRegistry()
+			.then(setRegistry)
 			.catch((e) => setFetchError(e.message));
 	}, []);
 

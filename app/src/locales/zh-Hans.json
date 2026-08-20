@@ -1366,6 +1366,7 @@
 	"{label} failed": "{label}失败",
 	"{maps} maps · {locations} locations": "{maps} 张地图 · {locations} 个位置",
 	"{name} - round {n}": "{name} - 第 {n} 轮",
+	"{name} updated to v{version}": "{name} 已更新至 v{version}",
 	"{name}() takes {n} arguments": {
 		"other": "{name}() 接受 {n} 个参数"
 	},

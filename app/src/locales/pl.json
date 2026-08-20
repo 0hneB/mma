@@ -1474,6 +1474,7 @@
 	"{label} failed": "{label} nieudane",
 	"{maps} maps · {locations} locations": "Mapy: {maps} · Lokalizacje: {locations}",
 	"{name} - round {n}": "{name} - runda {n}",
+	"{name} updated to v{version}": "{name} zaktualizowano do v{version}",
 	"{name}() takes {n} arguments": {
 		"one": "{name}() przyjmuje {n} argument",
 		"few": "{name}() przyjmuje {n} argumenty",
