@@ -2,7 +2,7 @@
 //! the owned GeoJSON path, and the offline artifact generator.
 
 use super::{
-    arch_feature_bbox, arch_point_in_feature, arch_to_geometry, classify_scan, convert_dataset, git_blob_sha1,
+    arch_feature_bbox, arch_point_in_feature, arch_to_geometry, classify_scan, convert_dataset, git_blob_sha1, parse_border_shas,
     ArchDataset, ArchFeature,
 };
 use crate::selections::{self, PolygonGeometry};
@@ -183,4 +183,22 @@ fn git_blob_sha1_matches_git() {
         git_blob_sha1(b"hello world\n"),
         "3b18e512dba79e4c8300dd08aeb37f8e728b8dad"
     );
+}
+
+/// The contents API's `sha` for a file is the git blob id git_blob_sha1 computes.
+/// Entries without name/sha (or a non-array error payload) are skipped, not a panic.
+#[test]
+fn parse_border_shas_reads_contents_listing() {
+    let listing = serde_json::json!([
+        { "name": "borders-medium.rkyv", "sha": "527857ecf3dabcba8705aab16e6a548c090b46a2", "size": 1 },
+        { "name": "ATTRIBUTION.md", "sha": "7001bc2c67c227a42d72941ced4b6e1e0abe593a" },
+        { "bogus": true }
+    ]);
+    let shas = parse_border_shas(&listing);
+    assert_eq!(shas.len(), 2);
+    assert_eq!(
+        shas.get("borders-medium.rkyv").map(String::as_str),
+        Some("527857ecf3dabcba8705aab16e6a548c090b46a2")
+    );
+    assert!(parse_border_shas(&serde_json::json!({ "message": "rate limited" })).is_empty());
 }

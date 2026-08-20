@@ -556,6 +556,8 @@ fn border_url(level: &str) -> String {
 fn border_client() -> reqwest::Result<reqwest::blocking::Client> {
     reqwest::blocking::Client::builder()
         .use_rustls_tls()
+        // The GitHub API 403s requests without a User-Agent.
+        .user_agent("mma")
         .timeout(std::time::Duration::from_secs(120))
         .build()
 }
@@ -586,9 +588,9 @@ pub fn download_border_file(level: String) -> AppResult<()> {
     write_border_file(&level, &bytes)
 }
 
-/// Git blob id of `bytes`: sha1 over `"blob {len}\0"` + content. raw.githubusercontent
-/// serves exactly this as the ETag, so it names our local copy to a conditional GET
-/// with no stored state -- the file itself is the version marker.
+/// Git blob id of `bytes` -- the `sha` the contents API reports, computable locally so
+/// the file is its own version marker. Do not "simplify" to a conditional GET against
+/// raw.githubusercontent: its ETag is an opaque CDN hash, not this, and never 304s.
 pub(crate) fn git_blob_sha1(bytes: &[u8]) -> String {
     use sha1::{Digest, Sha1};
     let mut h = Sha1::new();
@@ -597,22 +599,39 @@ pub(crate) fn git_blob_sha1(bytes: &[u8]) -> String {
     format!("{:x}", h.finalize())
 }
 
-/// One conditional GET: 304 means the local file is current; 200 carries the new file.
-fn update_border_file(level: &str) -> AppResult<bool> {
+/// `name -> sha` from a contents-API directory listing.
+pub(crate) fn parse_border_shas(listing: &serde_json::Value) -> HashMap<String, String> {
+    listing
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| Some((e["name"].as_str()?.to_string(), e["sha"].as_str()?.to_string())))
+        .collect()
+}
+
+/// Blob shas of the repo's border files: one ~1KB API call covering every level.
+fn fetch_border_shas() -> AppResult<HashMap<String, String>> {
+    let listing: serde_json::Value = border_client()?
+        .get("https://api.github.com/repos/ccmdi/mma/contents/data/borders")
+        .send()?
+        .error_for_status()?
+        .json()?;
+    Ok(parse_border_shas(&listing))
+}
+
+fn update_border_file(level: &str, shas: &HashMap<String, String>) -> AppResult<bool> {
     let Ok(bytes) = std::fs::read(border_path(level)?) else {
         return Ok(false); // not installed; the settings download flow owns first install
     };
-    let resp = border_client()?
-        .get(border_url(level))
-        .header(
-            reqwest::header::IF_NONE_MATCH,
-            format!("\"{}\"", git_blob_sha1(&bytes)),
-        )
-        .send()?;
-    if resp.status() == reqwest::StatusCode::NOT_MODIFIED {
-        return Ok(false);
+    match shas.get(&format!("borders-{level}.rkyv")) {
+        Some(remote) if *remote != git_blob_sha1(&bytes) => {}
+        _ => return Ok(false),
     }
-    let new_bytes = resp.error_for_status()?.bytes()?;
+    let new_bytes = border_client()?
+        .get(border_url(level))
+        .send()?
+        .error_for_status()?
+        .bytes()?;
     write_border_file(level, &new_bytes)?;
     Ok(true)
 }
@@ -620,11 +639,25 @@ fn update_border_file(level: &str) -> AppResult<bool> {
 /// Silently refresh installed border files that changed upstream. Runs on a background
 /// thread at startup; a failed check is logged and retried next launch.
 pub fn update_border_files() {
-    for level in ["medium", "heavy", "adm1"] {
-        match update_border_file(level) {
+    let levels = ["medium", "heavy", "adm1"];
+    let any_installed = levels
+        .iter()
+        .any(|l| border_path(l).map(|p| p.exists()).unwrap_or(false));
+    if !any_installed {
+        return;
+    }
+    let shas = match fetch_border_shas() {
+        Ok(shas) => shas,
+        Err(e) => {
+            log::warn!("border update check: {}", e.0);
+            return;
+        }
+    };
+    for level in levels {
+        match update_border_file(level, &shas) {
             Ok(true) => log::info!("borders-{level}.rkyv updated from upstream"),
             Ok(false) => {}
-            Err(e) => log::warn!("border update check ({level}): {}", e.0),
+            Err(e) => log::warn!("border update ({level}): {}", e.0),
         }
     }
 }
