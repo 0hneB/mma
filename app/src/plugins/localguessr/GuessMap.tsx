@@ -108,7 +108,7 @@ export function GuessMap({
 		...prefs,
 		mapType: basemap,
 		svPanoramas: false,
-		svOpacity: 0,
+		svVisible: false,
 	};
 	const hostKind = hostKindForMapType(basemap);
 

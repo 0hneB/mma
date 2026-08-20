@@ -18,7 +18,7 @@ import {
 import { BUILTIN_STYLE_MAP } from "@/lib/geo/mapStyles";
 import { BLOBBY_ZOOM_THRESHOLD } from "@/lib/sv/constants";
 import { createCompositeMapType } from "@/lib/geo/stackedMapType";
-import type { MapEmbedPrefs } from "@/store/mapEmbedPrefs";
+import { svLayerOpacity, type MapEmbedPrefs } from "@/store/mapEmbedPrefs";
 
 export interface MapStackResult {
 	mapType: google.maps.ImageMapType;
@@ -61,10 +61,11 @@ export function createSvTileSource(prefs: MapEmbedPrefs): SvTileSource {
 	const blobbyAt = (z: number) => blobby !== null && z <= BLOBBY_ZOOM_THRESHOLD;
 	const url = (x: number, y: number, z: number) =>
 		buildTileUrl(blobbyAt(z) ? blobby! : line, x, y, z);
-	const dimmed = prefs.svCoverageType !== "default" ? prefs.svOpacity * 0.6 : prefs.svOpacity;
+	const opacity = svLayerOpacity(prefs);
+	const dimmed = prefs.svCoverageType !== "default" ? opacity * 0.6 : opacity;
 	return {
 		url,
-		opacity: (z) => (blobbyAt(z) ? dimmed : prefs.svOpacity),
+		opacity: (z) => (blobbyAt(z) ? dimmed : opacity),
 		key: url(0, 0, 0) + url(0, 0, BLOBBY_ZOOM_THRESHOLD + 1),
 	};
 }
