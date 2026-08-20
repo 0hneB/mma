@@ -69,13 +69,11 @@ jobs:
           merge-multiple: true
 
       - name: Compute SHA-256 digests
-        id: sha
         run: |
           for f in mma-copyright-*.zip; do
             platform="${f#mma-copyright-}"
             platform="${platform%.zip}"
             hash=$(sha256sum "$f" | cut -d' ' -f1)
-            echo "sha256-${platform}=${hash}" >> "$GITHUB_OUTPUT"
             echo "${hash}  ${f}" >> checksums.txt
           done
           cat checksums.txt
