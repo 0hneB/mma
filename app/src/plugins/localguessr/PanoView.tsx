@@ -85,6 +85,8 @@ export function PanoView({
 				let dh = pov.heading % 360;
 				if (dh < 0) dh += 360;
 				const isNorth = Math.abs(dh) < 2 || Math.abs(dh - 360) < 2;
+				// Second press: top-down and fully zoomed out, for lining up with the map.
+				if (isNorth) pano.setZoom(0);
 				const target = isNorth
 					? { heading: 0, pitch: -90 }
 					: { heading: 0, pitch: pov.pitch };
