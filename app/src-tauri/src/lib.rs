@@ -961,6 +961,9 @@ pub fn run() {
             }
             log::info!("[startup] migrations: {}ms", t.elapsed().as_millis());
 
+            // Refresh installed border files that changed upstream (conditional GETs).
+            std::thread::spawn(borders::update_border_files);
+
             #[cfg(desktop)]
             {
                 app.handle()

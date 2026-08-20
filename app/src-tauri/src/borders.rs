@@ -458,9 +458,7 @@ fn load_dataset(level: &str) -> AppResult<()> {
             .collect();
         Dataset::Owned { features, bboxes }
     } else {
-        let path = crate::storage::app_data_dir()?
-            .join("borders")
-            .join(format!("borders-{level}.rkyv"));
+        let path = border_path(level)?;
         let file = std::fs::File::open(&path)
             .map_err(|e| format!("Failed to open borders-{level}.rkyv: {e}"))?;
         // SAFETY: we own the file; it is not modified while mapped.
@@ -542,10 +540,34 @@ pub fn check_border_file(level: String) -> AppResult<bool> {
         return Ok(true);
     }
     validate_border_level(&level)?;
-    let path = crate::storage::app_data_dir()?
+    Ok(border_path(&level)?.exists())
+}
+
+fn border_path(level: &str) -> AppResult<std::path::PathBuf> {
+    Ok(crate::storage::app_data_dir()?
         .join("borders")
-        .join(format!("borders-{level}.rkyv"));
-    Ok(path.exists())
+        .join(format!("borders-{level}.rkyv")))
+}
+
+fn border_url(level: &str) -> String {
+    format!("https://raw.githubusercontent.com/ccmdi/mma/master/data/borders/borders-{level}.rkyv")
+}
+
+fn border_client() -> reqwest::Result<reqwest::blocking::Client> {
+    reqwest::blocking::Client::builder()
+        .use_rustls_tls()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+}
+
+/// Write a fetched border file and drop the level's cached dataset. The mmap must be
+/// released before the write -- Windows can't overwrite a mapped file.
+fn write_border_file(level: &str, bytes: &[u8]) -> AppResult<()> {
+    let path = border_path(level)?;
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    cache().lock().unwrap().remove(level);
+    std::fs::write(&path, bytes)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -555,25 +577,56 @@ pub fn download_border_file(level: String) -> AppResult<()> {
     if level == "light" {
         return Ok(());
     }
-    let dir = crate::storage::app_data_dir()?.join("borders");
-    std::fs::create_dir_all(&dir)?;
-    let url = format!(
-        "https://raw.githubusercontent.com/ccmdi/mma/master/data/borders/borders-{level}.rkyv"
-    );
-    let client = reqwest::blocking::Client::builder()
-        .use_rustls_tls()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()?;
-    let bytes = client
-        .get(&url)
+    let bytes = border_client()?
+        .get(border_url(&level))
         .send()
         .and_then(|r| r.error_for_status())
         .map_err(|e| format!("Failed to download borders-{level}.rkyv: {e}"))?
         .bytes()?;
-    std::fs::write(dir.join(format!("borders-{level}.rkyv")), &bytes)?;
-    // Invalidate cache so next lookup reloads
-    cache().lock().unwrap().remove(&level);
-    Ok(())
+    write_border_file(&level, &bytes)
+}
+
+/// Git blob id of `bytes`: sha1 over `"blob {len}\0"` + content. raw.githubusercontent
+/// serves exactly this as the ETag, so it names our local copy to a conditional GET
+/// with no stored state -- the file itself is the version marker.
+pub(crate) fn git_blob_sha1(bytes: &[u8]) -> String {
+    use sha1::{Digest, Sha1};
+    let mut h = Sha1::new();
+    h.update(format!("blob {}\0", bytes.len()).as_bytes());
+    h.update(bytes);
+    format!("{:x}", h.finalize())
+}
+
+/// One conditional GET: 304 means the local file is current; 200 carries the new file.
+fn update_border_file(level: &str) -> AppResult<bool> {
+    let Ok(bytes) = std::fs::read(border_path(level)?) else {
+        return Ok(false); // not installed; the settings download flow owns first install
+    };
+    let resp = border_client()?
+        .get(border_url(level))
+        .header(
+            reqwest::header::IF_NONE_MATCH,
+            format!("\"{}\"", git_blob_sha1(&bytes)),
+        )
+        .send()?;
+    if resp.status() == reqwest::StatusCode::NOT_MODIFIED {
+        return Ok(false);
+    }
+    let new_bytes = resp.error_for_status()?.bytes()?;
+    write_border_file(level, &new_bytes)?;
+    Ok(true)
+}
+
+/// Silently refresh installed border files that changed upstream. Runs on a background
+/// thread at startup; a failed check is logged and retried next launch.
+pub fn update_border_files() {
+    for level in ["medium", "heavy", "adm1"] {
+        match update_border_file(level) {
+            Ok(true) => log::info!("borders-{level}.rkyv updated from upstream"),
+            Ok(false) => {}
+            Err(e) => log::warn!("border update check ({level}): {}", e.0),
+        }
+    }
 }
 
 #[tauri::command]

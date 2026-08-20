@@ -2,7 +2,7 @@
 //! the owned GeoJSON path, and the offline artifact generator.
 
 use super::{
-    arch_feature_bbox, arch_point_in_feature, arch_to_geometry, classify_scan, convert_dataset,
+    arch_feature_bbox, arch_point_in_feature, arch_to_geometry, classify_scan, convert_dataset, git_blob_sha1,
     ArchDataset, ArchFeature,
 };
 use crate::selections::{self, PolygonGeometry};
@@ -172,4 +172,15 @@ fn gen_rkyv_artifacts() {
             bytes.len() as f64 / 1e6
         );
     }
+}
+
+/// Known-answer check against `git hash-object`: empty blob and "hello world\n".
+/// raw.githubusercontent's ETag is the blob id, so this formula must match git's.
+#[test]
+fn git_blob_sha1_matches_git() {
+    assert_eq!(git_blob_sha1(b""), "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391");
+    assert_eq!(
+        git_blob_sha1(b"hello world\n"),
+        "3b18e512dba79e4c8300dd08aeb37f8e728b8dad"
+    );
 }
