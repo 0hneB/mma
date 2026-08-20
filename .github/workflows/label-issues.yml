@@ -61,12 +61,12 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
 
       - name: Checkout private reference
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ccmdi/mma-reference
           token: ${{ secrets.DOCS_TOKEN }}
@@ -138,7 +138,7 @@ jobs:
         run: test -f labels.txt || { echo "model wrote no labels.txt"; exit 1; }
 
       - name: Hand off the verdict
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: labels-${{ matrix.issue }}
           path: labels.txt
@@ -155,14 +155,14 @@ jobs:
       contents: read
     steps:
       - name: Fetch the verdict
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: labels-${{ matrix.issue }}
 
       - name: Mint an app token
         id: app
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.MMA_APP_ID }}
           private-key: ${{ secrets.MMA_APP_KEY }}
