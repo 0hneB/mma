@@ -9,8 +9,14 @@ import {
 import { changedFrom, type Diagnostics } from "@/lib/feedback/diagnostics";
 import { refreshStoredReports, submitReport } from "@/lib/feedback/submit";
 import { cmd } from "@/lib/commands";
-import { setLocal } from "@/lib/hooks/useLocalStorage";
-import { getReports, reportStatus, unreadReplyCount, type SubmittedReport } from "@/store/feedback";
+import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
+import {
+	ATTACHMENT_PREFS,
+	getReports,
+	reportStatus,
+	unreadReplyCount,
+	type SubmittedReport,
+} from "@/store/feedback";
 import { DEFAULTS as SETTINGS_DEFAULTS, PRIVATE_SETTINGS } from "@/store/settings";
 import { reportKind } from "../../../workers/feedback/src/index";
 import { leadingZeroBits } from "../../../workers/feedback/src/verify";
@@ -305,6 +311,21 @@ describe("report status", () => {
 		const filed = await submitReport({ kind: "bug", title: "t", description: "d" }, "body", false);
 		expect(reportStatus(filed)?.tone).toBe("open");
 		expect(reportStatus(getReports()[0])?.tone).toBe("open");
+	});
+});
+
+describe("what a report attaches", () => {
+	it("starts a suggestion with nothing attached and a bug with everything", () => {
+		expect(Object.values(ATTACHMENT_PREFS.defaults.idea).some(Boolean)).toBe(false);
+		expect(Object.values(ATTACHMENT_PREFS.defaults.bug).every(Boolean)).toBe(true);
+	});
+
+	it("remembers each kind's choice separately", () => {
+		localStorage.clear();
+		const prefs = getLocal(ATTACHMENT_PREFS);
+		setLocal(ATTACHMENT_PREFS, { ...prefs, idea: { ...prefs.idea, diagnostics: true } });
+		expect(getLocal(ATTACHMENT_PREFS).idea.diagnostics).toBe(true);
+		expect(getLocal(ATTACHMENT_PREFS).bug).toEqual(ATTACHMENT_PREFS.defaults.bug);
 	});
 });
 

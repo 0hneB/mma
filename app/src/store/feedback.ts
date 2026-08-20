@@ -1,11 +1,20 @@
 import { mdiCheckCircleOutline, mdiCloseCircleOutline, mdiRecordCircleOutline } from "@mdi/js";
 import type { IssueState } from "@/bindings.gen";
-import { getLocal, setLocal, useLocalStorage } from "@/lib/hooks/useLocalStorage";
+import { getLocal, persisted, setLocal, useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { msg } from "@/lib/i18n";
-import type { ReportKind } from "@/lib/feedback/body";
+import type { Attachments, ReportKind } from "@/lib/feedback/body";
 
 const REPORTS_KEY = "feedbackReports";
 const INSTALL_ID_KEY = "feedbackInstallId";
+
+/** Per-kind attachment choices; a suggestion starts with none since they only bear on bugs. */
+export const ATTACHMENT_PREFS = persisted<Record<ReportKind, Attachments>>(
+	"feedbackAttachments",
+	{
+		bug: { diagnostics: true, settings: true, log: true },
+		idea: { diagnostics: false, settings: false, log: false },
+	},
+);
 
 /** A report this install has filed. Kept locally because an anonymous reporter has no account
  *  to look their own issues up under. */

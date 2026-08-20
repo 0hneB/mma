@@ -25,7 +25,8 @@ import { msg, t } from "@/lib/i18n";
 import { log } from "@/lib/util/log";
 import { errText } from "@/lib/util/util";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import type { SubmittedReport } from "@/store/feedback";
+import { ATTACHMENT_PREFS, type SubmittedReport } from "@/store/feedback";
+import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 
 const KINDS: Array<{ value: ReportKind; label: string }> = [
 	{ value: "bug", label: msg("Something is broken") },
@@ -46,11 +47,8 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [steps, setSteps] = useState("");
-	const [attach, setAttach] = useState<Attachments>({
-		diagnostics: true,
-		settings: true,
-		log: true,
-	});
+	const [attachPrefs, setAttachPrefs] = useLocalStorage(ATTACHMENT_PREFS);
+	const attach = attachPrefs[kind];
 	const [showPreview, setShowPreview] = useState(false);
 	const [images, setImages] = useState<StagedImage[]>([]);
 	// One staging dir for the dialog's lifetime, created on the first attachment.
@@ -144,7 +142,7 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 
 	const blocked = !title.trim() || !description.trim() || !diagnostics;
 	const cannotSend = anonymous && !anonAvailable;
-	const withheld = ATTACHMENTS.some(({ key }) => !attach[key]);
+	const withheld = kind === "bug" && ATTACHMENTS.some(({ key }) => !attach[key]);
 
 	const send = async () => {
 		setSending(true);
@@ -305,7 +303,12 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
 							<label key={key} className="report-dialog__option">
 								<Checkbox
 									checked={attach[key]}
-									onChange={(e) => setAttach((a) => ({ ...a, [key]: e.target.checked }))}
+									onChange={(e) =>
+										setAttachPrefs((prev) => ({
+											...prev,
+											[kind]: { ...prev[kind], [key]: e.target.checked },
+										}))
+									}
 								/>
 								{t(label)}
 							</label>
