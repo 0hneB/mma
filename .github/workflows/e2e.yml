@@ -24,6 +24,9 @@ jobs:
       - name: Run e2e suite (mocked SV)
         run: bash scripts/e2e.sh --mock
 
+      - name: Run opensv smoke
+        run: bash scripts/e2e.sh test/e2e/opensv-smoke.test.ts
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
