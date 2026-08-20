@@ -62,32 +62,25 @@ function pinLayers(id: string, at: LatLng, color: [number, number, number], pick
 	];
 }
 
-/** White casing under black dashes: readable on white roads and dark imagery alike. */
-function resultLineLayers(guess: LatLng, truth: LatLng) {
-	const data = [{ path: [[guess.lng, guess.lat], [truth.lng, truth.lat]] }];
-	const getPath = (d: { path: [number, number][] }) => d.path;
-	return [
-		new PathLayer({
-			id: "lg-line-casing",
-			data,
-			getPath,
-			getColor: [255, 255, 255, 220],
-			getWidth: 5,
-			widthUnits: "pixels",
-			capRounded: true,
-		}),
-		new PathLayer({
-			id: "lg-line",
-			data,
-			getPath,
-			getColor: [0, 0, 0, 255],
-			getWidth: 2.5,
-			widthUnits: "pixels",
-			capRounded: true,
-			getDashArray: [6, 5],
-			extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })],
-		}),
-	];
+/** Dashed guess-to-answer line, GeoGuessr contract: everything is anchored to the
+ *  map (common units + high-precision dash), so mid-animation the pattern scales
+ *  with the world like a texture; it re-normalizes to standard pixel size exactly
+ *  once per settled zoom, via `settledZoom`. */
+function resultLineLayer(guess: LatLng, truth: LatLng, settledZoom: number) {
+	// Under the maps overlay, deck's zoom sits one below the host's; one common
+	// unit is 2^(zoom-1) screen px, so this width reads as 2.5px at the settled zoom.
+	const width = 2.5 / 2 ** (settledZoom - 1);
+	return new PathLayer({
+		id: "lg-line",
+		data: [{ path: [[guess.lng, guess.lat], [truth.lng, truth.lat]] }],
+		getPath: (d: { path: [number, number][] }) => d.path,
+		getColor: [25, 25, 25, 240],
+		getWidth: width,
+		widthUnits: "common",
+		capRounded: true,
+		getDashArray: [4, 3],
+		extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })],
+	});
 }
 
 /**
@@ -237,15 +230,30 @@ export function GuessMap({
 		hostRef.current?.setCursor(showResult ? null : "crosshair");
 	}, [showResult]);
 
+	// The line re-normalizes once per zoom level (the `zoom` event fires per step,
+	// already carrying the target value) and simply scales with the map in between.
+	const [settledZoom, setSettledZoom] = useState<number | null>(null);
+	useEffect(() => {
+		const host = hostRef.current;
+		if (!host || !ready || !showResult) {
+			setSettledZoom(null);
+			return;
+		}
+		setSettledZoom(host.getZoom());
+		return host.on("zoom", () => setSettledZoom(hostRef.current?.getZoom() ?? null));
+	}, [ready, showResult]);
+
 	useEffect(() => {
 		const overlay = overlayRef.current;
 		if (!overlay || !ready) return;
 		const layers = [];
-		if (showResult && truth && guess) layers.push(...resultLineLayers(guess, truth));
+		if (showResult && truth && guess && settledZoom !== null) {
+			layers.push(resultLineLayer(guess, truth, settledZoom));
+		}
 		if (guess) layers.push(...pinLayers("lg-guess", guess, GUESS_COLOR, false));
 		if (showResult && truth) layers.push(...pinLayers("lg-truth", truth, TRUTH_COLOR, false));
 		overlay.setProps({ layers });
-	}, [guess, truth, showResult, ready]);
+	}, [guess, truth, showResult, ready, settledZoom]);
 
 	const fitToLocations = useCallback(() => {
 		const host = hostRef.current;
