@@ -83,6 +83,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           allowed_non_write_users: "*"
+          allowed_bots: "map-making-app"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           settings: '{"attribution":{"commit":"","pr":""}}'
           claude_args: |
