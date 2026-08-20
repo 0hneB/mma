@@ -36,10 +36,11 @@ On both Mac & Linux, framerate and rendering stability can be an issue. If you e
 ### From source
 
 ```bash
-cd app && npm install && cargo tauri build
+git clone --recurse-submodules https://github.com/ccmdi/mma
+cd mma/app && npm install && npx tauri build
 ```
 
-Requires: Rust toolchain, Node.js, npm.
+Requires Node 24 and a Rust toolchain.
 
 ### Run in a browser
 
@@ -56,3 +57,4 @@ Then open the printed `http://127.0.0.1:1430`.
 
 - [Migrations](scripts/migrations/README.md) - bring your data over from map-making.app
 - [Plugins](plugins/README.md) - extend the editor
+- [Contributing](CONTRIBUTING.md) - build from source, run tests, open a PR
