@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { ScatterplotLayer, LineLayer } from "@deck.gl/layers";
+import { ScatterplotLayer, PathLayer } from "@deck.gl/layers";
+import { PathStyleExtension } from "@deck.gl/extensions";
 import { Icon } from "@/components/primitives/Icon";
 import { mdiLayers, mdiPlus, mdiMinus, mdiMagnifyPlusOutline, mdiMagnifyMinusOutline } from "@mdi/js";
 import {
@@ -33,20 +34,60 @@ const BASEMAPS: MapTypeKey[] = ["map", "satellite", "osm", "vector"];
 const GUESS_COLOR: [number, number, number] = [64, 133, 244];
 const TRUTH_COLOR: [number, number, number] = [76, 175, 80];
 
-function pinLayer(id: string, at: LatLng, color: [number, number, number]) {
-	return new ScatterplotLayer({
-		id,
-		data: [at],
-		getPosition: (d: LatLng) => [d.lng, d.lat],
-		getFillColor: color,
-		getLineColor: [255, 255, 255],
-		getLineWidth: 2,
-		lineWidthUnits: "pixels",
-		stroked: true,
-		radiusUnits: "pixels",
-		getRadius: 8,
-		pickable: false,
-	});
+/** A pin and its shadow halo, so the circle separates from same-colored basemap. */
+function pinLayers(id: string, at: LatLng, color: [number, number, number], pickable: boolean) {
+	return [
+		new ScatterplotLayer({
+			id: `${id}-halo`,
+			data: [at],
+			getPosition: (d: LatLng) => [d.lng, d.lat],
+			getFillColor: [0, 0, 0, 90],
+			radiusUnits: "pixels",
+			getRadius: 11,
+			pickable: false,
+		}),
+		new ScatterplotLayer({
+			id,
+			data: [at],
+			getPosition: (d: LatLng) => [d.lng, d.lat],
+			getFillColor: color,
+			getLineColor: [255, 255, 255],
+			getLineWidth: 2,
+			lineWidthUnits: "pixels",
+			stroked: true,
+			radiusUnits: "pixels",
+			getRadius: 8,
+			pickable,
+		}),
+	];
+}
+
+/** White casing under black dashes: readable on white roads and dark imagery alike. */
+function resultLineLayers(guess: LatLng, truth: LatLng) {
+	const data = [{ path: [[guess.lng, guess.lat], [truth.lng, truth.lat]] }];
+	const getPath = (d: { path: [number, number][] }) => d.path;
+	return [
+		new PathLayer({
+			id: "lg-line-casing",
+			data,
+			getPath,
+			getColor: [255, 255, 255, 220],
+			getWidth: 5,
+			widthUnits: "pixels",
+			capRounded: true,
+		}),
+		new PathLayer({
+			id: "lg-line",
+			data,
+			getPath,
+			getColor: [0, 0, 0, 255],
+			getWidth: 2.5,
+			widthUnits: "pixels",
+			capRounded: true,
+			getDashArray: [6, 5],
+			extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })],
+		}),
+	];
 }
 
 /**
@@ -200,21 +241,9 @@ export function GuessMap({
 		const overlay = overlayRef.current;
 		if (!overlay || !ready) return;
 		const layers = [];
-		if (showResult && truth && guess) {
-			layers.push(
-				new LineLayer({
-					id: "lg-line",
-					data: [{ from: guess, to: truth }],
-					getSourcePosition: (d: { from: LatLng }) => [d.from.lng, d.from.lat],
-					getTargetPosition: (d: { to: LatLng }) => [d.to.lng, d.to.lat],
-					getColor: [255, 255, 255, 200],
-					getWidth: 2,
-					widthUnits: "pixels",
-				}),
-			);
-		}
-		if (guess) layers.push(pinLayer("lg-guess", guess, GUESS_COLOR));
-		if (showResult && truth) layers.push(pinLayer("lg-truth", truth, TRUTH_COLOR));
+		if (showResult && truth && guess) layers.push(...resultLineLayers(guess, truth));
+		if (guess) layers.push(...pinLayers("lg-guess", guess, GUESS_COLOR, false));
+		if (showResult && truth) layers.push(...pinLayers("lg-truth", truth, TRUTH_COLOR, false));
 		overlay.setProps({ layers });
 	}, [guess, truth, showResult, ready]);
 
