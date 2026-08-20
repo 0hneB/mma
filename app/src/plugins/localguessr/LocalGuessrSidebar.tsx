@@ -53,16 +53,25 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 
 	const patch = (p: Partial<GameConfig>) => setStored({ ...config, ...p });
 
+	// The config phase never clears here: this effect also runs on a fresh mount,
+	// and clearing then would wipe a resumable run. Explicit exits clear via `exitGame`.
 	useEffect(() => {
 		const mapId = getMapState().map?.meta.id;
 		if (view.phase === "playing" || view.phase === "result") {
 			saveGame(view.game);
 			setGlobalStreak(view.game.config.streakMode, view.game.streak);
-		} else if (mapId) {
+		} else if (view.phase === "summary" && mapId) {
 			clearSavedGame(mapId);
 		}
 		setResumable(view.phase === "config" && mapId ? getSavedGame(mapId) : null);
 	}, [view]);
+
+	/** Leave and forfeit the game (drops the saved run). */
+	const exitGame = useCallback(() => {
+		const mapId = getMapState().map?.meta.id;
+		if (mapId) clearSavedGame(mapId);
+		dispatch({ type: "exit" });
+	}, []);
 
 	const start = useCallback(async () => {
 		const current = getMapState().map;
@@ -118,7 +127,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 							<Summary
 								session={view.session}
 								onPlayAgain={() => void start()}
-								onBack={() => dispatch({ type: "exit" })}
+								onBack={exitGame}
 							/>
 						) : (
 							<RoundPlayer
@@ -128,7 +137,7 @@ export function LocalGuessrSidebar({ onClose }: { onClose: () => void }) {
 								onResult={(result) => dispatch({ type: "result", result })}
 								onNext={next}
 								onFinish={() => dispatch({ type: "finish" })}
-								onExit={() => dispatch({ type: "exit" })}
+								onExit={exitGame}
 							/>
 						)}
 					</div>,
