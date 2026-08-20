@@ -1,6 +1,19 @@
 import type { Tag, VirtualTag } from "@/bindings.gen";
 import type { TagSortMode } from "@/types";
 import type { TagFolderColorMode } from "@/store/settings";
+import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
+
+const EXPANDED_KEY = "tagTreeExpanded";
+
+/** The sidebar's persisted expanded-folder set. Other tag-tree surfaces (e.g. the
+ *  doclink assign dialog) read it to open matching the sidebar; only the sidebar writes. */
+export function loadExpanded(): Set<string> {
+	return new Set(getLocal<string[]>(EXPANDED_KEY, []));
+}
+
+export function saveExpanded(set: Set<string>) {
+	setLocal(EXPANDED_KEY, [...set]);
+}
 
 export interface TagTreeNode {
 	segment: string;

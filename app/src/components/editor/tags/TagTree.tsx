@@ -18,7 +18,6 @@ import { mdiChevronDown, mdiChevronRight, mdiPencil, mdiFolder } from "@mdi/js";
 import { textColorFor, rgbToHex } from "@/lib/util/color";
 import { fmt } from "@/lib/util/format";
 import { toggleInSet } from "@/lib/util/util";
-import { getLocal, setLocal } from "@/lib/hooks/useLocalStorage";
 import { toggleTagSelections } from "@/store/useMapStore";
 import { useStableHandler } from "@/lib/hooks/useStableHandler";
 import { useSetting } from "@/store/settings";
@@ -33,6 +32,8 @@ import {
 	buildTagTree,
 	sumCounts,
 	isLeafTag,
+	loadExpanded,
+	saveExpanded,
 	type TagTreeNode,
 	type TagMoveResult,
 } from "./tagTreeRange";
@@ -70,15 +71,6 @@ interface TagTreeCallbacks {
 
 const TagTreeCtx = createContext<TagTreeCallbacks>(null!);
 
-const EXPANDED_KEY = "tagTreeExpanded";
-
-function loadExpanded(): Set<string> {
-	return new Set(getLocal<string[]>(EXPANDED_KEY, []));
-}
-
-function saveExpanded(set: Set<string>) {
-	setLocal(EXPANDED_KEY, [...set]);
-}
 
 export interface TagTreeHandle {
 	/** Rewrite expanded-folder paths after a cascade rename so the renamed folder stays open. */

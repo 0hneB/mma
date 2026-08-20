@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { mdiArrowRight, mdiClose } from "@mdi/js";
+import { mdiArrowRight, mdiChevronDown, mdiChevronRight, mdiClose, mdiFolder } from "@mdi/js";
 import { TagPill } from "@/components/primitives/TagPill";
 import { Dialog, DialogContent, type DialogProps } from "@/components/primitives/Dialog";
 import { TextInput } from "@/components/primitives/TextInput";
 import { Button } from "@/components/primitives/Button";
 import { Icon } from "@/components/primitives/Icon";
 import { useMapState, updateTags } from "@/store/useMapStore";
+import { useSetting } from "@/store/settings";
+import { useMapSetting } from "@/store/useMapSetting";
 import {
 	parseDoclink,
 	loadOutline,
@@ -16,7 +18,14 @@ import {
 	type DoclinkMatch,
 } from "@/lib/doclink";
 import { useAsync } from "@/lib/hooks/useAsync";
-import { textColorFor } from "@/lib/util/color";
+import { textColorFor, rgbToHex } from "@/lib/util/color";
+import { toggleInSet } from "@/lib/util/util";
+import {
+	buildTagTree,
+	isLeafTag,
+	loadExpanded,
+	type TagTreeNode,
+} from "@/components/editor/tags/tagTreeRange";
 import type { Tag } from "@/bindings.gen";
 import { t } from "@/lib/i18n";
 
@@ -30,15 +39,135 @@ function headingUrl(docId: string, anchor: string): string {
 
 const matchKey = (m: DoclinkMatch) => `${m.tag.id}:${m.heading.anchor}`;
 
+const NO_VIRTUAL_TAGS = {};
+const NO_ALIASES = {};
+
+// --- Tags pane: the sidebar's tag tree, read-only, with pills as arm targets ---
+
+interface TreeCtx {
+	docId: string;
+	armedId: number | null;
+	onArm: (id: number) => void;
+	expanded: Set<string>;
+	onToggle: (path: string) => void;
+	tagMap: Record<string, Tag>;
+}
+
+function TreePill({
+	tag,
+	label,
+	isAlias,
+	ctx,
+}: {
+	tag: Tag;
+	label: string;
+	isAlias?: boolean;
+	ctx: TreeCtx;
+}) {
+	return (
+		<TagPill
+			as="button"
+			type="button"
+			small
+			color={tag.color}
+			count={anchorsInDoc(tag, ctx.docId).size || undefined}
+			className={clsx(
+				"doclink-assign__tag",
+				isAlias && "is-alias",
+				tag.id === ctx.armedId && "is-armed",
+			)}
+			title={tag.name}
+			onClick={() => ctx.onArm(tag.id)}
+			label={label}
+		/>
+	);
+}
+
+/** Doclinks in this doc across the branch's tags (aliases dedup to one count). */
+function branchLinkCount(node: TagTreeNode, ctx: TreeCtx): number {
+	let total = 0;
+	for (const id of new Set(node.descendantTagIds)) {
+		const tag = ctx.tagMap[id];
+		if (tag) total += anchorsInDoc(tag, ctx.docId).size;
+	}
+	return total;
+}
+
+/** A folder row at the sidebar's scale and shape (2rem colored pill-row).
+ *  Clicking a tag-bearing row arms its tag; a tagless row just toggles. */
+function TagBranch({ node, ctx }: { node: TagTreeNode; ctx: TreeCtx }) {
+	const open = ctx.expanded.has(node.fullPath);
+	const linked = branchLinkCount(node, ctx);
+	const fg = textColorFor(node.inheritedColor);
+	return (
+		<div className="doclink-assign__branch">
+			<div
+				className={clsx(
+					"doclink-assign__folder-row",
+					node.tag && node.tag.id === ctx.armedId && "is-armed",
+				)}
+				style={{ backgroundColor: node.inheritedColor, color: fg }}
+				title={node.tag?.name}
+				tabIndex={0}
+				onClick={() => (node.tag ? ctx.onArm(node.tag.id) : ctx.onToggle(node.fullPath))}
+			>
+				<button
+					type="button"
+					className="doclink-assign__chevron"
+					aria-label={t("Toggle folder")}
+					style={{ color: fg }}
+					onClick={(e) => {
+						e.stopPropagation();
+						ctx.onToggle(node.fullPath);
+					}}
+				>
+					<Icon path={open ? mdiChevronDown : mdiChevronRight} size={18} />
+				</button>
+				<span className="doclink-assign__folder-name">{node.segment}</span>
+				{!node.tag && (
+					<Icon path={mdiFolder} size={13} style={{ color: fg, opacity: 0.5, flexShrink: 0 }} />
+				)}
+				{linked > 0 && <span className="mono doclink-assign__folder-count">{linked}</span>}
+			</div>
+			{open && (
+				<div className="doclink-assign__branch-children">
+					<TagLevel nodes={node.children} ctx={ctx} />
+				</div>
+			)}
+		</div>
+	);
+}
+
+/** One tree level, mirroring the sidebar's layout: leaf pills as a wrapped group
+ *  above folder rows (buildTagTree already orders them that way). */
+function TagLevel({ nodes, ctx }: { nodes: TagTreeNode[]; ctx: TreeCtx }) {
+	const leaves = nodes.filter(isLeafTag);
+	const branches = nodes.filter((n) => !isLeafTag(n));
+	return (
+		<>
+			{leaves.length > 0 && (
+				<div className="doclink-assign__pills">
+					{leaves.map((n) => (
+						<TreePill
+							key={n.fullPath}
+							tag={n.tag!}
+							label={n.segment}
+							isAlias={n.isAlias}
+							ctx={ctx}
+						/>
+					))}
+				</div>
+			)}
+			{branches.map((n) => (
+				<TagBranch key={n.fullPath} node={n} ctx={ctx} />
+			))}
+		</>
+	);
+}
+
 export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 	const tagMap = useMapState((s) => s.tags);
-	const tags: Tag[] = useMemo(
-		() =>
-			Object.values(tagMap).sort((a, b) =>
-				a.name.localeCompare(b.name, undefined, { numeric: true }),
-			),
-		[tagMap],
-	);
+	const tags: Tag[] = useMemo(() => Object.values(tagMap), [tagMap]);
 
 	// Doc identity: pasted URL, prefilled from the map's first existing doclink.
 	const inferred = tags.flatMap((t) => t.doclinks ?? [])[0] ?? "";
@@ -51,6 +180,29 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 	const [tagFilter, setTagFilter] = useState("");
 	const [headingFilter, setHeadingFilter] = useState("");
 	const [matches, setMatches] = useState<DoclinkMatch[] | null>(null);
+
+	// The same tree the sidebar shows: same sort, folders, virtual tags, aliases,
+	// and view mode, so the dialog matches the user's mental model of their tags.
+	const tagViewMode = useSetting("tagViewMode");
+	const sortMode = useSetting("tagSortMode");
+	const folderColorMode = useSetting("tagFolderColorMode");
+	const folderColorRgb = useSetting("tagFolderColor");
+	const tagCounts = useMapState((s) => s.tagCounts);
+	const [virtualTags] = useMapSetting("virtualTags", NO_VIRTUAL_TAGS);
+	const [aliases] = useMapSetting("aliases", NO_ALIASES);
+	const tree = useMemo(
+		() =>
+			buildTagTree(tags, sortMode, tagCounts, virtualTags, aliases, tagViewMode === "tree", {
+				mode: folderColorMode,
+				color: rgbToHex(folderColorRgb),
+			}),
+		[tags, sortMode, tagCounts, virtualTags, aliases, tagViewMode, folderColorMode, folderColorRgb],
+	);
+	// Folder expansion starts where the sidebar left it; toggles stay dialog-local.
+	const [expanded, setExpanded] = useState(loadExpanded);
+	useEffect(() => {
+		if (open) setExpanded(loadExpanded());
+	}, [open]);
 
 	// Every doc the map's tags link to, for switching without re-pasting URLs.
 	const knownDocIds = useMemo(() => {
@@ -96,9 +248,13 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 		return byAnchor;
 	}, [tags, docRef]);
 
-	const shownTags = tagFilter
-		? tags.filter((tag) => tag.name.toLowerCase().includes(tagFilter.toLowerCase()))
-		: tags;
+	const filteredTags = useMemo(
+		() =>
+			tags
+				.filter((tag) => tag.name.toLowerCase().includes(tagFilter.toLowerCase()))
+				.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
+		[tags, tagFilter],
+	);
 	const shownHeadings = headingFilter
 		? (outline?.headings ?? []).filter((h) =>
 				h.text.toLowerCase().includes(headingFilter.toLowerCase()),
@@ -159,6 +315,15 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 		}));
 		if (updates.length > 0) await updateTags(updates);
 		setMatches(null);
+	};
+
+	const treeCtx: TreeCtx = {
+		docId: docRef?.docId ?? "",
+		armedId,
+		onArm: (id) => setArmedId(id === armedId ? null : id),
+		expanded,
+		onToggle: (path) => setExpanded((prev) => toggleInSet(prev, path)),
+		tagMap,
 	};
 
 	return (
@@ -266,20 +431,20 @@ export function DoclinkAssignDialog({ open, onOpenChange }: DialogProps) {
 									/>
 								</div>
 								<div className="doclink-assign__tags">
-									{shownTags.map((tag) => (
-										<TagPill
-											key={tag.id}
-											as="button"
-											type="button"
-											small
-											color={tag.color}
-											count={anchorsInDoc(tag, docRef.docId).size || undefined}
-											className={clsx("doclink-assign__tag", tag.id === armedId && "is-armed")}
-											title={tag.name}
-											onClick={() => setArmedId(tag.id === armedId ? null : tag.id)}
-											label={tag.name}
-										/>
-									))}
+									{tagFilter ? (
+										<div className="doclink-assign__pills">
+											{filteredTags.map((tag) => (
+												<TreePill
+													key={tag.id}
+													tag={tag}
+													label={tag.name}
+													ctx={treeCtx}
+												/>
+											))}
+										</div>
+									) : (
+										<TagLevel nodes={tree} ctx={treeCtx} />
+									)}
 									{tags.length === 0 && (
 										<p className="doclink-assign__hint">{t("This map has no tags.")}</p>
 									)}
