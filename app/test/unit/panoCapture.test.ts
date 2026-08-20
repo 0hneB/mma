@@ -17,7 +17,8 @@ describe("pano capture", () => {
 
 		expect(snapshot).toEqual({
 			panoId: "pano-id",
-			pov: { heading: 123.5, pitch: -7.25 },
+			heading: 123.5,
+			pitch: -7.25,
 			zoom: 2.5,
 		});
 	});

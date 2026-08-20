@@ -1,5 +1,6 @@
 import { google } from "@/lib/sv/opensv";
 import { singletonDiv } from "@/lib/sv/panoSingleton";
+import type { PanoView } from "@/types";
 
 const PANO_LOAD_TIMEOUT_MS = 15_000;
 const CANVAS_SETTLE_TIMEOUT_MS = 3_000;
@@ -7,12 +8,6 @@ const CANVAS_QUIET_MS = 400;
 const CANVAS_SAMPLE_INTERVAL_MS = 100;
 // Slight oversize so fractional-DPR rounding can never undershoot the target buffer.
 const HOST_OVERSCAN = 1.01;
-
-export interface PanoView {
-	panoId: string;
-	pov: { heading: number; pitch: number };
-	zoom: number;
-}
 
 // --- Live viewer capture ---
 
@@ -59,11 +54,7 @@ export function snapshotPanoView(panorama: google.maps.StreetViewPanorama): Pano
 	) {
 		throw new Error("Street View is not ready");
 	}
-	return {
-		panoId,
-		pov: { heading: pov.heading, pitch: pov.pitch },
-		zoom,
-	};
+	return { panoId, heading: pov.heading, pitch: pov.pitch, zoom };
 }
 
 /** Render `view` in a hidden viewer and return an exact width x height canvas at
@@ -83,7 +74,7 @@ export async function renderPanoView(
 	try {
 		const panorama = new google.maps.StreetViewPanorama(host, {
 			pano: view.panoId,
-			pov: { ...view.pov },
+			pov: { heading: view.heading, pitch: view.pitch },
 			zoom: view.zoom,
 			disableDefaultUI: true,
 			linksControl: false,

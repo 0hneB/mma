@@ -10,7 +10,7 @@ import {
 } from "@/lib/sv/constants";
 import { google } from "@/lib/sv/opensv";
 import { lookupStreetView } from "@/lib/sv/lookup";
-import { shortenMapsUrl, mapsPanoUrl, fovForZoom, appendLinkTags } from "@/lib/sv/mapsLink";
+import { shortenMapsUrl, mapsPanoUrl, appendLinkTags } from "@/lib/sv/mapsLink";
 import { useSettings } from "@/store/settings";
 import { getMapState, useMapState } from "@/store/useMapStore";
 import { getPanoAltitude } from "./PanoViewerContext";
@@ -492,7 +492,7 @@ export const PanoControls = memo(function PanoControls({
 			lng: pos.lng(),
 			heading: pov.heading,
 			pitch: pov.pitch,
-			fov: fovForZoom(panorama.getZoom()),
+			zoom: panorama.getZoom(),
 			panoId: loc.pano ?? "",
 		});
 	}, [panorama]);

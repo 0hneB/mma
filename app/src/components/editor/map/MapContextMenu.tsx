@@ -13,7 +13,7 @@ import { selectBorderAt } from "@/lib/map/useCountrySelect";
 import { polygonsAt, deletePolygonsAt } from "@/lib/map/useDeletePolygon";
 import { getMapState, duplicateLocation, removeLocations } from "@/store/useMapStore";
 import { openDialog } from "@/store/dialogBus";
-import { mapsPanoUrl, fovForZoom, appendLinkTags, shortenMapsUrl } from "@/lib/sv/mapsLink";
+import { mapsPanoUrl, appendLinkTags, shortenMapsUrl } from "@/lib/sv/mapsLink";
 import { downloadPano } from "@/lib/sv/panoDownload";
 import { toast } from "@/lib/util/toast";
 import { log } from "@/lib/util/log";
@@ -28,7 +28,7 @@ async function copyLocationLink(loc: Location) {
 		lng: loc.lng,
 		heading: loc.heading,
 		pitch: loc.pitch,
-		fov: fovForZoom(loc.zoom),
+		zoom: loc.zoom,
 		panoId: loc.panoId ?? "",
 	});
 	appendLinkTags(url, loc, getMapState().tags);

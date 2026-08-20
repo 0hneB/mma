@@ -1,8 +1,11 @@
 import type { Location, LocationPatch_Deserialize as LocationPatch } from "@/bindings.gen";
 import { nowUnix } from "@/lib/util/util";
+import type { RequireNonNull } from "@/types/util";
 
 /** Street View camera orientation (POV). */
 export type LocationPOV = Pick<Location, "heading" | "pitch" | "zoom">;
+/** A view on a specific panorama. */
+export type PanoView = LocationPOV & RequireNonNull<Pick<Location, "panoId">>;
 
 export type LatLng = google.maps.LatLngLiteral;
 export type Bounds = google.maps.LatLngBoundsLiteral;

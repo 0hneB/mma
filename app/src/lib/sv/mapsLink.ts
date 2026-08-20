@@ -1,26 +1,20 @@
 import { schemeBase } from "@/lib/util/util";
 import { isOfficialPano } from "@/lib/sv/panoId";
-import { hasLoadAsPanoId } from "@/types";
+import { hasLoadAsPanoId, type PanoView } from "@/types";
 import type { Location, Tag } from "@/bindings.gen";
 
-/** Camera the link should open at. `fov` is derived from pano zoom by `fovForZoom`. */
-export interface MapsPanoView {
-	lat: number;
-	lng: number;
-	heading: number;
-	pitch: number;
-	fov: number;
-	panoId: string;
-}
+/** View the link should open at. */
+export type MapsPanoView = PanoView & Pick<Location, "lat" | "lng">;
 
-export function fovForZoom(zoom: number): number {
+function fovForZoom(zoom: number): number {
 	return (360 / Math.PI) * Math.atan(0.75 * Math.pow(2, 1 - zoom));
 }
 
 /** A google.com/maps Street View link aimed at `view`. Official panos embed a thumbnail
  *  (`!6s`) so the link unfurls with a preview; unofficial ones have none to point at. */
 export function mapsPanoUrl(view: MapsPanoView): URL {
-	const { lat, lng, heading, pitch, fov, panoId } = view;
+	const { lat, lng, heading, pitch, panoId } = view;
+	const fov = fovForZoom(view.zoom);
 
 	let data: string;
 	if (isOfficialPano(panoId)) {
