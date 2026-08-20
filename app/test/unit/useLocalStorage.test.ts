@@ -115,4 +115,44 @@ describe("useLocalStorage shared store", () => {
 		localStorage.setItem("k-nomig", JSON.stringify({ a: 1 }));
 		expect(getLocal(persisted("k-nomig", { a: 0, b: 2 }))).toEqual({ a: 1, b: 2 });
 	});
+
+	it("writes the migrated shape back to disk, without baking defaults in", () => {
+		localStorage.setItem("k-wb", JSON.stringify({ color: { r: 1, g: 2, b: 3 } }));
+		withMigration(
+			{
+				since: "0.0.0",
+				key: "k-wb",
+				describe: "color object -> tuple",
+				apply: (v) => {
+					const c = v.color as { r: number; g: number; b: number };
+					if (c && !Array.isArray(c)) v.color = [c.r, c.g, c.b];
+				},
+			},
+			() => {
+				getLocal(persisted("k-wb", { color: [0, 0, 0], size: 5 }));
+				// Disk holds the new shape (safe to prune the migration) but not `size` --
+				// absent keys keep tracking whatever the default is at read time.
+				expect(JSON.parse(localStorage.getItem("k-wb")!)).toEqual({ color: [1, 2, 3] });
+			},
+		);
+	});
+
+	it("does not rewrite disk when migrations change nothing", () => {
+		const raw = JSON.stringify({ n: 7 });
+		localStorage.setItem("k-noop", raw);
+		withMigration(
+			{
+				since: "0.0.0",
+				key: "k-noop",
+				describe: "n string -> number",
+				apply: (v) => {
+					if (typeof v.n === "string") v.n = Number(v.n);
+				},
+			},
+			() => {
+				getLocal(persisted("k-noop", { n: 0 }));
+				expect(localStorage.getItem("k-noop")).toBe(raw);
+			},
+		);
+	});
 });

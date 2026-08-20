@@ -36,6 +36,17 @@ function read<T>(store: PersistedStore<T>): T {
 		const parsed = JSON.parse(stored);
 		if (!isPlainObject(parsed)) return parsed as T;
 		for (const migrate of migrationsFor(store.key)) migrate(parsed);
+		// Write-back: persist the migrated blob so old shapes leave disk after one launch and
+		// pruning aged-out migrations can't strand them. The migrated blob only -- baking the
+		// defaults merge in would stop absent keys from tracking future default changes.
+		const migrated = JSON.stringify(parsed);
+		if (migrated !== stored) {
+			try {
+				localStorage.setItem(store.key, migrated);
+			} catch {
+				// ignored
+			}
+		}
 		// Merge defaults under stored object values so keys added after the blob was saved still
 		// resolve. Primitives/arrays pass through unchanged.
 		return isPlainObject(store.defaults) ? ({ ...store.defaults, ...parsed } as T) : (parsed as T);
