@@ -60,7 +60,7 @@ import SameLocation from "@/components/editor/SameLocation";
 import { log } from "@/lib/util/log";
 import { useCountrySelect } from "@/lib/map/useCountrySelect";
 import { useDeletePolygon } from "@/lib/map/useDeletePolygon";
-import { useMapKeyBindings } from "@/lib/map/mapKeyBindings";
+import { useMapKeyBindings, mergedKeyBindings } from "@/lib/map/mapKeyBindings";
 import { range, clamp } from "@/types/util";
 import { t } from "@/lib/i18n";
 
@@ -238,7 +238,13 @@ export function MapEditor() {
 	usePasteHandler();
 	const fileDragging = useFileDrop();
 	useCommandHotkeys();
-	useMapKeyBindings(() => getMapState().map?.meta.settings.keyBindings ?? []);
+	useMapKeyBindings(() =>
+		mergedKeyBindings(
+			getMapState().map?.meta.settings.keyBindings ?? [],
+			getSettings().globalCopyBindings,
+			getMapState().mapId,
+		),
+	);
 	useCountrySelect();
 	useDeletePolygon();
 	useHotkey(

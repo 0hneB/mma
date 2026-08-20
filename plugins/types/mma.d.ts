@@ -2889,6 +2889,9 @@ declare const DEFAULTS: {
     previewAspectRatio: PreviewAspectRatio;
     tagSuggestionLimit: number;
     savedSelections: SavedSelection[];
+    /** Copy-to-map hotkeys that work in every map (assigned in the copy-to-map dialog);
+     *  a map's own binding on the same key shadows them. */
+    globalCopyBindings: MapKeyBinding[];
     /** Local REST transport for window.MMA (Settings > Advanced). */
     remoteApi: boolean;
     remoteApiKey: string;
@@ -3749,6 +3752,7 @@ declare const surface: {
         previewAspectRatio: PreviewAspectRatio;
         tagSuggestionLimit: number;
         savedSelections: SavedSelection[];
+        globalCopyBindings: MapKeyBinding[];
         remoteApi: boolean;
         remoteApiKey: string;
         pinnedCommands: PinnedEntry[];

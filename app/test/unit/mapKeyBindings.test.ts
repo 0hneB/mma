@@ -9,6 +9,7 @@ import {
 	withTagKeyBinding,
 	getMapCopyBindingKey,
 	withMapCopyBinding,
+	mergedKeyBindings,
 } from "@/lib/map/mapKeyBindings";
 import { isEditableElement } from "@/lib/hooks/useHotkey";
 import type { MapKeyBinding } from "@/bindings.gen";
@@ -215,5 +216,39 @@ describe("precedence over global hotkey layer", () => {
 		window.removeEventListener("keydown", mapHandler, true);
 		unregister();
 		expect(order).toEqual(["map"]);
+	});
+});
+
+describe("mergedKeyBindings", () => {
+	const copyTo = (key: string, mapId: string): MapKeyBinding => ({
+		key,
+		action: { type: "copyToMap", mapId },
+	});
+
+	it("appends global copy bindings after the map's own", () => {
+		const merged = mergedKeyBindings(
+			[{ key: "q", action: applyTag(1) }],
+			[copyTo("w", "other")],
+			"current",
+		);
+		expect(merged.map((b) => b.key)).toEqual(["q", "w"]);
+	});
+
+	it("drops a global binding targeting the open map itself", () => {
+		expect(mergedKeyBindings([], [copyTo("w", "current")], "current")).toEqual([]);
+	});
+
+	it("a map binding shadows a same-key global at match time", () => {
+		const merged = mergedKeyBindings(
+			[{ key: "w", action: applyTag(7) }],
+			[copyTo("w", "other")],
+			"current",
+		);
+		expect(matchMapKeyBinding(keyEvent("w"), merged)?.action).toEqual(applyTag(7));
+	});
+
+	it("returns the map bindings untouched when no global applies", () => {
+		const mapBindings = [{ key: "q", action: applyTag(1) }];
+		expect(mergedKeyBindings(mapBindings, [copyTo("w", "current")], "current")).toBe(mapBindings);
 	});
 });
