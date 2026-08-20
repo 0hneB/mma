@@ -41,7 +41,6 @@ plugins/*/index.js
 
 # Misc
 .gitmodules
-app/public/icon-1024.png
 app/src-tauri/icons/android/
 app/src-tauri/icons/ios/
 
