@@ -11,7 +11,64 @@ fn token_response_yields_the_access_token() {
     else {
         panic!("expected a token");
     };
-    assert_eq!(t, "ghu_abc");
+    assert_eq!(t.access_token, "ghu_abc");
+    // No expiry fields means the token never expires, so it must never read as expiring.
+    assert!(t.refresh_token.is_none());
+    assert!(t.expires_in.is_none());
+    assert!(!expiring(&Session::from(t)));
+}
+
+#[test]
+fn token_response_carries_the_refresh_grant() {
+    let Poll::Token(t) = poll(serde_json::json!({
+        "access_token": "ghu_abc",
+        "refresh_token": "ghr_xyz",
+        "expires_in": 28800,
+    })) else {
+        panic!("expected a token");
+    };
+    assert_eq!(t.refresh_token.as_deref(), Some("ghr_xyz"));
+    let session = Session::from(t);
+    assert!(!expiring(&session));
+    assert!(expiring(&Session {
+        expires_at: Some(now() + REFRESH_SKEW - 1),
+        ..session
+    }));
+}
+
+#[test]
+fn a_session_stored_before_refresh_existed_still_loads() {
+    let legacy = parse_session("ghu_abc".to_string());
+    assert_eq!(legacy.access_token, "ghu_abc");
+    assert!(legacy.refresh_token.is_none());
+    assert!(!expiring(&legacy));
+
+    let session = Session {
+        access_token: "ghu_abc".into(),
+        refresh_token: Some("ghr_xyz".into()),
+        expires_at: Some(now() + 28800),
+    };
+    let round_tripped = parse_session(serde_json::to_string(&session).unwrap());
+    assert_eq!(round_tripped.access_token, session.access_token);
+    assert_eq!(round_tripped.refresh_token, session.refresh_token);
+    assert_eq!(round_tripped.expires_at, session.expires_at);
+}
+
+#[test]
+fn renew_yields_the_stored_token_when_another_caller_already_renewed() {
+    // The refresh token is single-use: a renew racing a completed one must not spend it again.
+    store_session(Some(&Session {
+        access_token: "ghu_new".into(),
+        refresh_token: Some("ghr_xyz".into()),
+        expires_at: Some(now() + 28800),
+    }))
+    .unwrap();
+    assert_eq!(renew("ghu_old").unwrap().as_deref(), Some("ghu_new"));
+    assert_eq!(
+        load_session().unwrap().unwrap().refresh_token.as_deref(),
+        Some("ghr_xyz")
+    );
+    store_session(None).unwrap();
 }
 
 #[test]

@@ -11,7 +11,7 @@
 //! app's installation on [`REPO`]. Signing in grants us nothing on the user's own repos.
 
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::storage;
 use crate::types::AppResult;
@@ -38,18 +38,104 @@ fn user_agent() -> String {
 /// The user-to-server token, cached from the credential store.
 static SESSION: storage::SessionCell = storage::SessionCell::new(SECRET_NAME);
 
-fn session() -> AppResult<Option<String>> {
-    SESSION.get()
+/// Seconds before expiry at which a token is refreshed rather than sent.
+const REFRESH_SKEW: u64 = 300;
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+struct Session {
+    access_token: String,
+    refresh_token: Option<String>,
+    /// Unix seconds; `None` when the token does not expire.
+    expires_at: Option<u64>,
 }
 
-fn set_session(token: Option<String>) -> AppResult<()> {
-    SESSION.set(token)
+/// Serialises refreshes: a refresh token is single-use, so two callers renewing the same
+/// session at once would sign the user out.
+static RENEW: Mutex<()> = Mutex::new(());
+
+fn now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
-fn require_session() -> AppResult<String> {
-    session()?.ok_or_else(|| "not signed in to GitHub".into())
+/// Pre-refresh sessions were stored as a bare token string.
+fn parse_session(raw: String) -> Session {
+    serde_json::from_str(&raw).unwrap_or(Session {
+        access_token: raw,
+        refresh_token: None,
+        expires_at: None,
+    })
 }
 
+fn load_session() -> AppResult<Option<Session>> {
+    Ok(SESSION.get()?.map(parse_session))
+}
+
+fn store_session(session: Option<&Session>) -> AppResult<()> {
+    SESSION.set(match session {
+        Some(s) => Some(serde_json::to_string(s)?),
+        None => None,
+    })
+}
+
+fn expiring(session: &Session) -> bool {
+    session
+        .expires_at
+        .is_some_and(|at| now() + REFRESH_SKEW >= at)
+}
+
+/// The token to send, refreshed first if it is near expiry.
+fn require_token() -> AppResult<String> {
+    let session = load_session()?.ok_or("not signed in to GitHub")?;
+    if !expiring(&session) {
+        return Ok(session.access_token);
+    }
+    renew(&session.access_token)?.ok_or_else(|| "GitHub session expired".into())
+}
+
+/// Replace the session whose access token is `stale`. If the store already holds a different
+/// token, another caller renewed first and that token is returned instead. `Ok(None)` means
+/// the grant is dead and the session has been cleared; `Err` leaves it in place to retry.
+fn renew(stale: &str) -> AppResult<Option<String>> {
+    let _guard = RENEW.lock()?;
+    let Some(session) = load_session()? else {
+        return Ok(None);
+    };
+    if session.access_token != stale {
+        return Ok(Some(session.access_token));
+    }
+    let Some(refresh_token) = session.refresh_token.as_deref() else {
+        store_session(None)?;
+        return Ok(None);
+    };
+    let resp = crate::proxy_client()
+        .post(TOKEN_URL)
+        .header("Accept", "application/json")
+        .header("User-Agent", user_agent())
+        .json(&serde_json::json!({
+            "client_id": CLIENT_ID,
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        }))
+        .send()?;
+    if !resp.status().is_success() {
+        return Err(format!("GitHub token refresh returned {}", resp.status()).into());
+    }
+    let body: serde_json::Value = resp.json()?;
+    match parse_token_response(&body) {
+        Poll::Token(tokens) => {
+            let fresh = Session::from(tokens);
+            store_session(Some(&fresh))?;
+            Ok(Some(fresh.access_token))
+        }
+        _ => {
+            store_session(None)?;
+            Ok(None)
+        }
+    }
+}
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -135,16 +221,38 @@ struct DeviceCodeResponse {
 /// One poll of the token endpoint. GitHub returns HTTP 200 for the in-progress states too,
 /// so the outcome lives in the body, not the status.
 enum Poll {
-    Token(String),
+    Token(Tokens),
     Pending,
     /// Server says we are polling too fast; back off permanently by this much.
     SlowDown,
     Failed(String),
 }
 
+/// Grant from the device-code exchange or a refresh; both return the same shape.
+struct Tokens {
+    access_token: String,
+    refresh_token: Option<String>,
+    expires_in: Option<u64>,
+}
+
+impl From<Tokens> for Session {
+    fn from(t: Tokens) -> Self {
+        Session {
+            access_token: t.access_token,
+            refresh_token: t.refresh_token,
+            expires_at: t.expires_in.map(|s| now() + s),
+        }
+    }
+}
+
 fn parse_token_response(body: &serde_json::Value) -> Poll {
-    if let Some(token) = body.get("access_token").and_then(|v| v.as_str()) {
-        return Poll::Token(token.to_string());
+    let str_field = |k: &str| body.get(k).and_then(|v| v.as_str()).map(String::from);
+    if let Some(access_token) = str_field("access_token") {
+        return Poll::Token(Tokens {
+            access_token,
+            refresh_token: str_field("refresh_token"),
+            expires_in: body.get("expires_in").and_then(|v| v.as_u64()),
+        });
     }
     match body.get("error").and_then(|v| v.as_str()) {
         Some("authorization_pending") => Poll::Pending,
@@ -231,31 +339,46 @@ fn detail_from(body: &serde_json::Value, status: &str) -> String {
     }
 }
 
-fn get(token: &str, url: &str) -> AppResult<serde_json::Value> {
-    let resp = crate::proxy_client()
-        .get(url)
-        .header("Accept", "application/vnd.github+json")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("User-Agent", user_agent())
-        .send()?;
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        set_session(None)?;
+/// Send an authenticated request, renewing the session once if GitHub rejects the token.
+fn authed(
+    build: impl Fn(&str) -> reqwest::blocking::RequestBuilder,
+) -> AppResult<reqwest::blocking::Response> {
+    let token = require_token()?;
+    let resp = build(&token).send()?;
+    if resp.status() != reqwest::StatusCode::UNAUTHORIZED {
+        return Ok(resp);
+    }
+    let Some(token) = renew(&token)? else {
+        return Err("GitHub session expired".into());
+    };
+    let resp = build(&token).send()?;
+    if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        store_session(None)?;
         return Err("GitHub session expired".into());
     }
-    if !status.is_success() {
+    Ok(resp)
+}
+
+fn get(url: &str) -> AppResult<serde_json::Value> {
+    let resp = authed(|token| {
+        crate::proxy_client()
+            .get(url)
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", format!("Bearer {token}"))
+            .header("User-Agent", user_agent())
+    })?;
+    if !resp.status().is_success() {
         return Err(format!("GitHub {} for {url}", error_detail(resp)).into());
     }
     Ok(resp.json()?)
 }
 
 fn fetch_me() -> AppResult<Option<GhUser>> {
-    let Some(token) = session()? else {
+    if load_session()?.is_none() {
         return Ok(None);
-    };
-    // A rejected token clears the session inside `get`, so surface "signed out" rather than an
-    // error the settings panel would have to special-case.
-    match get(&token, &format!("{API}/user")) {
+    }
+    // A dead session is cleared inside `get`; report signed out rather than an error.
+    match get(&format!("{API}/user")) {
         Ok(v) => Ok(Some(GhUser {
             login: v
                 .get("login")
@@ -267,7 +390,7 @@ fn fetch_me() -> AppResult<Option<GhUser>> {
                 .and_then(|a| a.as_str())
                 .map(String::from),
         })),
-        Err(_) if session()?.is_none() => Ok(None),
+        Err(_) if load_session()?.is_none() => Ok(None),
         Err(e) => Err(e),
     }
 }
@@ -346,7 +469,7 @@ pub async fn github_poll_login() -> AppResult<GhUser> {
             }
             std::thread::sleep(interval);
             match poll_once(&device_code)? {
-                Poll::Token(t) => return Ok::<String, crate::types::AppError>(t),
+                Poll::Token(t) => return Ok::<Tokens, crate::types::AppError>(t),
                 Poll::Pending => {}
                 Poll::SlowDown => interval += Duration::from_secs(5),
                 Poll::Failed(msg) => return Err(msg.into()),
@@ -356,7 +479,7 @@ pub async fn github_poll_login() -> AppResult<GhUser> {
     .await??;
 
     *pending().lock()? = None;
-    set_session(Some(token))?;
+    store_session(Some(&Session::from(token)))?;
     match blocking(fetch_me).await?? {
         Some(user) => Ok(user),
         None => Err("signed in, but GitHub rejected the token".into()),
@@ -373,14 +496,14 @@ pub async fn github_me() -> AppResult<Option<GhUser>> {
 #[tauri::command]
 #[specta::specta]
 pub async fn github_logout() -> AppResult<()> {
-    blocking(|| set_session(None)).await?
+    blocking(|| store_session(None)).await?
 }
 
 /// Local-only check: is a token stored? Says nothing about its validity.
 #[tauri::command]
 #[specta::specta]
 pub async fn github_has_session() -> AppResult<bool> {
-    blocking(|| Ok(session()?.is_some())).await?
+    blocking(|| Ok(load_session()?.is_some())).await?
 }
 
 /// File an issue as the signed-in user.
@@ -396,18 +519,19 @@ pub async fn github_create_issue(
     labels: Vec<String>,
 ) -> AppResult<IssueRef> {
     blocking(move || {
-        let token = require_session()?;
         // Scrubbed on this transport too: the log tail is pre-scrubbed, but diagnostics
         // values can carry home-directory paths.
         let title = crate::feedback::scrub(&title);
         let body = crate::feedback::scrub(&body);
-        let resp = crate::proxy_client()
-            .post(format!("{API}/repos/{REPO}/issues"))
-            .header("Accept", "application/vnd.github+json")
-            .header("Authorization", format!("Bearer {token}"))
-            .header("User-Agent", user_agent())
-            .json(&serde_json::json!({ "title": title, "body": body, "labels": labels }))
-            .send()?;
+        let payload = serde_json::json!({ "title": title, "body": body, "labels": labels });
+        let resp = authed(|token| {
+            crate::proxy_client()
+                .post(format!("{API}/repos/{REPO}/issues"))
+                .header("Accept", "application/vnd.github+json")
+                .header("Authorization", format!("Bearer {token}"))
+                .header("User-Agent", user_agent())
+                .json(&payload)
+        })?;
         if !resp.status().is_success() {
             return Err(format!("GitHub rejected the report: {}", error_detail(resp)).into());
         }
@@ -429,12 +553,10 @@ pub async fn github_create_issue(
 #[specta::specta]
 pub async fn github_issue_thread(number: u32) -> AppResult<IssueThread> {
     blocking(move || {
-        let token = require_session()?;
-        let issue = get(&token, &format!("{API}/repos/{REPO}/issues/{number}"))?;
-        let comments = get(
-            &token,
-            &format!("{API}/repos/{REPO}/issues/{number}/comments?per_page=100"),
-        )?;
+        let issue = get(&format!("{API}/repos/{REPO}/issues/{number}"))?;
+        let comments = get(&format!(
+            "{API}/repos/{REPO}/issues/{number}/comments?per_page=100"
+        ))?;
         Ok(IssueThread {
             state: match issue.get("state").and_then(|s| s.as_str()) {
                 Some("closed") => IssueState::Closed,
